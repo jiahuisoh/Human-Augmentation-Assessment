@@ -1,0 +1,21 @@
+services:
+  cv-service:
+    build:
+      context: ./cv-service
+      dockerfile: Dockerfile
+    container_name: hana-cv
+    ports:
+      - "4501:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CORS_ORIGIN=http://localhost:4500
+      - POSE_MODEL_VARIANT=full
+      - MIN_LANDMARK_VISIBILITY=0.5
+    volumes:
+      - ./cv-service:/app
+    networks:
+      - hana-net
+
+networks:
+  hana-net:
+    driver: bridge

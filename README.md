@@ -21,8 +21,11 @@ completely, reopen it, and try again.
 
 ## Running the frontend
 
+Powershell (works for me)
+
 ```
-cd frontend
+git clone <repo-url>
+cd <repo-folder>\frontend
 npm install
 npm run dev
 ```

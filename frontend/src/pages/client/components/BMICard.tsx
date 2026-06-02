@@ -43,18 +43,51 @@ function bmiToPercent(bmi: number): number {
 
 // ---- BMIBar (internal) -------------------------------------------
 
+const TICKS: { value: number; label: string }[] = [
+  { value: 15,   label: "15"   },
+  { value: 18.5, label: "18.5" },
+  { value: 23,   label: "23"   },
+  { value: 27.5, label: "27.5" },
+  { value: 40,   label: "40+"  },
+];
+
+const LEGEND: { label: string; bg: string }[] = [
+  { label: "Underweight", bg: "bg-blue-400"   },
+  { label: "Normal",      bg: "bg-green-400"  },
+  { label: "Overweight",  bg: "bg-yellow-400" },
+  { label: "Obese",       bg: "bg-red-400"    },
+];
+
 function BMIBar({ bmi }: { bmi: number }) {
   return (
     <div className="mt-3">
       <div className="relative h-3 rounded-full overflow-hidden flex">
         {ZONES.map(z => <div key={z.label} className={cls("h-full", z.bg)} style={{ width: z.width }} />)}
-        <div className="absolute top-0 bottom-0 w-1.5 bg-gray-900 rounded-full border border-white"
-          style={{ left: `calc(${bmiToPercent(bmi)}% - 3px)` }} />
+        <div
+          className="absolute top-0 bottom-0 w-1.5 bg-gray-900 rounded-full border border-white"
+          style={{ left: `calc(${bmiToPercent(bmi)}% - 3px)` }}
+        />
       </div>
-      <div className="flex justify-between mt-1 text-[10px] text-gray-400 font-mono">
-        <span>15</span><span>18.5</span><span>23</span><span>27.5</span><span>40+</span>
+      <div className="relative mt-1 h-4">
+        {TICKS.map(({ value, label }) => (
+          <span
+            key={label}
+            className="absolute text-[10px] text-gray-400 font-mono -translate-x-1/2"
+            style={{ left: `${bmiToPercent(value)}%` }}
+          >
+            {label}
+          </span>
+        ))}
       </div>
       <p className="text-[11px] text-gray-400 mt-1">Singapore / Asian BMI classification (HPB)</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+        {LEGEND.map(l => (
+          <span key={l.label} className="flex items-center gap-1 text-[11px] text-gray-600">
+            <span className={cls("inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0", l.bg)} />
+            {l.label}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

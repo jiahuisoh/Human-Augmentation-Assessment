@@ -11,14 +11,15 @@
 // which uploads a video for a clinician to review.
 // ================================================================
 
-import { Eye, Camera, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Eye, Camera, Clock, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { cls } from "../../../utils/helpers";
 import { labelForTest } from "../ClientShared";
-import type { AssessmentSession, SubmissionStatus, VideoSubmission } from "../../../types";
+import type { AIRecommendation, AssessmentSession, SubmissionStatus, VideoSubmission } from "../../../types";
 
 interface AssessmentsProps {
   sessions: AssessmentSession[];
   submissions: VideoSubmission[];
+  aiInsights: AIRecommendation[];
 }
 
 const STATUS_META: Record<SubmissionStatus, { label: string; bg: string; text: string; Icon: typeof Clock }> = {
@@ -28,7 +29,7 @@ const STATUS_META: Record<SubmissionStatus, { label: string; bg: string; text: s
   rejected:  { label: "Not approved",      bg: "bg-red-50",     text: "text-red-700",      Icon: XCircle      },
 };
 
-export default function Assessments({ sessions, submissions }: AssessmentsProps) {
+export default function Assessments({ sessions, submissions, aiInsights }: AssessmentsProps) {
   return (
     <div className="space-y-4">
       <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 text-sm text-violet-800 flex items-start gap-2">
@@ -40,6 +41,27 @@ export default function Assessments({ sessions, submissions }: AssessmentsProps)
           tab — your clinician will review and confirm the result.
         </p>
       </div>
+
+      {aiInsights.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles size={16} className="text-violet-500" />
+            <h3 className="text-base font-semibold text-gray-900">AI insights</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">Personalised suggestions from your clinician-reviewed AI analysis.</p>
+          <div className="space-y-3">
+            {aiInsights.map(r => (
+              <div key={r._id} className="bg-violet-50 rounded-xl p-4">
+                <p className="text-sm font-semibold text-violet-900 mb-1">{r.title}</p>
+                <p className="text-sm text-violet-800 leading-relaxed">{r.detail}</p>
+                <p className="text-xs text-violet-400 mt-2">
+                  {new Date(r.createdAt).toLocaleDateString("en-SG")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-900 mb-1">My submissions</h3>

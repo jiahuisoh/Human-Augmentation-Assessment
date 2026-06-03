@@ -57,6 +57,7 @@ export interface IUserApi {
   delete(id: string): Promise<void>;
   saveEmergencyContact(id: string, contact: EmergencyContact): Promise<void>;
   verifyNric(id: string, nricLast4: string): Promise<User>;
+  assignClient(clinicianId: string, clientId: string, assign: boolean): Promise<User>;
 }
 
 export interface ISessionApi {
@@ -94,6 +95,7 @@ export interface IAuditApi {
 
 export interface IAIApi {
   pendingFor(clinicianId: string): Promise<AIRecommendation[]>;
+  forClient(clientId: string): Promise<AIRecommendation[]>;
   approve(id: string, byUserId: string): Promise<AIRecommendation>;
   override(id: string, byUserId: string, reason: string): Promise<AIRecommendation>;
 }
@@ -166,6 +168,9 @@ class RestUserApi implements IUserApi {
     return apiFetch<User>(`${this.base}/api/admin/users/${id}/status`, { method: "PATCH", body: { verificationStatus } });
   }
   async delete(id: string) { await apiFetch<void>(`${this.base}/api/admin/users/${id}`, { method: "DELETE" }); }
+  assignClient(clinicianId: string, clientId: string, assign: boolean) {
+    return apiFetch<User>(`${this.base}/api/admin/users/${clinicianId}/assign-client`, { method: "PATCH", body: { clientId, assign } });
+  }
   async saveEmergencyContact(id: string, contact: EmergencyContact) {
     await apiFetch<void>(`${this.base}/api/users/${id}/emergency`, { method: "PATCH", body: contact });
   }
@@ -226,6 +231,7 @@ class RestAuditApi implements IAuditApi {
 class RestAIApi implements IAIApi {
   constructor(private base: string) {}
   pendingFor(clinicianId: string) { return apiFetch<AIRecommendation[]>(`${this.base}/api/ai/pending/${clinicianId}`); }
+  forClient(clientId: string) { return apiFetch<AIRecommendation[]>(`${this.base}/api/ai/client/${clientId}`); }
   approve(id: string, byUserId: string) { return apiFetch<AIRecommendation>(`${this.base}/api/ai/${id}/approve`, { method: "POST", body: { byUserId } }); }
   override(id: string, byUserId: string, reason: string) { return apiFetch<AIRecommendation>(`${this.base}/api/ai/${id}/override`, { method: "POST", body: { byUserId, reason } }); }
 }

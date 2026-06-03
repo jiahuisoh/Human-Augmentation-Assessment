@@ -247,6 +247,16 @@ export class MockUserApi implements IUserApi {
     if (i >= 0) db.users.splice(i, 1);
     persistDb(db);
   }
+  async assignClient(clinicianId: string, clientId: string, assign: boolean): Promise<User> {
+    const clinician = db.users.find(u => u._id === clinicianId);
+    if (!clinician) throw new Error("Clinician not found");
+    const current = clinician.assignedClientIds ?? [];
+    clinician.assignedClientIds = assign
+      ? [...new Set([...current, clientId])]
+      : current.filter(id => id !== clientId);
+    persistDb(db);
+    return clinician;
+  }
   async saveEmergencyContact(id: string, contact: EmergencyContact): Promise<void> {
     const u = db.users.find(x => x._id === id);
     if (!u) throw new Error("User not found");
@@ -391,6 +401,9 @@ export class MockAuditApi implements IAuditApi {
 export class MockAIApi implements IAIApi {
   async pendingFor(_clinicianId: string): Promise<AIRecommendation[]> {
     return db.aiRecs.filter(r => r.status === "pending");
+  }
+  async forClient(clientId: string): Promise<AIRecommendation[]> {
+    return db.aiRecs.filter(r => r.clientId === clientId && r.status === "approved");
   }
   async approve(id: string, byUserId: string): Promise<AIRecommendation> {
     const r = db.aiRecs.find(x => x._id === id);

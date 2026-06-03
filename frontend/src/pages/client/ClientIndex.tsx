@@ -8,11 +8,11 @@ import {
 import { cls, firstNameOf, initialsOf } from "../../utils/helpers";
 import { BADGES_DATA } from "../../utils/constants";
 import {
-  consentApi, planApi, sessionApi, submissionApi, tokenApi,
+  aiApi, consentApi, planApi, sessionApi, submissionApi, tokenApi,
 } from "../../utils/api";
 import VerificationBanner from "../../components/VerificationBanner";
 import type {
-  AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
+  AIRecommendation, AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
   TokenTransaction, User, VideoSubmission,
 } from "../../types";
 import { greeting } from "./ClientShared";
@@ -60,6 +60,7 @@ export default function Client({ user, onSignOut }: ClientProps) {
   const [consents, setConsents]     = useState<ConsentEvent[]>([]);
   const [plan,     setPlan]         = useState<InterventionPlan | null>(null);
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
+  const [aiInsights, setAiInsights]   = useState<AIRecommendation[]>([]);
 
   useEffect(() => {
     void Promise.all([
@@ -69,8 +70,10 @@ export default function Client({ user, onSignOut }: ClientProps) {
       consentApi.historyFor(user._id),
       planApi.forClient(user._id),
       submissionApi.listForClient(user._id),
-    ]).then(([s, t, b, c, p, subs]) => {
-      setSessions(s); setTokens(t); setBalance(b); setConsents(c); setPlan(p); setSubmissions(subs);
+      aiApi.forClient(user._id),
+    ]).then(([s, t, b, c, p, subs, ai]) => {
+      setSessions(s); setTokens(t); setBalance(b); setConsents(c); setPlan(p);
+      setSubmissions(subs); setAiInsights(ai);
     });
   }, [user._id]);
 
@@ -130,7 +133,7 @@ export default function Client({ user, onSignOut }: ClientProps) {
         {user.verificationStatus !== "verified" && <VerificationBanner status={user.verificationStatus} />}
 
         {tab === "home"             && <Home            user={user} sessions={sessions} balance={balance} onStart={() => setTab("video_assessment")} />}
-        {tab === "assessments"      && <Assessments     sessions={sessions} submissions={submissions} />}
+        {tab === "assessments"      && <Assessments     sessions={sessions} submissions={submissions} aiInsights={aiInsights} />}
         {tab === "video_assessment" && <VideoAssessment user={user} submissions={submissions} onChange={reloadSubmissions} />}
         {tab === "questionnaire"    && <Questionnaire   user={user} />}
         {tab === "plan"             && <Plan            plan={plan} />}

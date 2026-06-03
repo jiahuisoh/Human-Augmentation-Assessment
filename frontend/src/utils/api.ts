@@ -124,7 +124,9 @@ export interface ISubmissionApi {
     fileName: string;
     fileSize: number;
     fileMimeType: string;
+    file?: File;
   }): Promise<VideoSubmission>;
+  getVideoUrl(submissionId: string): string | null;
   listForClient(clientId: string): Promise<VideoSubmission[]>;
   listPending(): Promise<VideoSubmission[]>;
   deleteOwn(id: string, clientId: string): Promise<void>;
@@ -266,6 +268,8 @@ class RestSubmissionApi implements ISubmissionApi {
   submitVideo(args: Parameters<ISubmissionApi["submitVideo"]>[0]) {
     return apiFetch<VideoSubmission>(`${this.base}/api/submissions/video`, { method: "POST", body: args });
   }
+  /** REST backend would return a signed streaming URL — not yet implemented. */
+  getVideoUrl(_submissionId: string): string | null { return null; }
   listForClient(clientId: string) {
     return apiFetch<VideoSubmission[]>(`${this.base}/api/submissions/client/${clientId}`);
   }

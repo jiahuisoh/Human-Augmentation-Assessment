@@ -504,6 +504,9 @@ function synthesiseOutcome(testId: TestId): { reps?: number; measurement?: numbe
   }
 }
 
+/** In-memory map of submissionId → ObjectURL (lives for the browser session only). */
+const videoObjectUrls = new Map<string, string>();
+
 export class MockSubmissionApi implements ISubmissionApi {
   async submitVideo(args: Parameters<ISubmissionApi["submitVideo"]>[0]): Promise<VideoSubmission> {
     const v: VideoSubmission = {
@@ -516,7 +519,15 @@ export class MockSubmissionApi implements ISubmissionApi {
     };
     db.submissions.unshift(v);
     persistDb(db);
+    // Store an ObjectURL so the clinician can play the video back this session.
+    if (args.file) {
+      videoObjectUrls.set(v._id, URL.createObjectURL(args.file));
+    }
     return v;
+  }
+
+  getVideoUrl(submissionId: string): string | null {
+    return videoObjectUrls.get(submissionId) ?? null;
   }
 
   async listForClient(clientId: string): Promise<VideoSubmission[]> {

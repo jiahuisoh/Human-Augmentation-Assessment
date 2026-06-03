@@ -16,9 +16,10 @@
 // ================================================================
 
 import { useState } from "react";
-import { Camera, ClipboardList, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Camera, ClipboardList, CheckCircle, XCircle, AlertCircle, ScanLine, Play } from "lucide-react";
 import { cls } from "../../../utils/helpers";
 import { TESTS } from "../../../utils/constants";
+import { submissionApi } from "../../../utils/api";
 import RiskBadge from "../../../components/RiskBadge";
 import { riskFromSessions, type PatientView } from "../ClinicianShared";
 import type { TestId, VideoSubmission } from "../../../types";
@@ -108,6 +109,7 @@ function SubmissionCard({ submission, patientName, onApprove, onReject }: Submis
   const [classification, setCls]      = useState("");
   const [notes, setNotes]             = useState("");
   const [busy, setBusy]               = useState(false);
+  const [cvRunning, setCvRunning]     = useState(false);
 
   // Use the right field name based on the test (reps vs cm).
   const scoreFieldLabel = submission.testId === "chair_stand" ? "Reps (count)" : "Measurement (cm)";
@@ -115,6 +117,21 @@ function SubmissionCard({ submission, patientName, onApprove, onReject }: Submis
     const n = Number(raw);
     if (!raw || Number.isNaN(n)) return {};
     return submission.testId === "chair_stand" ? { reps: n } : { measurement: n };
+  };
+
+  const videoUrl = submissionApi.getVideoUrl(submission._id);
+
+  const runCvAnalysis = (): void => {
+    setCvRunning(true);
+    // Simulate CV pipeline analysing the video (would be a real backend call in production).
+    window.setTimeout(() => {
+      const mockReps = submission.testId === "chair_stand"
+        ? String(Math.floor(Math.random() * 6) + 8)   // 8–13 reps
+        : String((Math.random() * 10 - 5).toFixed(1)); // -5 to +5 cm
+      setScore(mockReps);
+      setCvRunning(false);
+      if (mode === "idle") setMode("approving");
+    }, 2000);
   };
 
   const approve = async (): Promise<void> => {
@@ -155,20 +172,37 @@ function SubmissionCard({ submission, patientName, onApprove, onReject }: Submis
         </span>
       </div>
 
-      {/* Mock video placeholder — real backend would serve a signed URL */}
-      <div className="mt-3 bg-slate-100 border border-slate-200 rounded-lg p-4 text-center">
-        <Camera size={20} className="text-slate-400 mx-auto mb-1" />
-        <p className="text-xs text-slate-500">
-          Video preview placeholder — in production this would stream from off-chain storage
-          (<span className="font-mono">{submission.storageRef ?? "—"}</span>)
-        </p>
+      {/* Video player */}
+      <div className="mt-3 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
+        {videoUrl ? (
+          <video
+            src={videoUrl}
+            controls
+            className="w-full max-h-64 bg-black"
+            preload="metadata"
+          />
+        ) : (
+          <div className="p-4 text-center">
+            <Camera size={20} className="text-slate-400 mx-auto mb-1" />
+            <p className="text-xs text-slate-500">
+              Video not available in this session — client must re-upload or connect live storage.
+            </p>
+            <p className="text-xs text-slate-400 font-mono mt-1">{submission.storageRef ?? "—"}</p>
+          </div>
+        )}
       </div>
 
       {mode === "idle" && (
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 mt-3 flex-wrap">
           <button type="button" onClick={() => setMode("approving")}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors">
             <CheckCircle size={13} /> Approve & score
+          </button>
+          <button type="button" disabled={cvRunning} onClick={runCvAnalysis}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-colors">
+            {cvRunning
+              ? <><ScanLine size={13} className="animate-pulse" /> Analysing…</>
+              : <><Play size={13} /> Analyse with CV</>}
           </button>
           <button type="button" onClick={() => setMode("rejecting")}
             className="flex items-center gap-1.5 px-3 py-1.5 border border-red-300 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100 transition-colors">
@@ -181,8 +215,10 @@ function SubmissionCard({ submission, patientName, onApprove, onReject }: Submis
         <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
           <div className="text-xs text-gray-600 flex items-start gap-1.5">
             <AlertCircle size={11} className="text-gray-400 flex-shrink-0 mt-0.5" />
-            Leave the score field blank to use auto-synthesised values from the CV pipeline.
-            All approvals are logged with your clinician ID.
+            {score
+              ? "Score pre-filled by CV analysis — review and adjust if needed before confirming."
+              : "Enter the score manually, or click \"Analyse with CV\" to auto-fill. All approvals are logged with your clinician ID."
+            }
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input value={score} onChange={e => setScore(e.target.value)} type="number"

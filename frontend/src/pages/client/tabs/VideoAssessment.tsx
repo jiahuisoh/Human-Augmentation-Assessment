@@ -47,6 +47,7 @@ export default function VideoAssessment({ user, submissions, onChange }: VideoAs
         fileName: file.name,
         fileSize: file.size,
         fileMimeType: file.type || "video/mp4",
+        file,
       });
       setFile(null);
       setConsent(false);

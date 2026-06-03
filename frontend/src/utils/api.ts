@@ -81,6 +81,7 @@ export interface ITokenApi {
   revoke(id: string, requestedBy: string, reason: string): Promise<TokenTransaction>;
   pendingApprovals(): Promise<TokenTransaction[]>;
   redemptionCatalogue(): Promise<RedemptionCatalogueItem[]>;
+  redeem(clientId: string, itemId: string): Promise<TokenTransaction>;
 }
 
 export interface IConsentApi {
@@ -214,6 +215,9 @@ class RestTokenApi implements ITokenApi {
   revoke(id: string, requestedBy: string, reason: string) { return apiFetch<TokenTransaction>(`${this.base}/api/tokens/${id}/revoke`, { method: "POST", body: { requestedBy, reason } }); }
   pendingApprovals() { return apiFetch<TokenTransaction[]>(`${this.base}/api/tokens/pending`); }
   redemptionCatalogue() { return apiFetch<RedemptionCatalogueItem[]>(`${this.base}/api/tokens/catalogue`); }
+  redeem(clientId: string, itemId: string) {
+    return apiFetch<TokenTransaction>(`${this.base}/api/tokens/redeem`, { method: "POST", body: { clientId, itemId } });
+  }
 }
 
 class RestConsentApi implements IConsentApi {

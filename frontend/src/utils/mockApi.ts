@@ -368,6 +368,20 @@ export class MockTokenApi implements ITokenApi {
     return db.tokens.filter(t => t.requiresApproval);
   }
   async redemptionCatalogue(): Promise<RedemptionCatalogueItem[]> { return [...db.catalogue]; }
+  async redeem(clientId: string, itemId: string): Promise<TokenTransaction> {
+    const item = db.catalogue.find(c => c._id === itemId);
+    if (!item) throw new Error("Reward not found");
+    if (!item.active) throw new Error("This reward is no longer available");
+    const balance = await this.balanceFor(clientId);
+    if (balance < item.costTokens) throw new Error("Insufficient tokens");
+    const txn: TokenTransaction = {
+      _id: uid("t"), clientId, amount: -item.costTokens, eventType: "redemption",
+      requiresApproval: false, reason: item.name, createdAt: nowIso(),
+    };
+    db.tokens.unshift(txn);
+    persistDb(db);
+    return txn;
+  }
 }
 
 export class MockConsentApi implements IConsentApi {

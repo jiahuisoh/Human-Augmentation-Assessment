@@ -13,7 +13,7 @@ import {
 import VerificationBanner from "../../components/VerificationBanner";
 import type {
   AIRecommendation, AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
-  TokenTransaction, User, VideoSubmission,
+  RedemptionCatalogueItem, TokenTransaction, User, VideoSubmission,
 } from "../../types";
 import { greeting } from "./ClientShared";
 
@@ -59,8 +59,9 @@ export default function Client({ user, onSignOut }: ClientProps) {
   const [balance,  setBalance]      = useState(0);
   const [consents, setConsents]     = useState<ConsentEvent[]>([]);
   const [plan,     setPlan]         = useState<InterventionPlan | null>(null);
-  const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
-  const [aiInsights, setAiInsights]   = useState<AIRecommendation[]>([]);
+  const [submissions,  setSubmissions]  = useState<VideoSubmission[]>([]);
+  const [aiInsights,   setAiInsights]   = useState<AIRecommendation[]>([]);
+  const [catalogue,    setCatalogue]    = useState<RedemptionCatalogueItem[]>([]);
 
   useEffect(() => {
     void Promise.all([
@@ -71,9 +72,10 @@ export default function Client({ user, onSignOut }: ClientProps) {
       planApi.forClient(user._id),
       submissionApi.listForClient(user._id),
       aiApi.forClient(user._id),
-    ]).then(([s, t, b, c, p, subs, ai]) => {
+      tokenApi.redemptionCatalogue(),
+    ]).then(([s, t, b, c, p, subs, ai, cat]) => {
       setSessions(s); setTokens(t); setBalance(b); setConsents(c); setPlan(p);
-      setSubmissions(subs); setAiInsights(ai);
+      setSubmissions(subs); setAiInsights(ai); setCatalogue(cat);
     });
   }, [user._id]);
 
@@ -84,6 +86,13 @@ export default function Client({ user, onSignOut }: ClientProps) {
 
   const reloadSubmissions = async (): Promise<void> => {
     setSubmissions(await submissionApi.listForClient(user._id));
+  };
+
+  const handleRedeem = async (itemId: string): Promise<void> => {
+    await tokenApi.redeem(user._id, itemId);
+    const [t, b] = await Promise.all([tokenApi.historyFor(user._id), tokenApi.balanceFor(user._id)]);
+    setTokens(t);
+    setBalance(b);
   };
 
   return (
@@ -139,7 +148,7 @@ export default function Client({ user, onSignOut }: ClientProps) {
         {tab === "plan"             && <Plan            plan={plan} />}
         {tab === "activity"         && <Activity_ />}
         {tab === "badges"           && <Badges />}
-        {tab === "tokens"           && <Tokens          balance={balance} history={tokens} />}
+        {tab === "tokens"           && <Tokens          balance={balance} history={tokens} catalogue={catalogue} onRedeem={handleRedeem} />}
         {tab === "records"          && <Records         user={user} consents={consents} sessions={sessions} onConsentChange={handleConsentChange} />}
         {tab === "account"          && <Account         user={user} />}
         {tab === "help"             && <Help />}

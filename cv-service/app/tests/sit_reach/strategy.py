@@ -75,9 +75,11 @@ class SitReachStrategy(TestStrategy):
         return TestStateUpdate(measurement=cm, best_measurement=max(self._all_reaches))
 
     def finalize(self, ctx: FinalizeContext) -> TestOutcome:
-        if len(self._all_reaches) < _MIN_TEST_SAMPLES:
+        if not self._all_reaches:
             return TestOutcome(measurement=0.0, terminated_early=ctx.terminated_early)
         best = max(self._all_reaches)
+        if len(self._all_reaches) < _MIN_TEST_SAMPLES:
+            return TestOutcome(measurement=best, terminated_early=ctx.terminated_early)
         classification = classify_sit_reach(best, ctx.user_age, ctx.user_sex)
         if classification is None:
             return TestOutcome(measurement=best, terminated_early=ctx.terminated_early)

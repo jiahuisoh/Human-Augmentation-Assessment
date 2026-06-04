@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, Shield, Terminal, Coins,
-  Settings, LogOut, ShoppingBag, Camera, type LucideIcon,
+  Settings, ShoppingBag, Camera,
 } from "lucide-react";
-import { cls, initialsOf } from "../../utils/helpers";
+import { firstNameOf } from "../../utils/helpers";
 import {
   auditApi, contractApi, scheduleApi, sessionApi, tokenApi, userApi,
 } from "../../utils/api";
+import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
@@ -27,9 +28,7 @@ type TabId =
   | "overview" | "users" | "tokens" | "catalogue"
   | "records"  | "audit" | "config" | "cv";
 
-interface TabDef { id: TabId; label: string; Icon: LucideIcon }
-
-const TABS: ReadonlyArray<TabDef> = [
+const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
   { id: "overview",   label: "Overview",        Icon: LayoutDashboard },
   { id: "users",      label: "User management", Icon: Users           },
   { id: "tokens",     label: "Incentives",      Icon: Coins           },
@@ -114,36 +113,22 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200">
-      <header className="bg-slate-900 border-b border-slate-800 px-5 h-12 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-indigo-500" />
-          <span className="text-sm font-medium">HANA Platform</span>
-          <span className="text-xs text-indigo-400 bg-indigo-950 border border-indigo-900 px-2 py-0.5 rounded">PROD · SG-01</span>
-        </div>
-        <nav className="flex gap-1">
-          {TABS.map(({ id, label, Icon }) => (
-            <button key={id} type="button" onClick={() => setTab(id)}
-              className={cls(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded text-xs transition-all",
-                tab === id ? "bg-slate-800 text-indigo-400" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50",
-              )}>
-              <Icon size={12} /> {label}
-            </button>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded-full bg-indigo-900 border border-indigo-700 flex items-center justify-center text-xs font-semibold text-indigo-300">
-            {initialsOf(user.name)}
+    <SidebarLayout
+      user={user} tabs={TABS} activeTab={tab}
+      onTab={id => setTab(id as TabId)}
+      onSignOut={onSignOut} accent="indigo"
+      headerLeft={
+        <div>
+          <div className="text-base font-semibold text-gray-900">
+            Welcome, {firstNameOf(user.name)}
           </div>
-          <span className="text-xs text-indigo-400 bg-indigo-950 border border-indigo-900 px-2 py-0.5 rounded">ADMINISTRATOR</span>
-          <button type="button" onClick={onSignOut} className="text-slate-600 hover:text-slate-300 text-xs flex items-center gap-1 transition-colors">
-            <LogOut size={13} /> Sign out
-          </button>
+          <div className="text-xs text-gray-400">
+            {pendingTokens.length} pending token approval{pendingTokens.length !== 1 ? "s" : ""}
+          </div>
         </div>
-      </header>
-
-      <div className="px-6 py-5 max-w-7xl mx-auto space-y-5">
+      }
+    >
+      <div className="space-y-5">
         {tab === "overview"  && <Overview  users={users} pendingTokens={pendingTokens} contracts={contracts} onApproveToken={handleApproveToken} onRejectToken={handleRejectToken} onApproveContract={handleApproveContract} />}
         {tab === "users"     && <Users_    users={users} actor={user} onChange={refresh} />}
         {tab === "tokens"    && <Tokens    pending={pendingTokens} onApprove={handleApproveToken} onReject={handleRejectToken} />}
@@ -153,6 +138,6 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
         {tab === "config"    && <Config />}
         {tab === "cv"        && <Cv        schedule={schedule} authorised={cvAuthorised} onAuthorise={setCvAuthorised} onLaunch={(clientId, testId) => setActiveCv({ clientId, testId })} />}
       </div>
-    </div>
+    </SidebarLayout>
   );
 }

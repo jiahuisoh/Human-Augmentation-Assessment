@@ -6,7 +6,13 @@ import { CVServiceClient } from "./CVServiceClient";
 import PoseCamera, { type PoseCameraHandle } from "./PoseCamera";
 import type { Detection, Phase, TestOutcomeWire, UpdateMessage } from "./wireTypes";
 import type { Sex, TestId } from "../types";
+import { TESTS } from "../utils/constants";
 import LivenessDetection from "../components/LivenessDetection";
+
+function calibrationPromptFor(testId: TestId): string {
+  return TESTS.find(t => t.id === testId)?.calibrationPrompt
+    ?? "Stand straight, sideways to the camera.";
+}
 
 // Default matches the cv-service host port from docker-compose.yml (4501 → 8000 in container).
 // Override via VITE_CV_WS_URL in frontend/.env if running the service on a different port.
@@ -199,7 +205,7 @@ export default function TestRunner({
           {phase === "calibrating" && (
             <>
               <h2 className="text-2xl font-bold text-white text-center mb-1">Calibrating…</h2>
-              <p className="text-gray-300 text-base text-center">Stand straight, sideways to the camera.</p>
+              <p className="text-gray-300 text-base text-center">{calibrationPromptFor(testId)}</p>
             </>
           )}
         </div>

@@ -237,6 +237,15 @@ export default function TestRunner({
             <div className="h-full bg-violet-500 rounded-full transition-all duration-200"
               style={{ width: `${(update.calib_progress ?? 0) * 100}%` }} />
           </div>
+          {update.calib_quality !== undefined && (
+            <p className={cls(
+              "text-sm text-center mt-2",
+              update.calib_quality >= 0.5 ? "text-emerald-400" : "text-amber-400",
+            )}>
+              Calibration quality: {Math.round(update.calib_quality * 100)}%
+              {update.calib_quality < 0.5 && " — improve lighting or leg visibility"}
+            </p>
+          )}
         </div>
       )}
 

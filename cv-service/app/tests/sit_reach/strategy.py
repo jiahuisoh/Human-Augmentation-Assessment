@@ -1,3 +1,4 @@
+import math
 import statistics
 from typing import Sequence
 from app.cv.hand_detector import HAND_LANDMARK
@@ -16,11 +17,42 @@ _HOLD_MS = 2000.0
 _STABLE_CM = 2.5
 _RETRACT_CM = 3.0
 _TOP_N_MEDIAN = 5
+_SMOOTHER_MIN_CUTOFF = 0.9
+_SMOOTHER_BETA = 0.02
 
 _LEFT_LEG = (LANDMARK.LEFT_HIP, LANDMARK.LEFT_ANKLE)
 _RIGHT_LEG = (LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_ANKLE)
 _LEFT_KNEE = (LANDMARK.LEFT_HIP, LANDMARK.LEFT_KNEE, LANDMARK.LEFT_ANKLE)
 _RIGHT_KNEE = (LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_KNEE, LANDMARK.RIGHT_ANKLE)
+
+
+def forward_unit(hip: Landmark, ankle: Landmark, toe: Landmark) -> tuple[float, float]:
+    """Unit vector perpendicular to the leg axis, pointing toward the toes."""
+    ax, ay = ankle.x - hip.x, ankle.y - hip.y
+    leg_len = math.hypot(ax, ay)
+    if leg_len == 0:
+        return (1.0, 0.0)
+    ux, uy = ax / leg_len, ay / leg_len
+    perp_a = (-uy, ux)
+    perp_b = (uy, -ux)
+    tx, ty = toe.x - hip.x, toe.y - hip.y
+    if tx * perp_a[0] + ty * perp_a[1] >= tx * perp_b[0] + ty * perp_b[1]:
+        return perp_a
+    return perp_b
+
+
+def forward_offset(point: Landmark, origin: Landmark, fwd: tuple[float, float]) -> float:
+    dx, dy = point.x - origin.x, point.y - origin.y
+    return dx * fwd[0] + dy * fwd[1]
+def forward_reach_norm(finger: Landmark, toe: Landmark, fwd: tuple[float, float]) -> float:
+    """Signed reach distance in normalised units along the forward axis (0 at toe)."""
+    dx, dy = finger.x - toe.x, finger.y - toe.y
+    return dx * fwd[0] + dy * fwd[1]
+
+
+def reach_from_baseline(finger: Landmark, hip: Landmark, fwd: tuple[float, float], toe_baseline_offset: float) -> float:
+    """Reach along forward axis relative to the toe baseline captured at calibration."""
+    return forward_offset(finger, hip, fwd) - toe_baseline_offset
 
 
 class SitReachStrategy(TestStrategy):
@@ -35,7 +67,11 @@ class SitReachStrategy(TestStrategy):
     def __init__(self) -> None:
         self._user_height_cm: float | None = None
         self._leg_samples: list[float] = []
+        self._toe_baseline_offsets: list[float] = []
         self._cm_per_unit: float | None = None
+        self._forward: tuple[float, float] | None = None
+        self._toe_baseline_offset: float | None = None
+        self._calibration_quality: float | None = None
         self._best_side: str = 'right'
         self._reach_cm: float | None = None
         self._all_reaches: list[float] = []
@@ -45,7 +81,11 @@ class SitReachStrategy(TestStrategy):
 
     def reset(self) -> None:
         self._leg_samples.clear()
+        self._toe_baseline_offsets.clear()
         self._cm_per_unit = None
+        self._forward = None
+        self._toe_baseline_offset = None
+        self._calibration_quality = None
         self._best_side = 'right'
         self._reach_cm = None
         self._all_reaches.clear()
@@ -57,6 +97,16 @@ class SitReachStrategy(TestStrategy):
         _ = (user_age, user_sex)
         self._user_height_cm = user_height
 
+    def smoother_config(self) -> tuple[float, float]:
+        return (_SMOOTHER_MIN_CUTOFF, _SMOOTHER_BETA)
+
+    def get_calibration_quality(self) -> float | None:
+        if self._calibration_quality is not None:
+            return self._calibration_quality
+        if len(self._leg_samples) >= 2:
+            return self._compute_calibration_quality()
+        return None
+
     def is_frame_usable(self, landmarks: Sequence[Landmark]) -> bool:
         return all_visible(landmarks, _LEFT_LEG) or all_visible(landmarks, _RIGHT_LEG)
 
@@ -67,65 +117,105 @@ class SitReachStrategy(TestStrategy):
         _ = hand_landmarks
         side, _ = pick_better_side(landmarks, _LEFT_LEG, _RIGHT_LEG)
         self._best_side = side
-        idx = _LEFT_LEG if side == 'left' else _RIGHT_LEG
-        if not all_visible(landmarks, idx):
+        idx_leg = _LEFT_LEG if side == 'left' else _RIGHT_LEG
+        idx_foot = LANDMARK.LEFT_FOOT_INDEX if side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
+        idx_hip = LANDMARK.LEFT_HIP if side == 'left' else LANDMARK.RIGHT_HIP
+        if not all_visible(landmarks, (*idx_leg, idx_foot)):
             return
-        leg_len = distance(landmarks[idx[0]], landmarks[idx[1]])
-        if leg_len > 0:
-            self._leg_samples.append(leg_len)
+        hip, ankle, toe = landmarks[idx_hip], landmarks[idx_leg[1]], landmarks[idx_foot]
+        leg_len = distance(hip, ankle)
+        if leg_len <= 0:
+            return
+        self._leg_samples.append(leg_len)
+        fwd = forward_unit(hip, ankle, toe)
+        self._toe_baseline_offsets.append(forward_offset(toe, hip, fwd))
 
     def finish_calibration(self) -> tuple[bool, str | None]:
         if len(self._leg_samples) < _MIN_CALIB_SAMPLES:
             return (False, 'Could not see your leg clearly. Sit sideways to the camera with your test leg fully visible.')
         median_leg = statistics.median(self._leg_samples)
         self._cm_per_unit = self._leg_length_cm() / median_leg
+        self._toe_baseline_offset = statistics.median(self._toe_baseline_offsets)
+        self._calibration_quality = self._compute_calibration_quality()
         return (True, None)
 
     def update(self, landmarks: Sequence[Landmark], elapsed_ms: float, hand_landmarks: Sequence[Sequence[Landmark]] | None = None) -> TestStateUpdate:
-        if self._cm_per_unit is None:
+        if self._cm_per_unit is None or self._toe_baseline_offset is None:
             return TestStateUpdate(measurement=self._reach_cm, best_measurement=self._robust_best())
         if not self._knee_is_straight(landmarks, self._best_side):
             return TestStateUpdate(measurement=self._reach_cm, best_measurement=self._robust_best())
 
         idx_foot = LANDMARK.LEFT_FOOT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
         idx_hip = LANDMARK.LEFT_HIP if self._best_side == 'left' else LANDMARK.RIGHT_HIP
-        if not all_visible(landmarks, (idx_foot, idx_hip)):
+        idx_ankle = LANDMARK.LEFT_ANKLE if self._best_side == 'left' else LANDMARK.RIGHT_ANKLE
+        if not all_visible(landmarks, (idx_foot, idx_hip, idx_ankle)):
             return TestStateUpdate(measurement=self._reach_cm, best_measurement=self._robust_best())
 
         hip = landmarks[idx_hip]
+        ankle = landmarks[idx_ankle]
         toe = landmarks[idx_foot]
-        forward_sign = 1.0 if toe.x - hip.x >= 0 else -1.0
-        finger = self._finger_landmark(landmarks, hand_landmarks, forward_sign)
+        self._forward = forward_unit(hip, ankle, toe)
+        finger = self._finger_landmark(landmarks, hand_landmarks, toe)
         if finger is None:
             return TestStateUpdate(measurement=self._reach_cm, best_measurement=self._robust_best())
 
-        cm = round((finger.x - toe.x) * forward_sign * self._cm_per_unit, 1)
+        reach_norm = reach_from_baseline(finger, hip, self._forward, self._toe_baseline_offset)
+        cm = round(reach_norm * self._cm_per_unit, 1)
         self._reach_cm = cm
         self._maybe_record_reach(cm, elapsed_ms)
         return TestStateUpdate(measurement=cm, best_measurement=self._robust_best())
 
     def finalize(self, ctx: FinalizeContext) -> TestOutcome:
         if not self._all_reaches:
-            return TestOutcome(measurement=0.0, terminated_early=ctx.terminated_early)
+            return TestOutcome(
+                measurement=0.0,
+                terminated_early=ctx.terminated_early,
+                calibration_quality=self._calibration_quality,
+            )
         best = self._robust_best() or 0.0
+        low_calib = self._calibration_quality is not None and self._calibration_quality < 0.5
         if len(self._all_reaches) < _MIN_TEST_SAMPLES:
-            return TestOutcome(measurement=best, terminated_early=ctx.terminated_early)
+            return TestOutcome(
+                measurement=best,
+                terminated_early=ctx.terminated_early,
+                calibration_quality=self._calibration_quality,
+            )
         classification = classify_sit_reach(best, ctx.user_age, ctx.user_sex)
         if classification is None:
-            return TestOutcome(measurement=best, terminated_early=ctx.terminated_early)
+            return TestOutcome(
+                measurement=best,
+                terminated_early=ctx.terminated_early,
+                calibration_quality=self._calibration_quality,
+            )
+        interpretation = classification.interpretation
+        if low_calib:
+            interpretation = f'{interpretation} Low calibration confidence — clinician review recommended.'
         return TestOutcome(
             measurement=best,
             terminated_early=ctx.terminated_early,
             classification=classification.classification,
             risk_level=classification.risk_level,
-            interpretation=classification.interpretation,
+            interpretation=interpretation,
             norm_low=classification.norm_low,
             norm_high=classification.norm_high,
+            calibration_quality=self._calibration_quality,
         )
 
     def _leg_length_cm(self) -> float:
         height_cm = self._user_height_cm or ASSUMED_HEIGHT_CM
         return height_cm * LEG_LENGTH_FRACTION_OF_HEIGHT
+
+    def _compute_calibration_quality(self) -> float:
+        leg_mean = statistics.mean(self._leg_samples)
+        leg_std = statistics.stdev(self._leg_samples) if len(self._leg_samples) > 1 else 0.0
+        leg_cv = leg_std / leg_mean if leg_mean > 0 else 1.0
+        leg_score = max(0.0, min(1.0, 1.0 - leg_cv * 8.0))
+
+        toe_std = statistics.stdev(self._toe_baseline_offsets) if len(self._toe_baseline_offsets) > 1 else 0.0
+        toe_score = max(0.0, min(1.0, 1.0 - toe_std * 20.0))
+
+        sample_score = min(1.0, len(self._leg_samples) / 8.0)
+        return round(0.45 * leg_score + 0.35 * toe_score + 0.20 * sample_score, 2)
 
     def _knee_is_straight(self, landmarks: Sequence[Landmark], side: str) -> bool:
         idx = _LEFT_KNEE if side == 'left' else _RIGHT_KNEE
@@ -138,17 +228,17 @@ class SitReachStrategy(TestStrategy):
         self,
         landmarks: Sequence[Landmark],
         hand_landmarks: Sequence[Sequence[Landmark]] | None,
-        forward_sign: float,
+        toe: Landmark,
     ) -> Landmark | None:
-        if hand_landmarks:
+        if hand_landmarks and self._forward is not None:
             best: Landmark | None = None
-            best_score: float | None = None
+            best_reach: float | None = None
             for hand in hand_landmarks:
                 tip = hand[HAND_LANDMARK.MIDDLE_FINGER_TIP]
-                score = forward_sign * tip.x
-                if best_score is None or score > best_score:
+                reach = forward_reach_norm(tip, toe, self._forward)
+                if best_reach is None or reach > best_reach:
                     best = tip
-                    best_score = score
+                    best_reach = reach
             if best is not None:
                 return best
         idx = LANDMARK.LEFT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_INDEX

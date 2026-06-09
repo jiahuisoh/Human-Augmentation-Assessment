@@ -1,0 +1,4 @@
+session_id,environment,age_group,user_height_cm,manual_reach_cm,cv_reach_cm,notes
+example-001,bedroom,older_adult,165,12.0,,Ruler at toe line; film sideways full leg visible
+example-002,centre,older_adult,162,8.5,,SLEC-style setup; clinician measured
+example-003,bedroom,young_adult,175,18.0,,Tester for movement-speed comparison

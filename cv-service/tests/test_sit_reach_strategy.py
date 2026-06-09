@@ -1,8 +1,15 @@
 """Unit tests for sit-and-reach CV strategy (calibration, scoring, finalize)."""
 
 from app.tests.base import FinalizeContext
-from app.tests.sit_reach.strategy import ASSUMED_HEIGHT_CM, LEG_LENGTH_FRACTION_OF_HEIGHT, SitReachStrategy
-from tests.helpers import hand_middle_finger_at, sit_reach_side_pose
+from app.tests.sit_reach.strategy import (
+    ASSUMED_HEIGHT_CM,
+    LEG_LENGTH_FRACTION_OF_HEIGHT,
+    SitReachStrategy,
+    forward_offset,
+    forward_unit,
+    reach_from_baseline,
+)
+from tests.helpers import hand_middle_finger_at, sit_reach_side_pose, visible
 
 
 def _calibrate(strategy: SitReachStrategy, *, samples: int = 3) -> None:
@@ -18,8 +25,14 @@ def _leg_scale_cm() -> float:
 
 
 def _reach_cm(finger_x: float, toe_x: float = 0.55) -> float:
+    hip = visible(0.30, 0.50)
+    ankle = visible(0.30, 0.90)
+    toe = visible(toe_x, 0.90)
+    finger = visible(finger_x, 0.70)
+    fwd = forward_unit(hip, ankle, toe)
+    baseline = forward_offset(toe, hip, fwd)
     scale = _leg_scale_cm() / 0.4
-    return round((finger_x - toe_x) * scale, 1)
+    return round(reach_from_baseline(finger, hip, fwd, baseline) * scale, 1)
 
 
 def _hold_reach(
@@ -144,6 +157,28 @@ class TestSitReachStrategy:
         for i in range(9):
             s.update(bent, elapsed_ms=5000.0 + (i + 1) * 250.0, hand_landmarks=hand_middle_finger_at(0.65, 0.70))
         assert len(s._all_reaches) == before
+
+    def test_calibration_sets_quality_score(self) -> None:
+        s = SitReachStrategy()
+        _calibrate(s)
+        assert s.get_calibration_quality() is not None
+        assert 0.0 <= s.get_calibration_quality() <= 1.0
+
+    def test_finalize_flags_low_calibration_in_interpretation(self) -> None:
+        s = SitReachStrategy()
+        _calibrate(s)
+        s._calibration_quality = 0.3
+        _record_holds(s, 3, finger_x=0.65)
+        outcome = s.finalize(FinalizeContext(user_age=72, user_sex="male", terminated_early=False))
+        assert outcome.calibration_quality == 0.3
+        assert outcome.interpretation is not None
+        assert "Low calibration confidence" in outcome.interpretation
+
+    def test_smoother_config_is_slower_than_default(self) -> None:
+        s = SitReachStrategy()
+        mc, beta = s.smoother_config()
+        assert mc < 1.5
+        assert beta < 0.05
 
     def test_is_frame_usable_when_either_leg_visible(self) -> None:
         s = SitReachStrategy()

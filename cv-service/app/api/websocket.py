@@ -108,6 +108,7 @@ class _Session:
         detection = self.strategy.detection_for(landmarks)
         usable = landmarks is not None and self.strategy.is_frame_usable(landmarks)
         if self.phase == 'calibrating':
+            form_hint = self.strategy.form_hint_for(landmarks, self.phase)
             if usable and landmarks is not None:
                 self.strategy.on_calibration_frame(landmarks, hand_landmarks)
             calib_ms = self.strategy.calibration_s * 1000
@@ -121,6 +122,7 @@ class _Session:
                 calib_samples=self.strategy.get_calibration_sample_count(),
                 calib_remaining_s=round(remaining, 2),
                 calib_quality=self.strategy.get_calibration_quality(),
+                form_hint=form_hint,
             )
             if elapsed_ms >= calib_ms and self.strategy.get_calibration_sample_count() >= self.strategy.min_calibration_samples:
                 ok, reason = self.strategy.finish_calibration()
@@ -139,7 +141,7 @@ class _Session:
             remaining = self.strategy.active_duration_s - elapsed_ms / 1000
             if usable and landmarks is not None:
                 u = self.strategy.update(landmarks, elapsed_ms, hand_landmarks)
-                await self._send_update(landmarks=landmarks, hand_landmarks=hand_landmarks, detection=detection, reps=u.reps, posture=u.posture, angle=u.angle, measurement=u.measurement, best_measurement=u.best_measurement, time_remaining=max(0.0, round(remaining, 2)))
+                await self._send_update(landmarks=landmarks, hand_landmarks=hand_landmarks, detection=detection, reps=u.reps, posture=u.posture, angle=u.angle, measurement=u.measurement, best_measurement=u.best_measurement, form_hint=u.form_hint, time_remaining=max(0.0, round(remaining, 2)))
                 if u.finished or remaining <= 0:
                     await self._finalize(terminated_early=False)
             else:

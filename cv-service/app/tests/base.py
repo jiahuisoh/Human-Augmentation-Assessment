@@ -10,6 +10,7 @@ class TestStateUpdate:
     angle: float | None = None
     measurement: float | None = None
     best_measurement: float | None = None
+    form_hint: str | None = None
     finished: bool = False
 
 @dataclass
@@ -70,4 +71,8 @@ class TestStrategy(ABC):
 
     def get_calibration_quality(self) -> float | None:
         """0–1 score after calibration; None if not yet calibrated."""
+        return None
+
+    def form_hint_for(self, landmarks: Sequence[Landmark] | None, phase: str) -> str | None:
+        _ = (landmarks, phase)
         return None

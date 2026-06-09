@@ -46,6 +46,7 @@ export interface UpdateMessage {
   // Test phase — distance-based
   measurement?:      number;
   best_measurement?: number;
+  form_hint?:        string;
 
   // Test phase — generic
   time_remaining?:  number;

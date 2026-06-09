@@ -42,6 +42,7 @@ class UpdateMessage(BaseModel):
     angle: Optional[float] = None
     measurement: Optional[float] = None
     best_measurement: Optional[float] = None
+    form_hint: Optional[str] = None
     time_remaining: Optional[float] = None
 
 class ReadyMessage(BaseModel):

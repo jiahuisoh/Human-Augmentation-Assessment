@@ -3,6 +3,9 @@
 from app.tests.base import FinalizeContext
 from app.tests.sit_reach.strategy import (
     ASSUMED_HEIGHT_CM,
+    HINT_FOOT_FLAT,
+    HINT_KNEE_BENT,
+    HINT_LEG_ALIGN,
     LEG_LENGTH_FRACTION_OF_HEIGHT,
     SitReachStrategy,
     forward_offset,
@@ -151,12 +154,39 @@ class TestSitReachStrategy:
     def test_rejects_bent_knee(self) -> None:
         s = SitReachStrategy()
         _calibrate(s)
-        bent = sit_reach_side_pose(side="right", knee=(0.45, 0.65))
+        bent = sit_reach_side_pose(side="right", knee=(0.338, 0.70))
         _hold_reach(s, finger_x=0.65, start_ms=0.0, frames=1)
         before = len(s._all_reaches)
         for i in range(9):
-            s.update(bent, elapsed_ms=5000.0 + (i + 1) * 250.0, hand_landmarks=hand_middle_finger_at(0.65, 0.70))
+            update = s.update(bent, elapsed_ms=5000.0 + (i + 1) * 250.0, hand_landmarks=hand_middle_finger_at(0.65, 0.70))
+            assert update.form_hint == HINT_KNEE_BENT
+            assert update.measurement is None
         assert len(s._all_reaches) == before
+
+    def test_rejects_misaligned_leg(self) -> None:
+        s = SitReachStrategy()
+        _calibrate(s)
+        misaligned = sit_reach_side_pose(side="right", knee=(0.35, 0.70))
+        update = s.update(misaligned, elapsed_ms=2500.0, hand_landmarks=hand_middle_finger_at(0.65, 0.70))
+        assert update.form_hint == HINT_LEG_ALIGN
+        assert update.measurement is None
+
+    def test_rejects_lifted_foot(self) -> None:
+        s = SitReachStrategy()
+        _calibrate(s)
+        lifted = sit_reach_side_pose(side="right", ankle=(0.30, 0.90), toe=(0.55, 0.75))
+        update = s.update(lifted, elapsed_ms=2500.0, hand_landmarks=hand_middle_finger_at(0.65, 0.70))
+        assert update.form_hint == HINT_FOOT_FLAT
+
+    def test_calibration_skips_bent_knee_frames(self) -> None:
+        s = SitReachStrategy()
+        good = sit_reach_side_pose(side="right")
+        bent = sit_reach_side_pose(side="right", knee=(0.338, 0.70))
+        s.on_calibration_frame(good)
+        s.on_calibration_frame(bent)
+        s.on_calibration_frame(good)
+        assert s.get_calibration_sample_count() == 2
+        assert s.form_hint_for(bent, "calibrating") == HINT_KNEE_BENT
 
     def test_calibration_sets_quality_score(self) -> None:
         s = SitReachStrategy()

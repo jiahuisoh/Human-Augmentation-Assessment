@@ -11,7 +11,9 @@ LEG_LENGTH_FRACTION_OF_HEIGHT = 0.47
 ASSUMED_HEIGHT_CM = 165.0
 _MIN_CALIB_SAMPLES = 3
 _MIN_TEST_SAMPLES = 3
-_MIN_KNEE_ANGLE = 155.0
+_MIN_KNEE_ANGLE = 160.0
+_MAX_KNEE_LINE_DEV = 0.10
+_MAX_FOOT_LIFT = 0.12
 _OUTLIER_CM = 12.0
 _HOLD_MS = 2000.0
 _STABLE_CM = 2.5
@@ -24,6 +26,11 @@ _LEFT_LEG = (LANDMARK.LEFT_HIP, LANDMARK.LEFT_ANKLE)
 _RIGHT_LEG = (LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_ANKLE)
 _LEFT_KNEE = (LANDMARK.LEFT_HIP, LANDMARK.LEFT_KNEE, LANDMARK.LEFT_ANKLE)
 _RIGHT_KNEE = (LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_KNEE, LANDMARK.RIGHT_ANKLE)
+
+HINT_KNEE_BENT = "Keep your test leg straight — bent knee won't count"
+HINT_LEG_ALIGN = "Align hip, knee, and ankle in one line"
+HINT_FOOT_FLAT = "Keep your heel and foot flat on the floor"
+HINT_LEG_VISIBLE = "Keep your test leg fully visible from the side"
 
 
 def forward_unit(hip: Landmark, ankle: Landmark, toe: Landmark) -> tuple[float, float]:
@@ -44,6 +51,8 @@ def forward_unit(hip: Landmark, ankle: Landmark, toe: Landmark) -> tuple[float, 
 def forward_offset(point: Landmark, origin: Landmark, fwd: tuple[float, float]) -> float:
     dx, dy = point.x - origin.x, point.y - origin.y
     return dx * fwd[0] + dy * fwd[1]
+
+
 def forward_reach_norm(finger: Landmark, toe: Landmark, fwd: tuple[float, float]) -> float:
     """Signed reach distance in normalised units along the forward axis (0 at toe)."""
     dx, dy = finger.x - toe.x, finger.y - toe.y
@@ -55,6 +64,17 @@ def reach_from_baseline(finger: Landmark, hip: Landmark, fwd: tuple[float, float
     return forward_offset(finger, hip, fwd) - toe_baseline_offset
 
 
+def point_line_distance(point: Landmark, line_a: Landmark, line_b: Landmark) -> float:
+    ax, ay = line_b.x - line_a.x, line_b.y - line_a.y
+    denom = ax * ax + ay * ay
+    if denom == 0:
+        return distance(point, line_a)
+    t = max(0.0, min(1.0, ((point.x - line_a.x) * ax + (point.y - line_a.y) * ay) / denom))
+    proj_x = line_a.x + t * ax
+    proj_y = line_a.y + t * ay
+    return math.hypot(point.x - proj_x, point.y - proj_y)
+
+
 class SitReachStrategy(TestStrategy):
     test_id = 'sit_reach'
     calibration_s = 3
@@ -62,7 +82,7 @@ class SitReachStrategy(TestStrategy):
     active_duration_s = 30
     min_calibration_samples = _MIN_CALIB_SAMPLES
     requires_hands = True
-    calibration_prompt = 'Sit sideways to the camera with your test leg straight out.'
+    calibration_prompt = 'Sit sideways with your test leg straight, heel down, and foot flat.'
 
     def __init__(self) -> None:
         self._user_height_cm: float | None = None
@@ -107,6 +127,12 @@ class SitReachStrategy(TestStrategy):
             return self._compute_calibration_quality()
         return None
 
+    def form_hint_for(self, landmarks: Sequence[Landmark] | None, phase: str) -> str | None:
+        if landmarks is None or phase not in ('calibrating', 'test'):
+            return None
+        side, _ = pick_better_side(landmarks, _LEFT_LEG, _RIGHT_LEG)
+        return self._evaluate_leg_form(landmarks, side)
+
     def is_frame_usable(self, landmarks: Sequence[Landmark]) -> bool:
         return all_visible(landmarks, _LEFT_LEG) or all_visible(landmarks, _RIGHT_LEG)
 
@@ -117,11 +143,11 @@ class SitReachStrategy(TestStrategy):
         _ = hand_landmarks
         side, _ = pick_better_side(landmarks, _LEFT_LEG, _RIGHT_LEG)
         self._best_side = side
+        if self._evaluate_leg_form(landmarks, side) is not None:
+            return
         idx_leg = _LEFT_LEG if side == 'left' else _RIGHT_LEG
         idx_foot = LANDMARK.LEFT_FOOT_INDEX if side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
         idx_hip = LANDMARK.LEFT_HIP if side == 'left' else LANDMARK.RIGHT_HIP
-        if not all_visible(landmarks, (*idx_leg, idx_foot)):
-            return
         hip, ankle, toe = landmarks[idx_hip], landmarks[idx_leg[1]], landmarks[idx_foot]
         leg_len = distance(hip, ankle)
         if leg_len <= 0:
@@ -132,7 +158,10 @@ class SitReachStrategy(TestStrategy):
 
     def finish_calibration(self) -> tuple[bool, str | None]:
         if len(self._leg_samples) < _MIN_CALIB_SAMPLES:
-            return (False, 'Could not see your leg clearly. Sit sideways to the camera with your test leg fully visible.')
+            return (
+                False,
+                'Could not calibrate with a straight leg. Sit sideways, keep your knee straight, heel down, and foot flat.',
+            )
         median_leg = statistics.median(self._leg_samples)
         self._cm_per_unit = self._leg_length_cm() / median_leg
         self._toe_baseline_offset = statistics.median(self._toe_baseline_offsets)
@@ -140,24 +169,24 @@ class SitReachStrategy(TestStrategy):
         return (True, None)
 
     def update(self, landmarks: Sequence[Landmark], elapsed_ms: float, hand_landmarks: Sequence[Sequence[Landmark]] | None = None) -> TestStateUpdate:
+        best = self._robust_best()
         if self._cm_per_unit is None or self._toe_baseline_offset is None:
-            return TestStateUpdate(measurement=self._reach_cm, best_measurement=self._robust_best())
-        if not self._knee_is_straight(landmarks, self._best_side):
-            return TestStateUpdate(measurement=self._reach_cm, best_measurement=self._robust_best())
+            return TestStateUpdate(measurement=self._reach_cm, best_measurement=best)
+
+        hint = self._evaluate_leg_form(landmarks, self._best_side)
+        if hint is not None:
+            return TestStateUpdate(measurement=None, best_measurement=best, form_hint=hint)
 
         idx_foot = LANDMARK.LEFT_FOOT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
         idx_hip = LANDMARK.LEFT_HIP if self._best_side == 'left' else LANDMARK.RIGHT_HIP
         idx_ankle = LANDMARK.LEFT_ANKLE if self._best_side == 'left' else LANDMARK.RIGHT_ANKLE
-        if not all_visible(landmarks, (idx_foot, idx_hip, idx_ankle)):
-            return TestStateUpdate(measurement=self._reach_cm, best_measurement=self._robust_best())
-
         hip = landmarks[idx_hip]
         ankle = landmarks[idx_ankle]
         toe = landmarks[idx_foot]
         self._forward = forward_unit(hip, ankle, toe)
         finger = self._finger_landmark(landmarks, hand_landmarks, toe)
         if finger is None:
-            return TestStateUpdate(measurement=self._reach_cm, best_measurement=self._robust_best())
+            return TestStateUpdate(measurement=None, best_measurement=best)
 
         reach_norm = reach_from_baseline(finger, hip, self._forward, self._toe_baseline_offset)
         cm = round(reach_norm * self._cm_per_unit, 1)
@@ -201,6 +230,34 @@ class SitReachStrategy(TestStrategy):
             calibration_quality=self._calibration_quality,
         )
 
+    def _evaluate_leg_form(self, landmarks: Sequence[Landmark], side: str) -> str | None:
+        idx_knee = _LEFT_KNEE if side == 'left' else _RIGHT_KNEE
+        idx_foot = LANDMARK.LEFT_FOOT_INDEX if side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
+        if not all_visible(landmarks, (*idx_knee, idx_foot)):
+            return HINT_LEG_VISIBLE
+
+        hip, knee, ankle = landmarks[idx_knee[0]], landmarks[idx_knee[1]], landmarks[idx_knee[2]]
+        toe = landmarks[idx_foot]
+        leg_len = distance(hip, ankle)
+        if leg_len <= 0:
+            return HINT_LEG_VISIBLE
+
+        knee_angle = angle_between(hip, knee, ankle)
+        if point_line_distance(knee, hip, ankle) / leg_len > _MAX_KNEE_LINE_DEV:
+            return HINT_LEG_ALIGN
+
+        if knee_angle < _MIN_KNEE_ANGLE:
+            return HINT_KNEE_BENT
+
+        if abs(toe.y - ankle.y) / leg_len > _MAX_FOOT_LIFT:
+            return HINT_FOOT_FLAT
+
+        fwd = forward_unit(hip, ankle, toe)
+        if forward_offset(ankle, hip, fwd) > forward_offset(toe, hip, fwd) + leg_len * 0.03:
+            return HINT_FOOT_FLAT
+
+        return None
+
     def _leg_length_cm(self) -> float:
         height_cm = self._user_height_cm or ASSUMED_HEIGHT_CM
         return height_cm * LEG_LENGTH_FRACTION_OF_HEIGHT
@@ -216,13 +273,6 @@ class SitReachStrategy(TestStrategy):
 
         sample_score = min(1.0, len(self._leg_samples) / 8.0)
         return round(0.45 * leg_score + 0.35 * toe_score + 0.20 * sample_score, 2)
-
-    def _knee_is_straight(self, landmarks: Sequence[Landmark], side: str) -> bool:
-        idx = _LEFT_KNEE if side == 'left' else _RIGHT_KNEE
-        if not all_visible(landmarks, idx):
-            return False
-        angle = angle_between(landmarks[idx[0]], landmarks[idx[1]], landmarks[idx[2]])
-        return angle >= _MIN_KNEE_ANGLE
 
     def _finger_landmark(
         self,

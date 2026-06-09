@@ -50,7 +50,7 @@ export const TESTS: readonly TestDefinition[] = [
     shortDesc: "Lower body & trunk flexibility",
     instructions:
       "Sit on the floor with your legs straight. Place one hand on top of the other. Slowly reach forward as far as you can, keeping your knees straight. Hold the furthest point for 2 seconds.",
-    calibrationPrompt: "Sit sideways to the camera with your test leg straight out.",
+    calibrationPrompt: "Sit sideways with your test leg straight, heel down, and foot flat.",
     safetyNote: "Never bounce during the stretch. Move smoothly and steadily.",
     Icon: Footprints,
     metricLabel: "Distance (cm)",

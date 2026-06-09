@@ -194,6 +194,11 @@ export default function TestRunner({
               <LivenessDetection score={update.liveness_rolling} showDetails />
             </div>
           )}
+          {update.form_hint && (
+            <div className="px-4 py-2 bg-amber-950/80 border-t border-amber-700 text-center">
+              <p className="text-amber-200 text-sm font-semibold">{update.form_hint}</p>
+            </div>
+          )}
         </>
       )}
 
@@ -214,8 +219,8 @@ export default function TestRunner({
       <div className="flex-1 flex items-center justify-center p-4">
         <PoseCamera
           ref={cameraRef}
-          overlayMessage={overlayMessageFor(phase, detection)}
-          overlayTone="warning"
+          overlayMessage={overlayMessageFor(phase, detection, update?.form_hint)}
+          overlayTone={update?.form_hint || detection !== "ok" ? "warning" : undefined}
         />
       </div>
 
@@ -244,6 +249,11 @@ export default function TestRunner({
             )}>
               Calibration quality: {Math.round(update.calib_quality * 100)}%
               {update.calib_quality < 0.5 && " — improve lighting or leg visibility"}
+            </p>
+          )}
+          {update.form_hint && (
+            <p className="text-sm text-center mt-2 text-amber-300 font-semibold">
+              {update.form_hint}
             </p>
           )}
         </div>
@@ -303,7 +313,8 @@ function formatCm(cm: number | undefined): string {
   return (cm >= 0 ? "+" : "") + cm.toFixed(1) + " cm";
 }
 
-function overlayMessageFor(phase: Phase, detection: Detection): string | undefined {
+function overlayMessageFor(phase: Phase, detection: Detection, formHint?: string): string | undefined {
+  if (formHint) return formHint;
   if (phase !== "calibrating" && phase !== "countdown" && phase !== "test") return undefined;
   if (detection === "ok") return undefined;
   if (detection === "missing") return "Step into frame so we can see you";

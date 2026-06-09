@@ -25,7 +25,7 @@ export default function PatientList({ patients, search, onSearch, onOpen }: Pati
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Patient", "Age", "Risk", "Adherence", "Tokens", ""].map(h => (
+            <tr>{["Patient", "Age", "Risk", "Adherence", ""].map(h => (
               <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-gray-500">{h}</th>
             ))}</tr>
           </thead>
@@ -47,7 +47,6 @@ export default function PatientList({ patients, search, onSearch, onOpen }: Pati
                       <span className="text-xs text-gray-500">{adherence}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs font-mono text-gray-500">{p.tokenBalance}</td>
                   <td className="px-4 py-3">
                     <span className="text-violet-600 text-xs font-medium flex items-center gap-1">View <ChevronRight size={12} /></span>
                   </td>

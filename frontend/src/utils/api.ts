@@ -1,8 +1,8 @@
 import type {
   AIRecommendation, AssessmentSession, AuditLog, AuthResponse, ConsentEvent,
   EmergencyContact, InterventionPlan, Measurement, NewUserPayload,
-  QuestionnaireSubmission, RedemptionCatalogueItem, Role, ScheduleEntry,
-  SmartContract, TestId, TokenTransaction, User, VideoSubmission,
+  QuestionnaireSubmission, Role, ScheduleEntry,
+  TestId, User, VideoSubmission,
 } from "../types";
 import { getToken, setToken } from "./tokenStore";
 
@@ -44,8 +44,6 @@ function safeJson(text: string): unknown {
   try { return JSON.parse(text); } catch { return {}; }
 }
 
-// Interfaces
-
 export interface IUserApi {
   register(payload: NewUserPayload): Promise<User>;
   login(email: string, password: string): Promise<User>;
@@ -71,19 +69,6 @@ export interface IScheduleApi {
   recordAttendance(id: string, present: boolean): Promise<ScheduleEntry>;
 }
 
-export interface ITokenApi {
-  balanceFor(clientId: string): Promise<number>;
-  historyFor(clientId: string): Promise<TokenTransaction[]>;
-  award(args: { clientId: string; amount: number; eventType: TokenTransaction["eventType"]; livenessScore?: number; sessionId?: string; reason?: string }): Promise<TokenTransaction>;
-  issueManual(args: { clientId: string; amount: number; issuedBy: string; reason: string }): Promise<TokenTransaction>;
-  approve(id: string, approverId: string): Promise<TokenTransaction>;
-  reject(id: string, approverId: string, reason: string): Promise<TokenTransaction>;
-  revoke(id: string, requestedBy: string, reason: string): Promise<TokenTransaction>;
-  pendingApprovals(): Promise<TokenTransaction[]>;
-  redemptionCatalogue(): Promise<RedemptionCatalogueItem[]>;
-  redeem(clientId: string, itemId: string): Promise<TokenTransaction>;
-}
-
 export interface IConsentApi {
   historyFor(clientId: string): Promise<ConsentEvent[]>;
   set(clientId: string, scope: ConsentEvent["scope"], granted: boolean): Promise<ConsentEvent>;
@@ -106,12 +91,6 @@ export interface IPlanApi {
   save(plan: Omit<InterventionPlan, "_id" | "createdAt" | "updatedAt">): Promise<InterventionPlan>;
 }
 
-export interface IContractApi {
-  list(): Promise<SmartContract[]>;
-  requestDeployment(id: string, requestedBy: string): Promise<SmartContract>;
-  approveDeployment(id: string, approvedBy: string): Promise<SmartContract>;
-}
-
 export interface IMeasurementApi {
   save(clientId: string, height: number, weight: number): Promise<Measurement>;
   listForClient(clientId: string): Promise<Measurement[]>;
@@ -131,7 +110,6 @@ export interface ISubmissionApi {
   listForClient(clientId: string): Promise<VideoSubmission[]>;
   listPending(): Promise<VideoSubmission[]>;
   deleteOwn(id: string, clientId: string): Promise<void>;
-  /** Clinician/admin approval: creates AssessmentSession + awards tokens. */
   approve(args: {
     id: string;
     reviewerId: string;
@@ -204,22 +182,6 @@ class RestScheduleApi implements IScheduleApi {
   recordAttendance(id: string, present: boolean) { return apiFetch<ScheduleEntry>(`${this.base}/api/schedule/${id}/attendance`, { method: "PATCH", body: { present } }); }
 }
 
-class RestTokenApi implements ITokenApi {
-  constructor(private base: string) {}
-  balanceFor(clientId: string) { return apiFetch<{ balance: number }>(`${this.base}/api/tokens/balance/${clientId}`).then(r => r.balance); }
-  historyFor(clientId: string) { return apiFetch<TokenTransaction[]>(`${this.base}/api/tokens/history/${clientId}`); }
-  award(args: Parameters<ITokenApi["award"]>[0]) { return apiFetch<TokenTransaction>(`${this.base}/api/tokens/award`, { method: "POST", body: args }); }
-  issueManual(args: Parameters<ITokenApi["issueManual"]>[0]) { return apiFetch<TokenTransaction>(`${this.base}/api/tokens/issue`, { method: "POST", body: args }); }
-  approve(id: string, approverId: string) { return apiFetch<TokenTransaction>(`${this.base}/api/tokens/${id}/approve`, { method: "POST", body: { approverId } }); }
-  reject(id: string, approverId: string, reason: string) { return apiFetch<TokenTransaction>(`${this.base}/api/tokens/${id}/reject`, { method: "POST", body: { approverId, reason } }); }
-  revoke(id: string, requestedBy: string, reason: string) { return apiFetch<TokenTransaction>(`${this.base}/api/tokens/${id}/revoke`, { method: "POST", body: { requestedBy, reason } }); }
-  pendingApprovals() { return apiFetch<TokenTransaction[]>(`${this.base}/api/tokens/pending`); }
-  redemptionCatalogue() { return apiFetch<RedemptionCatalogueItem[]>(`${this.base}/api/tokens/catalogue`); }
-  redeem(clientId: string, itemId: string) {
-    return apiFetch<TokenTransaction>(`${this.base}/api/tokens/redeem`, { method: "POST", body: { clientId, itemId } });
-  }
-}
-
 class RestConsentApi implements IConsentApi {
   constructor(private base: string) {}
   historyFor(clientId: string) { return apiFetch<ConsentEvent[]>(`${this.base}/api/consent/${clientId}`); }
@@ -250,13 +212,6 @@ class RestPlanApi implements IPlanApi {
   }
 }
 
-class RestContractApi implements IContractApi {
-  constructor(private base: string) {}
-  list() { return apiFetch<SmartContract[]>(`${this.base}/api/contracts`); }
-  requestDeployment(id: string, requestedBy: string) { return apiFetch<SmartContract>(`${this.base}/api/contracts/${id}/request-deploy`, { method: "POST", body: { requestedBy } }); }
-  approveDeployment(id: string, approvedBy: string) { return apiFetch<SmartContract>(`${this.base}/api/contracts/${id}/approve-deploy`, { method: "POST", body: { approvedBy } }); }
-}
-
 class RestMeasurementApi implements IMeasurementApi {
   constructor(private base: string) {}
   save(clientId: string, height: number, weight: number) {
@@ -272,7 +227,6 @@ class RestSubmissionApi implements ISubmissionApi {
   submitVideo(args: Parameters<ISubmissionApi["submitVideo"]>[0]) {
     return apiFetch<VideoSubmission>(`${this.base}/api/submissions/video`, { method: "POST", body: args });
   }
-  /** REST backend would return a signed streaming URL — not yet implemented. */
   getVideoUrl(_submissionId: string): string | null { return null; }
   listForClient(clientId: string) {
     return apiFetch<VideoSubmission[]>(`${this.base}/api/submissions/client/${clientId}`);
@@ -303,9 +257,9 @@ class RestQuestionnaireApi implements IQuestionnaireApi {
 
 
 import {
-  MockAIApi, MockAuditApi, MockConsentApi, MockContractApi, MockMeasurementApi,
+  MockAIApi, MockAuditApi, MockConsentApi, MockMeasurementApi,
   MockPlanApi, MockQuestionnaireApi, MockScheduleApi, MockSessionApi,
-  MockSubmissionApi, MockTokenApi, MockUserApi,
+  MockSubmissionApi, MockUserApi,
 } from "./mockApi";
 
 const USE_MOCK = (import.meta.env.VITE_USE_MOCK_API ?? "true") === "true";
@@ -313,12 +267,10 @@ const USE_MOCK = (import.meta.env.VITE_USE_MOCK_API ?? "true") === "true";
 export const userApi:      IUserApi     = USE_MOCK ? new MockUserApi()     : new RestUserApi(BASE_URL);
 export const sessionApi:   ISessionApi  = USE_MOCK ? new MockSessionApi()  : new RestSessionApi(BASE_URL);
 export const scheduleApi:  IScheduleApi = USE_MOCK ? new MockScheduleApi() : new RestScheduleApi(BASE_URL);
-export const tokenApi:     ITokenApi    = USE_MOCK ? new MockTokenApi()    : new RestTokenApi(BASE_URL);
 export const consentApi:   IConsentApi  = USE_MOCK ? new MockConsentApi()  : new RestConsentApi(BASE_URL);
 export const auditApi:     IAuditApi    = USE_MOCK ? new MockAuditApi()    : new RestAuditApi(BASE_URL);
 export const aiApi:        IAIApi       = USE_MOCK ? new MockAIApi()       : new RestAIApi(BASE_URL);
 export const planApi:      IPlanApi     = USE_MOCK ? new MockPlanApi()     : new RestPlanApi(BASE_URL);
-export const contractApi:  IContractApi = USE_MOCK ? new MockContractApi() : new RestContractApi(BASE_URL);
 export const measurementApi:   IMeasurementApi   = USE_MOCK ? new MockMeasurementApi()   : new RestMeasurementApi(BASE_URL);
 export const submissionApi:    ISubmissionApi    = USE_MOCK ? new MockSubmissionApi()    : new RestSubmissionApi(BASE_URL);
 export const questionnaireApi: IQuestionnaireApi = USE_MOCK ? new MockQuestionnaireApi() : new RestQuestionnaireApi(BASE_URL);

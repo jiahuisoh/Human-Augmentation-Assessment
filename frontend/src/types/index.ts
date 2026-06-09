@@ -114,42 +114,6 @@ export interface QuestionnaireSubmission {
 }
 
 
-export type TokenEventType =
-  | "assessment_complete"
-  | "session_attended"
-  | "adherence_milestone"
-  | "self_monitoring"
-  | "clinical_milestone"
-  | "redemption"
-  | "manual_adjustment"
-  | "revocation";
-
-export interface TokenTransaction {
-  _id: string;
-  clientId: string;
-  amount: number;               
-  eventType: TokenEventType;
-  issuedBy?: string;
-  reason?: string;
-  requiresApproval: boolean;
-  approvedBy?: string;
-  approvedAt?: string;
-  livenessScore?: number;
-  sessionId?: string;
-  txHash?: string;
-  createdAt: string;
-}
-
-export interface RedemptionCatalogueItem {
-  _id: string;
-  name: string;
-  description: string;
-  costTokens: number;
-  category: string;
-  active: boolean;
-}
-
-
 export type ConsentScope = "research" | "clinician_share" | "third_party" | "institutional";
 
 export interface ConsentEvent {
@@ -212,25 +176,13 @@ export type AttendanceStatus = "scheduled" | "present" | "absent" | "in_progress
 export interface ScheduleEntry {
   _id: string;
   clientId: string;
-  clientName: string;            
+  clientName: string;
   testId: TestId;
+  time: string;
   status: AttendanceStatus;
   nricVerified: boolean;
 }
 
-
-export type ContractStatus = "live" | "staging" | "deprecated";
-export type ContractEnv = "production" | "sandbox";
-
-export interface SmartContract {
-  _id: string;
-  name: string;
-  version: string;
-  status: ContractStatus;
-  env: ContractEnv;
-  deployedAt?: string;
-  needsAdminApproval: boolean;
-}
 
 export interface AuthResponse {
   user: User;

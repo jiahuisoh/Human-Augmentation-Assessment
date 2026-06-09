@@ -1,33 +1,27 @@
-// mockApi — in-memory implementations of every IXxxApi interface, - placeholder credentials
-
 import type {
   AIRecommendation, AssessmentSession, AuditLog, ConsentEvent, EmergencyContact,
   InterventionPlan, Measurement, NewUserPayload, QuestionnaireSubmission,
-  RedemptionCatalogueItem, Role, ScheduleEntry, SmartContract, TestId,
-  TokenTransaction, User, VideoSubmission,
+  Role, ScheduleEntry, TestId,
+  User, VideoSubmission,
 } from "../types";
-import { HIGH_VALUE_TOKEN_THRESHOLD } from "./constants";
 import {
-  type IAIApi, type IAuditApi, type IConsentApi, type IContractApi,
+  type IAIApi, type IAuditApi, type IConsentApi,
   type IMeasurementApi, type IPlanApi, type IQuestionnaireApi, type IScheduleApi,
-  type ISessionApi, type ISubmissionApi, type ITokenApi, type IUserApi,
+  type ISessionApi, type ISubmissionApi, type IUserApi,
 } from "./api";
 import { setToken } from "./tokenStore";
 
-const LS_KEY = "hana.mock.db.v5";
+const LS_KEY = "hana.mock.db.v6";
 
 interface MockDb {
   users: User[];
   passwords: Record<string, string>;
   sessions: AssessmentSession[];
   schedule: ScheduleEntry[];
-  tokens: TokenTransaction[];
-  catalogue: RedemptionCatalogueItem[];
   consents: ConsentEvent[];
   audits: AuditLog[];
   aiRecs: AIRecommendation[];
   plans: InterventionPlan[];
-  contracts: SmartContract[];
   measurements: Measurement[];
   submissions: VideoSubmission[];
   questionnaires: QuestionnaireSubmission[];
@@ -88,19 +82,6 @@ function seedDb(): MockDb {
       { _id: "sc4", clientId: "u_client_002", clientName: "Lim Bee Hoon",  testId: "sit_reach",   time: "10:30", status: "scheduled",    nricVerified: true  },
       { _id: "sc5", clientId: "u_client_001", clientName: "Muthu Krishnan",testId: "back_scratch",time: "11:00", status: "scheduled",    nricVerified: false },
     ],
-    tokens: [
-      { _id: "t1", clientId: "u_client_001", amount: 25, eventType: "assessment_complete", requiresApproval: false, livenessScore: 0.86, createdAt: nowIso() },
-      { _id: "t2", clientId: "u_client_001", amount: 10, eventType: "session_attended",    requiresApproval: false, createdAt: nowIso() },
-      { _id: "t3", clientId: "u_client_001", amount: 50, eventType: "adherence_milestone", requiresApproval: false, createdAt: nowIso() },
-      { _id: "t4", clientId: "u_client_001", amount: -20, eventType: "redemption",          requiresApproval: false, reason: "Cold Storage voucher", createdAt: nowIso() },
-      { _id: "t5", clientId: "u_client_001", amount: 150, eventType: "clinical_milestone", requiresApproval: true, issuedBy: "u_clin_001", reason: "6-month adherence milestone", createdAt: nowIso() },
-    ],
-    catalogue: [
-      { _id: "rc1", name: "NTUC Voucher S$5", description: "Redeem at any NTUC FairPrice outlet", costTokens: 50, category: "Grocery", active: true },
-      { _id: "rc2", name: "Cold Storage S$5", description: "Redeem at Cold Storage", costTokens: 50, category: "Grocery", active: true },
-      { _id: "rc3", name: "Health screening voucher", description: "One free wellness screening", costTokens: 200, category: "Wellness", active: true },
-      { _id: "rc4", name: "AAC Class — Tai Chi", description: "Free class enrolment", costTokens: 80, category: "Activity", active: true },
-    ],
     consents: [
       { _id: "c1", clientId: "u_client_001", scope: "research",       granted: true,  txHash: "0xa1b2c3...", createdAt: nowIso() },
       { _id: "c2", clientId: "u_client_001", scope: "clinician_share",granted: true,  txHash: "0xd4e5f6...", createdAt: nowIso() },
@@ -128,14 +109,7 @@ function seedDb(): MockDb {
           { activity: "Flexibility stretching",   frequency: "Daily",      duration: "10 min", done: false },
         ], createdAt: nowIso(), updatedAt: nowIso() },
     ],
-    contracts: [
-      { _id: "sm1", name: "IncentiveToken.sol",  version: "v2.1.0",     status: "live",       env: "production", deployedAt: nowIso(),  needsAdminApproval: false },
-      { _id: "sm2", name: "IncentiveToken.sol",  version: "v2.2.0-dev", status: "staging",    env: "sandbox",   needsAdminApproval: true  },
-      { _id: "sm3", name: "HealthRecord.sol",    version: "v1.3.0",     status: "live",       env: "production", deployedAt: nowIso(),  needsAdminApproval: false },
-      { _id: "sm4", name: "ConsentRegistry.sol", version: "v1.1.0",     status: "live",       env: "production", deployedAt: nowIso(),  needsAdminApproval: false },
-    ],
     measurements: (() => {
-      // Six weekly readings to seed a meaningful trend chart.
       const items: Measurement[] = [];
       const heights = [162, 162, 162, 162, 162, 162];
       const weights = [68, 67.5, 67, 66.5, 66, 65.4];
@@ -177,14 +151,14 @@ function loadDb(): MockDb {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return JSON.parse(raw) as MockDb;
-  } catch { /* fallthrough */ }
+  } catch {}
   const seeded = seedDb();
   persistDb(seeded);
   return seeded;
 }
 
 function persistDb(db: MockDb): void {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch { /* storage full */ }
+  try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch {}
 }
 
 const db: MockDb = loadDb();
@@ -304,86 +278,6 @@ export class MockScheduleApi implements IScheduleApi {
   }
 }
 
-export class MockTokenApi implements ITokenApi {
-  async balanceFor(clientId: string): Promise<number> {
-    return db.tokens
-      .filter(t => t.clientId === clientId && !t.requiresApproval)
-      .reduce((acc, t) => acc + t.amount, 0);
-  }
-  async historyFor(clientId: string): Promise<TokenTransaction[]> {
-    return db.tokens.filter(t => t.clientId === clientId);
-  }
-  async award(args: Parameters<ITokenApi["award"]>[0]): Promise<TokenTransaction> {
-    const txn: TokenTransaction = {
-      _id: uid("t"), clientId: args.clientId, amount: args.amount, eventType: args.eventType,
-      requiresApproval: args.amount > HIGH_VALUE_TOKEN_THRESHOLD,
-      livenessScore: args.livenessScore, sessionId: args.sessionId, reason: args.reason,
-      createdAt: nowIso(),
-    };
-    db.tokens.unshift(txn);
-    persistDb(db);
-    return txn;
-  }
-  async issueManual(args: Parameters<ITokenApi["issueManual"]>[0]): Promise<TokenTransaction> {
-    const txn: TokenTransaction = {
-      _id: uid("t"), clientId: args.clientId, amount: args.amount, eventType: "clinical_milestone",
-      requiresApproval: args.amount > HIGH_VALUE_TOKEN_THRESHOLD,
-      issuedBy: args.issuedBy, reason: args.reason, createdAt: nowIso(),
-    };
-    db.tokens.unshift(txn);
-    persistDb(db);
-    return txn;
-  }
-  async approve(id: string, approverId: string): Promise<TokenTransaction> {
-    const t = db.tokens.find(x => x._id === id);
-    if (!t) throw new Error("Token transaction not found");
-    t.requiresApproval = false;
-    t.approvedBy = approverId;
-    t.approvedAt = nowIso();
-    persistDb(db);
-    return t;
-  }
-  async reject(id: string, _approverId: string, reason: string): Promise<TokenTransaction> {
-    const t = db.tokens.find(x => x._id === id);
-    if (!t) throw new Error("Token transaction not found");
-    t.amount = 0;
-    t.requiresApproval = false;
-    t.reason = `Rejected: ${reason}`;
-    persistDb(db);
-    return t;
-  }
-  async revoke(id: string, requestedBy: string, reason: string): Promise<TokenTransaction> {
-    const orig = db.tokens.find(x => x._id === id);
-    if (!orig) throw new Error("Token transaction not found");
-    const txn: TokenTransaction = {
-      _id: uid("t"), clientId: orig.clientId, amount: -orig.amount,
-      eventType: "revocation", issuedBy: requestedBy, reason,
-      requiresApproval: true, createdAt: nowIso(),
-    };
-    db.tokens.unshift(txn);
-    persistDb(db);
-    return txn;
-  }
-  async pendingApprovals(): Promise<TokenTransaction[]> {
-    return db.tokens.filter(t => t.requiresApproval);
-  }
-  async redemptionCatalogue(): Promise<RedemptionCatalogueItem[]> { return [...db.catalogue]; }
-  async redeem(clientId: string, itemId: string): Promise<TokenTransaction> {
-    const item = db.catalogue.find(c => c._id === itemId);
-    if (!item) throw new Error("Reward not found");
-    if (!item.active) throw new Error("This reward is no longer available");
-    const balance = await this.balanceFor(clientId);
-    if (balance < item.costTokens) throw new Error("Insufficient tokens");
-    const txn: TokenTransaction = {
-      _id: uid("t"), clientId, amount: -item.costTokens, eventType: "redemption",
-      requiresApproval: false, reason: item.name, createdAt: nowIso(),
-    };
-    db.tokens.unshift(txn);
-    persistDb(db);
-    return txn;
-  }
-}
-
 export class MockConsentApi implements IConsentApi {
   async historyFor(clientId: string): Promise<ConsentEvent[]> {
     return db.consents.filter(c => c.clientId === clientId);
@@ -457,27 +351,6 @@ export class MockPlanApi implements IPlanApi {
   }
 }
 
-export class MockContractApi implements IContractApi {
-  async list(): Promise<SmartContract[]> { return [...db.contracts]; }
-  async requestDeployment(id: string, _requestedBy: string): Promise<SmartContract> {
-    const c = db.contracts.find(x => x._id === id);
-    if (!c) throw new Error("Contract not found");
-    c.needsAdminApproval = true;
-    persistDb(db);
-    return c;
-  }
-  async approveDeployment(id: string, _approvedBy: string): Promise<SmartContract> {
-    const c = db.contracts.find(x => x._id === id);
-    if (!c) throw new Error("Contract not found");
-    c.needsAdminApproval = false;
-    c.status = "live";
-    c.env = "production";
-    c.deployedAt = nowIso();
-    persistDb(db);
-    return c;
-  }
-}
-
 export class MockMeasurementApi implements IMeasurementApi {
   async save(clientId: string, height: number, weight: number): Promise<Measurement> {
     const m: Measurement = {
@@ -498,19 +371,19 @@ export class MockMeasurementApi implements IMeasurementApi {
 function synthesiseOutcome(testId: TestId): { reps?: number; measurement?: number; classification: string; riskLevel: AssessmentSession["riskLevel"]; normLow: number; normHigh: number } {
   switch (testId) {
     case "chair_stand": {
-      const reps = Math.floor(8 + Math.random() * 12); // 8..19
+      const reps = Math.floor(8 + Math.random() * 12);
       const cls  = reps >= 14 ? "Good" : reps >= 11 ? "Average" : "Below Avg";
       const risk = reps >= 14 ? "low" : reps >= 11 ? "moderate" : "high";
       return { reps, classification: cls, riskLevel: risk, normLow: 12, normHigh: 17 };
     }
     case "back_scratch": {
-      const measurement = +(Math.random() * 10 - 5).toFixed(1); // -5..+5 cm
+      const measurement = +(Math.random() * 10 - 5).toFixed(1);
       const cls  = measurement >= 0 ? "Good" : measurement >= -3 ? "Average" : "Below Avg";
       const risk = measurement >= 0 ? "low" : measurement >= -3 ? "moderate" : "high";
       return { measurement, classification: cls, riskLevel: risk, normLow: -4, normHigh: 2 };
     }
     case "sit_reach": {
-      const measurement = +(Math.random() * 14 - 4).toFixed(1); // -4..+10 cm
+      const measurement = +(Math.random() * 14 - 4).toFixed(1);
       const cls  = measurement >= 2 ? "Good" : measurement >= -1 ? "Average" : "Below Avg";
       const risk = measurement >= 2 ? "low" : measurement >= -1 ? "moderate" : "high";
       return { measurement, classification: cls, riskLevel: risk, normLow: -2, normHigh: 6 };
@@ -518,7 +391,6 @@ function synthesiseOutcome(testId: TestId): { reps?: number; measurement?: numbe
   }
 }
 
-/** In-memory map of submissionId → ObjectURL (lives for the browser session only). */
 const videoObjectUrls = new Map<string, string>();
 
 export class MockSubmissionApi implements ISubmissionApi {
@@ -533,7 +405,6 @@ export class MockSubmissionApi implements ISubmissionApi {
     };
     db.submissions.unshift(v);
     persistDb(db);
-    // Store an ObjectURL so the clinician can play the video back this session.
     if (args.file) {
       videoObjectUrls.set(v._id, URL.createObjectURL(args.file));
     }
@@ -566,7 +437,6 @@ export class MockSubmissionApi implements ISubmissionApi {
     const sub = db.submissions.find(s => s._id === args.id);
     if (!sub) throw new Error("Submission not found");
 
-    // Use reviewer-provided score if given, else synthesise from the test type.
     const synth = synthesiseOutcome(sub.testId);
     const reps         = args.reps         ?? synth.reps;
     const measurement  = args.measurement  ?? synth.measurement;
@@ -575,7 +445,7 @@ export class MockSubmissionApi implements ISubmissionApi {
     const session: AssessmentSession = {
       _id: uid("s"),
       clientId: sub.clientId,
-      conductedBy: args.reviewerId,    // reviewer's interpretation = formal conductor
+      conductedBy: args.reviewerId,
       testId: sub.testId,
       reps, measurement, classification,
       riskLevel: synth.riskLevel,
@@ -592,21 +462,11 @@ export class MockSubmissionApi implements ISubmissionApi {
     sub.reviewerNotes = args.notes;
     sub.resultingSessionId = session._id;
 
-    const award: TokenTransaction = {
-      _id: uid("t"), clientId: sub.clientId, amount: 25,
-      eventType: "assessment_complete",
-      requiresApproval: false,
-      sessionId: session._id,
-      createdAt: nowIso(),
-    };
-    db.tokens.unshift(award);
-
-    // Write audit log so reviewer accountability is traceable.
     db.audits.unshift({
       _id: uid("a"),
       actorId: args.reviewerId, actorRole: args.reviewerRole,
       category: "ASSESSMENT", level: "INFO",
-      message: `Reviewed and approved client video submission ${sub._id} → session ${session._id}; +25 tokens awarded`,
+      message: `Reviewed and approved client video submission ${sub._id} → session ${session._id}`,
       createdAt: nowIso(),
     });
 

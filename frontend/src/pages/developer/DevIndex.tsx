@@ -1,27 +1,21 @@
 import { useEffect, useState } from "react";
 import {
-  Terminal, Code, Database, Activity, AlertTriangle, Camera,
+  Terminal, AlertTriangle, Camera,
 } from "lucide-react";
-import { auditApi, contractApi } from "../../utils/api";
+import { auditApi } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
-import type { AuditLog, SmartContract, TestId, User } from "../../types";
+import type { AuditLog, TestId, User } from "../../types";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 
-import Sandbox    from "./tabs/Sandbox";
 import CVSandbox  from "./tabs/CVSandbox";
 import Logs       from "./tabs/Logs";
-import Contracts  from "./tabs/Contracts";
-import Health     from "./tabs/Health";
 
-type TabId = "sandbox" | "cv_sandbox" | "logs" | "contracts" | "health";
+type TabId = "cv_sandbox" | "logs";
 
 const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
-  { id: "sandbox",    label: "Token Sandbox",   Icon: Code     },
   { id: "cv_sandbox", label: "CV Sandbox",      Icon: Camera   },
   { id: "logs",       label: "Tech Logs",       Icon: Terminal },
-  { id: "contracts",  label: "Smart Contracts", Icon: Database },
-  { id: "health",     label: "System Health",   Icon: Activity },
 ];
 
 interface DeveloperProps {
@@ -30,14 +24,12 @@ interface DeveloperProps {
 }
 
 export default function Developer({ user, onSignOut }: DeveloperProps) {
-  const [tab, setTab]             = useState<TabId>("sandbox");
+  const [tab, setTab]             = useState<TabId>("cv_sandbox");
   const [logs, setLogs]           = useState<AuditLog[]>([]);
-  const [contracts, setContracts] = useState<SmartContract[]>([]);
   const [cvTest, setCvTest]       = useState<TestId | null>(null);
 
   useEffect(() => {
     void auditApi.list(100).then(setLogs);
-    void contractApi.list().then(setContracts);
   }, []);
 
   const handleCvComplete = async (outcome: TestOutcomeWire): Promise<void> => {
@@ -89,11 +81,8 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
           Developer access is restricted to sandbox environments only. No identifiable patient data is accessible. All actions are logged.
         </div>
 
-        {tab === "sandbox"    && <Sandbox    user={user} />}
         {tab === "cv_sandbox" && <CVSandbox  onLaunch={setCvTest} />}
         {tab === "logs"       && <Logs       logs={logs} />}
-        {tab === "contracts"  && <Contracts  contracts={contracts} />}
-        {tab === "health"     && <Health />}
       </div>
     </SidebarLayout>
   );

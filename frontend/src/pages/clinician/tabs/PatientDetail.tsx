@@ -16,11 +16,10 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           {([
             ["Adherence",     `${adherenceOf(patient.plan)}%`],
             ["Risk level",    riskFromSessions(patient.sessions)],
-            ["Token balance", String(patient.tokenBalance)],
           ] as const).map(([l, v]) => (
             <div key={l} className="text-center bg-gray-50 rounded-lg p-3">
               <div className="text-xl font-bold text-gray-900 capitalize">{v}</div>

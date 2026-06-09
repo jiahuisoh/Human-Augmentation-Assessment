@@ -17,7 +17,6 @@ export interface TestDefinition {
   cvEnabled: boolean;
 }
 
-/** The three functional tests defined in the HANA assessment module. */
 export const TESTS: readonly TestDefinition[] = [
   {
     id: "chair_stand",
@@ -92,8 +91,4 @@ export const EXERCISES: readonly ExerciseDefinition[] = [
   { id: 5, name: "Brisk Walk",        detail: "30 minutes at a good pace", category: "Cardio",      duration: "30 min", Icon: Footprints },
 ];
 
-/** Liveness threshold below which tokens are not awarded. */
 export const LIVENESS_THRESHOLD = 0.70;
-
-/** Token award above which administrator approval is required. */
-export const HIGH_VALUE_TOKEN_THRESHOLD = 100;

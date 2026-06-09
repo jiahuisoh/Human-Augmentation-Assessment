@@ -32,8 +32,6 @@ export default function Assessments({
   );
 }
 
-// ---- Review queue ------------------------------------------------
-
 interface ReviewQueueProps {
   submissions: VideoSubmission[];
   patients: PatientView[];
@@ -55,7 +53,7 @@ function ReviewQueue({ submissions, patients, onApprove, onReject }: ReviewQueue
       </h3>
       <p className="text-xs text-gray-400 mb-3">
         Client-submitted videos awaiting your review. On approval, the system records the formal
-        assessment session and awards tokens to the client.
+        assessment session for the client.
       </p>
       {submissions.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-400">
@@ -93,7 +91,6 @@ function SubmissionCard({ submission, patientName, onApprove, onReject }: Submis
   const [notes, setNotes]             = useState("");
   const [busy, setBusy]               = useState(false);
 
-  // Use the right field name based on the test (reps vs cm).
   const scoreFieldLabel = submission.testId === "chair_stand" ? "Reps (count)" : "Measurement (cm)";
   const scoreToOverride = (raw: string): { reps?: number; measurement?: number } => {
     const n = Number(raw);
@@ -141,7 +138,6 @@ function SubmissionCard({ submission, patientName, onApprove, onReject }: Submis
         </span>
       </div>
 
-      {/* Video player */}
       <div className="mt-3 rounded-lg overflow-hidden border border-slate-200 bg-slate-100">
         {videoUrl ? (
           <video
@@ -225,8 +221,6 @@ function SubmissionCard({ submission, patientName, onApprove, onReject }: Submis
     </div>
   );
 }
-
-// ---- Live CV launch ----------------------------------------------
 
 interface LiveLaunchProps {
   patients: PatientView[];

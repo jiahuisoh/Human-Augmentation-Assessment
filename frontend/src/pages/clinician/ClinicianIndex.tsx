@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  Users, ClipboardList, Brain, Activity, BarChart2, Coins, ArrowLeft,
+  Users, ClipboardList, Brain, Activity, BarChart2, ArrowLeft,
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
-import { LIVENESS_THRESHOLD } from "../../utils/constants";
 import {
-  aiApi, auditApi, planApi, sessionApi, submissionApi, tokenApi, userApi,
+  aiApi, auditApi, planApi, sessionApi, submissionApi, userApi,
 } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
@@ -22,9 +21,8 @@ import PatientDetail from "./tabs/PatientDetail";
 import Assessments   from "./tabs/Assessments";
 import AI            from "./tabs/AI";
 import Plans         from "./tabs/Plans";
-import Tokens        from "./tabs/Tokens";
 
-type TabId = "overview" | "patients" | "assessments" | "ai" | "plans" | "tokens";
+type TabId = "overview" | "patients" | "assessments" | "ai" | "plans";
 
 const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
   { id: "overview",    label: "Overview",    Icon: BarChart2     },
@@ -32,7 +30,6 @@ const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
   { id: "assessments", label: "Assessments", Icon: ClipboardList },
   { id: "ai",          label: "AI Insights", Icon: Brain         },
   { id: "plans",       label: "Care Plans",  Icon: Activity      },
-  { id: "tokens",      label: "Incentives",  Icon: Coins         },
 ];
 
 interface ClinicianProps {
@@ -64,20 +61,18 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
   async function loadPatients(): Promise<void> {
     const ids = user.assignedClientIds ?? [];
     const loaded: PatientView[] = await Promise.all(ids.map(async id => {
-      const [u, s, p, b] = await Promise.all([
+      const [u, s, p] = await Promise.all([
         userApi.getById(id),
         sessionApi.listForClient(id),
         planApi.forClient(id),
-        tokenApi.balanceFor(id),
       ]);
-      return { user: u, sessions: s, plan: p, tokenBalance: b };
+      return { user: u, sessions: s, plan: p };
     }));
     setPatients(loaded);
   }
 
   const handleCvComplete = async (outcome: TestOutcomeWire): Promise<void> => {
     if (!activeCv) return;
-    const client = await userApi.getById(activeCv.clientId);
     const saved = await sessionApi.save({
       clientId: activeCv.clientId, conductedBy: user._id, testId: activeCv.testId,
       reps: outcome.reps, measurement: outcome.measurement,
@@ -93,16 +88,6 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
       context: { sessionId: saved._id, liveness: outcome.liveness_score },
     });
 
-    // System-triggered token award (HANA doc: "Earn tokens for assessment completion: Yes, system-triggered").
-    // Gates: client must be verified AND liveness must clear the threshold.
-    const livenessOK = (outcome.liveness_score ?? 0) >= LIVENESS_THRESHOLD;
-    if (client.verificationStatus === "verified" && livenessOK) {
-      await tokenApi.award({
-        clientId: activeCv.clientId, amount: 25, eventType: "assessment_complete",
-        livenessScore: outcome.liveness_score, sessionId: saved._id,
-      });
-    }
-
     await loadPatients();
     setActiveCv(null);
   };
@@ -115,7 +100,6 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
       id: sub._id, reviewerId: user._id, reviewerRole: "clinician",
       ...overrides,
     });
-    // approve() already writes its own audit + awards tokens; just refresh.
     await reloadSubmissions();
     await loadPatients();
   };
@@ -150,12 +134,6 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
     const plan = await planApi.save({ clientId, authoredBy: user._id, items });
     await auditApi.write({ actorId: user._id, actorRole: "clinician", category: "ASSESSMENT", level: "INFO", message: `Intervention plan saved for client ${clientId}` });
     setPatients(prev => prev.map(p => p.user._id === clientId ? { ...p, plan } : p));
-  };
-
-  const handleIssueToken = async (clientId: string, amount: number, reason: string): Promise<void> => {
-    await tokenApi.issueManual({ clientId, amount, issuedBy: user._id, reason });
-    await auditApi.write({ actorId: user._id, actorRole: "clinician", category: "TOKEN", level: "INFO", message: `Clinician issued ${amount} tokens to client ${clientId} — ${reason}` });
-    await loadPatients();
   };
 
   if (activeCv) {
@@ -206,7 +184,6 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
       )}
       {tab === "ai"          && <AI          recs={aiRecs} onApprove={handleApproveAI} onOverride={handleOverrideAI} />}
       {tab === "plans"       && <Plans       patients={patients} onSave={handleSavePlan} />}
-      {tab === "tokens"      && <Tokens      patients={patients} onIssue={handleIssueToken} />}
     </SidebarLayout>
   );
 }

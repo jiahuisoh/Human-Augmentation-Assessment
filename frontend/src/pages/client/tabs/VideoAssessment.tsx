@@ -87,8 +87,8 @@ export default function VideoAssessment({ user, submissions, onChange }: VideoAs
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-900 mb-1">Submit a video</h3>
         <p className="text-xs text-gray-400 mb-4">
-          Record yourself doing the test at home, then upload. Your clinician will review and confirm the result —
-          you'll earn tokens automatically when they approve it. Camera footage is stored securely off-chain.
+          Record yourself doing the test at home, then upload. Your clinician will review and confirm the result.
+          Camera footage is stored securely off-chain.
         </p>
 
         <div className="space-y-3">

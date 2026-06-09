@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 import {
   Heart, Award, ClipboardList, Shield, Activity, TrendingUp,
-  CheckCircle, Coins, LogOut, User as UserIcon, HelpCircle, Upload,
+  CheckCircle, LogOut, User as UserIcon, HelpCircle, Upload,
   ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import { cls, firstNameOf, initialsOf } from "../../utils/helpers";
 import { BADGES_DATA } from "../../utils/constants";
 import {
-  aiApi, consentApi, planApi, sessionApi, submissionApi, tokenApi,
+  aiApi, consentApi, planApi, sessionApi, submissionApi,
 } from "../../utils/api";
 import VerificationBanner from "../../components/VerificationBanner";
 import type {
   AIRecommendation, AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
-  RedemptionCatalogueItem, TokenTransaction, User, VideoSubmission,
+  User, VideoSubmission,
 } from "../../types";
 import { greeting } from "./ClientShared";
 
@@ -24,14 +24,13 @@ import Questionnaire   from "./tabs/Questionnaire";
 import Plan            from "./tabs/Plan";
 import Activity_       from "./tabs/Activity";
 import Badges          from "./tabs/Badges";
-import Tokens          from "./tabs/Tokens";
 import Records         from "./tabs/Records";
 import Account         from "./tabs/Account";
 import Help            from "./tabs/Help";
 
 type TabId =
   | "home" | "assessments" | "video_assessment" | "questionnaire"
-  | "plan" | "activity" | "badges" | "tokens" | "records" | "account" | "help";
+  | "plan" | "activity" | "badges" | "records" | "account" | "help";
 
 const TABS: ReadonlyArray<{ id: TabId; label: string; Icon: LucideIcon }> = [
   { id: "home",             label: "Home",             Icon: Heart         },
@@ -41,7 +40,6 @@ const TABS: ReadonlyArray<{ id: TabId; label: string; Icon: LucideIcon }> = [
   { id: "plan",             label: "My Plan",          Icon: Activity      },
   { id: "activity",         label: "Today's Activity", Icon: TrendingUp    },
   { id: "badges",           label: "Achievements",     Icon: Award         },
-  { id: "tokens",           label: "Rewards",          Icon: Coins         },
   { id: "records",          label: "My Records",       Icon: Shield        },
   { id: "account",          label: "Account",          Icon: UserIcon      },
   { id: "help",             label: "Help",             Icon: HelpCircle    },
@@ -55,27 +53,21 @@ interface ClientProps {
 export default function Client({ user, onSignOut }: ClientProps) {
   const [tab, setTab]               = useState<TabId>("home");
   const [sessions, setSessions]     = useState<AssessmentSession[]>([]);
-  const [tokens,   setTokens]       = useState<TokenTransaction[]>([]);
-  const [balance,  setBalance]      = useState(0);
   const [consents, setConsents]     = useState<ConsentEvent[]>([]);
   const [plan,     setPlan]         = useState<InterventionPlan | null>(null);
   const [submissions,  setSubmissions]  = useState<VideoSubmission[]>([]);
   const [aiInsights,   setAiInsights]   = useState<AIRecommendation[]>([]);
-  const [catalogue,    setCatalogue]    = useState<RedemptionCatalogueItem[]>([]);
 
   useEffect(() => {
     void Promise.all([
       sessionApi.listForClient(user._id),
-      tokenApi.historyFor(user._id),
-      tokenApi.balanceFor(user._id),
       consentApi.historyFor(user._id),
       planApi.forClient(user._id),
       submissionApi.listForClient(user._id),
       aiApi.forClient(user._id),
-      tokenApi.redemptionCatalogue(),
-    ]).then(([s, t, b, c, p, subs, ai, cat]) => {
-      setSessions(s); setTokens(t); setBalance(b); setConsents(c); setPlan(p);
-      setSubmissions(subs); setAiInsights(ai); setCatalogue(cat);
+    ]).then(([s, c, p, subs, ai]) => {
+      setSessions(s); setConsents(c); setPlan(p);
+      setSubmissions(subs); setAiInsights(ai);
     });
   }, [user._id]);
 
@@ -86,13 +78,6 @@ export default function Client({ user, onSignOut }: ClientProps) {
 
   const reloadSubmissions = async (): Promise<void> => {
     setSubmissions(await submissionApi.listForClient(user._id));
-  };
-
-  const handleRedeem = async (itemId: string): Promise<void> => {
-    await tokenApi.redeem(user._id, itemId);
-    const [t, b] = await Promise.all([tokenApi.historyFor(user._id), tokenApi.balanceFor(user._id)]);
-    setTokens(t);
-    setBalance(b);
   };
 
   return (
@@ -107,9 +92,8 @@ export default function Client({ user, onSignOut }: ClientProps) {
             {initialsOf(user.name)}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3 bg-white/10 rounded-2xl p-4">
+        <div className="grid grid-cols-2 gap-3 bg-white/10 rounded-2xl p-4">
           {([
-            [String(balance),                                  "Health tokens", Coins      ],
             [String(sessions.length),                          "Sessions",      CheckCircle],
             [String(BADGES_DATA.filter(b => b.earned).length), "Badges",        Award      ],
           ] as const).map(([v, l, Icon]) => (
@@ -141,14 +125,13 @@ export default function Client({ user, onSignOut }: ClientProps) {
       <div className="flex-1 px-4 py-5 space-y-4 max-w-3xl w-full mx-auto">
         {user.verificationStatus !== "verified" && <VerificationBanner status={user.verificationStatus} />}
 
-        {tab === "home"             && <Home            user={user} sessions={sessions} balance={balance} onStart={() => setTab("video_assessment")} />}
+        {tab === "home"             && <Home            user={user} sessions={sessions} onStart={() => setTab("video_assessment")} />}
         {tab === "assessments"      && <Assessments     sessions={sessions} submissions={submissions} aiInsights={aiInsights} />}
         {tab === "video_assessment" && <VideoAssessment user={user} submissions={submissions} onChange={reloadSubmissions} />}
         {tab === "questionnaire"    && <Questionnaire   user={user} />}
         {tab === "plan"             && <Plan            plan={plan} />}
         {tab === "activity"         && <Activity_ />}
         {tab === "badges"           && <Badges />}
-        {tab === "tokens"           && <Tokens          balance={balance} history={tokens} catalogue={catalogue} onRedeem={handleRedeem} />}
         {tab === "records"          && <Records         user={user} consents={consents} sessions={sessions} onConsentChange={handleConsentChange} />}
         {tab === "account"          && <Account         user={user} />}
         {tab === "help"             && <Help />}

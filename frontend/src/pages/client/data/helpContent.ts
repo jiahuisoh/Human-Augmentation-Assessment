@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Phone, Mail, MapPin, Siren, Stethoscope, HeartHandshake,
-  Camera, Gift, Lock,
+  Camera, Lock,
 } from "lucide-react";
 
 export interface EmergencyNumberCard {
@@ -30,15 +30,6 @@ export const FAQ_SECTIONS: ReadonlyArray<FAQSection> = [
       { q: "The system isn't counting my repetitions correctly.", a: "Make sure your full body is visible from hips to ankles. A side-on view gives the most accurate count. The screen also tells you if you need to step back or move into frame." },
       { q: "The screen looks frozen during my test.",         a: "This usually means a slow connection. Close other browser tabs or apps. If it continues, tap \"Stop Early\" — your session can be restarted by a clinician." },
       { q: "Is my camera video recorded?",                     a: "No. Camera frames stream to the HANA CV service for analysis only — they are never recorded or saved. Only the final result (e.g. \"14 reps\") is stored." },
-    ],
-  },
-  {
-    id: "rewards", heading: "Tokens & Rewards", Icon: Gift,
-    faqs: [
-      { q: "Where do my tokens go?",                a: "Tokens are stored in your HANA wallet. View them in the \"Rewards\" tab. They are non-transferable, non-financial, and tied to engagement — not to clinical outcome." },
-      { q: "Why didn't I earn tokens for my test?", a: "Two gates must pass: (1) your account must be verified by HANA Staff (NRIC verification), and (2) your liveness score must be 70% or higher. Both protect against gaming and ensure tokens reward real engagement." },
-      { q: "How do I redeem rewards?",              a: "Open the Rewards tab and tap a redemption item from the catalogue. HANA Staff can assist you at the clinic." },
-      { q: "Can I transfer tokens to someone else?", a: "No — tokens are non-transferable by design (HANA governance principle). This prevents trading, gaming, and inappropriate commercialisation." },
     ],
   },
   {

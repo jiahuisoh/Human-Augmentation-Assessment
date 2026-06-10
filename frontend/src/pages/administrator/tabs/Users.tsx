@@ -165,7 +165,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
 
             <div className="mt-4 pt-4 border-t border-gray-200">
               <p className="text-xs text-gray-500">
-                Assigned clinicians will see this client in their patient list and video review queue.
+                Assigned clinicians will see this client in their patient list.
                 All assignments are audit-logged.
               </p>
               <button type="button" onClick={() => setAssigningClient(null)}

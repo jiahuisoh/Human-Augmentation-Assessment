@@ -1,17 +1,17 @@
 import type {
   AIRecommendation, AssessmentSession, AuditLog, ConsentEvent, EmergencyContact,
   InterventionPlan, Measurement, NewUserPayload, QuestionnaireSubmission,
-  Role, ScheduleEntry, TestId,
-  User, VideoSubmission,
+  Role, ScheduleEntry,
+  User,
 } from "../types";
 import {
   type IAIApi, type IAuditApi, type IConsentApi,
   type IMeasurementApi, type IPlanApi, type IQuestionnaireApi, type IScheduleApi,
-  type ISessionApi, type ISubmissionApi, type IUserApi,
+  type ISessionApi, type IUserApi,
 } from "./api";
 import { setToken } from "./tokenStore";
 
-const LS_KEY = "hana.mock.db.v6";
+const LS_KEY = "hana.mock.db.v7";
 
 interface MockDb {
   users: User[];
@@ -23,7 +23,6 @@ interface MockDb {
   aiRecs: AIRecommendation[];
   plans: InterventionPlan[];
   measurements: Measurement[];
-  submissions: VideoSubmission[];
   questionnaires: QuestionnaireSubmission[];
 }
 
@@ -126,19 +125,6 @@ function seedDb(): MockDb {
       }
       return items;
     })(),
-    submissions: [
-      { _id: "vs1", clientId: "u_client_001", testId: "chair_stand",
-        fileName: "chair_stand_2026-05-19.webm", fileSize: 4_320_000,
-        fileMimeType: "video/webm", storageRef: "off-chain://hana/vs1",
-        status: "pending", submittedAt: nowIso() },
-      { _id: "vs2", clientId: "u_client_001", testId: "back_scratch",
-        fileName: "back_scratch_2026-05-12.webm", fileSize: 2_115_000,
-        fileMimeType: "video/webm", storageRef: "off-chain://hana/vs2",
-        status: "approved", submittedAt: nowIso(),
-        reviewedBy: "u_clin_001", reviewedAt: nowIso(),
-        reviewerNotes: "Good form. +3 cm from baseline.",
-        resultingSessionId: "s2" },
-    ],
     questionnaires: [
       { _id: "q1", clientId: "u_client_001",
         answers: { balance: 4, mobility: 4, falls_7d: false, pain_standing: false, walk_minutes: 25 },
@@ -367,131 +353,6 @@ export class MockMeasurementApi implements IMeasurementApi {
   }
 }
 
-
-function synthesiseOutcome(testId: TestId): { reps?: number; measurement?: number; classification: string; riskLevel: AssessmentSession["riskLevel"]; normLow: number; normHigh: number } {
-  switch (testId) {
-    case "chair_stand": {
-      const reps = Math.floor(8 + Math.random() * 12);
-      const cls  = reps >= 14 ? "Good" : reps >= 11 ? "Average" : "Below Avg";
-      const risk = reps >= 14 ? "low" : reps >= 11 ? "moderate" : "high";
-      return { reps, classification: cls, riskLevel: risk, normLow: 12, normHigh: 17 };
-    }
-    case "back_scratch": {
-      const measurement = +(Math.random() * 10 - 5).toFixed(1);
-      const cls  = measurement >= 0 ? "Good" : measurement >= -3 ? "Average" : "Below Avg";
-      const risk = measurement >= 0 ? "low" : measurement >= -3 ? "moderate" : "high";
-      return { measurement, classification: cls, riskLevel: risk, normLow: -4, normHigh: 2 };
-    }
-    case "sit_reach": {
-      const measurement = +(Math.random() * 14 - 4).toFixed(1);
-      const cls  = measurement >= 2 ? "Good" : measurement >= -1 ? "Average" : "Below Avg";
-      const risk = measurement >= 2 ? "low" : measurement >= -1 ? "moderate" : "high";
-      return { measurement, classification: cls, riskLevel: risk, normLow: -2, normHigh: 6 };
-    }
-  }
-}
-
-const videoObjectUrls = new Map<string, string>();
-
-export class MockSubmissionApi implements ISubmissionApi {
-  async submitVideo(args: Parameters<ISubmissionApi["submitVideo"]>[0]): Promise<VideoSubmission> {
-    const v: VideoSubmission = {
-      _id: uid("vs"),
-      clientId: args.clientId, testId: args.testId,
-      fileName: args.fileName, fileSize: args.fileSize, fileMimeType: args.fileMimeType,
-      storageRef: `off-chain://hana/${uid("blob")}`,
-      status: "pending",
-      submittedAt: nowIso(),
-    };
-    db.submissions.unshift(v);
-    persistDb(db);
-    if (args.file) {
-      videoObjectUrls.set(v._id, URL.createObjectURL(args.file));
-    }
-    return v;
-  }
-
-  getVideoUrl(submissionId: string): string | null {
-    return videoObjectUrls.get(submissionId) ?? null;
-  }
-
-  async listForClient(clientId: string): Promise<VideoSubmission[]> {
-    return db.submissions.filter(s => s.clientId === clientId);
-  }
-
-  async listPending(): Promise<VideoSubmission[]> {
-    return db.submissions.filter(s => s.status === "pending" || s.status === "in_review");
-  }
-
-  async deleteOwn(id: string, clientId: string): Promise<void> {
-    const idx = db.submissions.findIndex(s => s._id === id);
-    if (idx < 0) throw new Error("Submission not found");
-    const s = db.submissions[idx];
-    if (s.clientId !== clientId) throw new Error("Not your submission");
-    if (s.status !== "pending")  throw new Error("Cannot delete a submission that is already in review or completed");
-    db.submissions.splice(idx, 1);
-    persistDb(db);
-  }
-
-  async approve(args: Parameters<ISubmissionApi["approve"]>[0]): Promise<{ submission: VideoSubmission; session: AssessmentSession }> {
-    const sub = db.submissions.find(s => s._id === args.id);
-    if (!sub) throw new Error("Submission not found");
-
-    const synth = synthesiseOutcome(sub.testId);
-    const reps         = args.reps         ?? synth.reps;
-    const measurement  = args.measurement  ?? synth.measurement;
-    const classification = args.classification ?? synth.classification;
-
-    const session: AssessmentSession = {
-      _id: uid("s"),
-      clientId: sub.clientId,
-      conductedBy: args.reviewerId,
-      testId: sub.testId,
-      reps, measurement, classification,
-      riskLevel: synth.riskLevel,
-      normLow: synth.normLow, normHigh: synth.normHigh,
-      livenessScore: 1.0,
-      recordHash: "0x" + Math.random().toString(16).slice(2, 18),
-      createdAt: nowIso(),
-    };
-    db.sessions.unshift(session);
-
-    sub.status = "approved";
-    sub.reviewedBy = args.reviewerId;
-    sub.reviewedAt = nowIso();
-    sub.reviewerNotes = args.notes;
-    sub.resultingSessionId = session._id;
-
-    db.audits.unshift({
-      _id: uid("a"),
-      actorId: args.reviewerId, actorRole: args.reviewerRole,
-      category: "ASSESSMENT", level: "INFO",
-      message: `Reviewed and approved client video submission ${sub._id} → session ${session._id}`,
-      createdAt: nowIso(),
-    });
-
-    persistDb(db);
-    return { submission: sub, session };
-  }
-
-  async reject(id: string, reviewerId: string, notes: string): Promise<VideoSubmission> {
-    const sub = db.submissions.find(s => s._id === id);
-    if (!sub) throw new Error("Submission not found");
-    sub.status = "rejected";
-    sub.reviewedBy = reviewerId;
-    sub.reviewedAt = nowIso();
-    sub.reviewerNotes = notes;
-    db.audits.unshift({
-      _id: uid("a"),
-      actorId: reviewerId, actorRole: "clinician",
-      category: "ASSESSMENT", level: "WARN",
-      message: `Rejected client video submission ${sub._id}: ${notes}`,
-      createdAt: nowIso(),
-    });
-    persistDb(db);
-    return sub;
-  }
-}
 
 export class MockQuestionnaireApi implements IQuestionnaireApi {
   async submit(args: Parameters<IQuestionnaireApi["submit"]>[0]): Promise<QuestionnaireSubmission> {

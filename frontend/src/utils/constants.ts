@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Armchair, Hand, Footprints,
-  Flame, Trophy, Star, Sparkles, Award, Moon, Dumbbell, Crown, Users,
+  Dumbbell,
   Activity, RotateCw,
 } from "lucide-react";
 import type { TestId } from "../types";
@@ -10,7 +10,7 @@ export interface TestDefinition {
   id: TestId;
   name: string;
   shortDesc: string;
-  instructions: string;
+  instructions: readonly string[];
   safetyNote: string;
   Icon: LucideIcon;
   metricLabel: string;
@@ -22,8 +22,12 @@ export const TESTS: readonly TestDefinition[] = [
     id: "chair_stand",
     name: "Chair Stand Test",
     shortDesc: "Lower body strength",
-    instructions:
-      "Sit on a sturdy chair with your back straight and feet flat on the floor. Cross your arms over your chest. On 'Start', rise to a full standing position then sit back down. Repeat as many times as you can in 30 seconds.",
+    instructions: [
+      "Place a sturdy chair side-on to the camera and sit so your side faces it.",
+      "Sit with your back straight and feet flat on the floor, arms crossed over your chest.",
+      "On 'Start', rise to a full standing position, then sit back down.",
+      "Repeat as many times as you can in 30 seconds.",
+    ],
     safetyNote: "Stop immediately if you feel dizzy, pain, or short of breath.",
     Icon: Armchair,
     metricLabel: "Repetitions",
@@ -33,8 +37,12 @@ export const TESTS: readonly TestDefinition[] = [
     id: "back_scratch",
     name: "Back Scratch Test",
     shortDesc: "Shoulder flexibility",
-    instructions:
-      "Reach one hand over your shoulder (palm facing your back) and the other hand up the centre of your back (palm facing outward). Stretch your fingers toward each other. Measure the distance between fingertips.",
+    instructions: [
+      "Reach one hand over your shoulder, palm facing your back.",
+      "Reach your other hand up the centre of your back, palm facing outward.",
+      "Stretch your fingers toward each other.",
+      "Hold the stretch for at least 2 seconds.",
+    ],
     safetyNote: "Do not force the stretch. Stop if you feel any shoulder pain.",
     Icon: Hand,
     metricLabel: "Distance (cm)",
@@ -44,34 +52,17 @@ export const TESTS: readonly TestDefinition[] = [
     id: "sit_reach",
     name: "Sit & Reach Test",
     shortDesc: "Lower body & trunk flexibility",
-    instructions:
-      "Sit on the floor with your legs straight. Place one hand on top of the other. Slowly reach forward as far as you can, keeping your knees straight. Hold the furthest point for 2 seconds.",
-    safetyNote: "Never bounce during the stretch. Move smoothly and steadily.",
+    instructions: [
+      "Sit on the floor with your side facing the camera.",
+      "Keep your legs straight out in front of you and place one hand on top of the other.",
+      "Slowly reach forward toward your toes as far as you can.",
+      "Hold the furthest point for at least 2 seconds.",
+    ],
+    safetyNote: "Try not to bend your knees throughout the test.",
     Icon: Footprints,
     metricLabel: "Distance (cm)",
     cvEnabled: true,
   },
-];
-
-export interface BadgeDefinition {
-  id: number;
-  name: string;
-  Icon: LucideIcon;
-  earned: boolean;
-  date: string | null;
-  tokens: number;
-}
-
-export const BADGES_DATA: readonly BadgeDefinition[] = [
-  { id: 1, name: "7-Day Streak",     Icon: Flame,    earned: true,  date: "12 May", tokens: 20 },
-  { id: 2, name: "Chair Stand Pro",  Icon: Trophy,   earned: true,  date: "10 May", tokens: 25 },
-  { id: 3, name: "Flexibility Star", Icon: Star,     earned: true,  date: "8 May",  tokens: 15 },
-  { id: 4, name: "14-Day Streak",    Icon: Sparkles, earned: false, date: null,     tokens: 30 },
-  { id: 5, name: "Step Champion",    Icon: Award,    earned: false, date: null,     tokens: 20 },
-  { id: 6, name: "Sleep Master",     Icon: Moon,     earned: false, date: null,     tokens: 15 },
-  { id: 7, name: "Strength Guru",    Icon: Dumbbell, earned: false, date: null,     tokens: 25 },
-  { id: 8, name: "Perfect Week",     Icon: Crown,    earned: false, date: null,     tokens: 35 },
-  { id: 9, name: "Social Butterfly", Icon: Users,    earned: false, date: null,     tokens: 20 },
 ];
 
 export interface ExerciseDefinition {

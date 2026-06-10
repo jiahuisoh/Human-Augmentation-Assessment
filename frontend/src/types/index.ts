@@ -78,24 +78,6 @@ export interface AssessmentOverride {
   at: string;
 }
 
-export type SubmissionStatus = "pending" | "in_review" | "approved" | "rejected";
-
-export interface VideoSubmission {
-  _id: string;
-  clientId: string;
-  testId: TestId;
-  fileName: string;
-  fileSize: number;          
-  fileMimeType: string;
-  storageRef?: string;
-  status: SubmissionStatus;
-  submittedAt: string;
-  reviewedBy?: string;
-  reviewedAt?: string;
-  reviewerNotes?: string;
-  resultingSessionId?: string;
-}
-
 export type QuestionnaireQuestionKind = "scale_1_5" | "yes_no" | "minutes";
 
 export interface QuestionnaireQuestion {

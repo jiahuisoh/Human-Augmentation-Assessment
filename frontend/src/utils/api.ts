@@ -2,7 +2,7 @@ import type {
   AIRecommendation, AssessmentSession, AuditLog, AuthResponse, ConsentEvent,
   EmergencyContact, InterventionPlan, Measurement, NewUserPayload,
   QuestionnaireSubmission, Role, ScheduleEntry,
-  TestId, User, VideoSubmission,
+  User,
 } from "../types";
 import { getToken, setToken } from "./tokenStore";
 
@@ -94,32 +94,6 @@ export interface IPlanApi {
 export interface IMeasurementApi {
   save(clientId: string, height: number, weight: number): Promise<Measurement>;
   listForClient(clientId: string): Promise<Measurement[]>;
-}
-
-
-export interface ISubmissionApi {
-  submitVideo(args: {
-    clientId: string;
-    testId: TestId;
-    fileName: string;
-    fileSize: number;
-    fileMimeType: string;
-    file?: File;
-  }): Promise<VideoSubmission>;
-  getVideoUrl(submissionId: string): string | null;
-  listForClient(clientId: string): Promise<VideoSubmission[]>;
-  listPending(): Promise<VideoSubmission[]>;
-  deleteOwn(id: string, clientId: string): Promise<void>;
-  approve(args: {
-    id: string;
-    reviewerId: string;
-    reviewerRole: Role;
-    reps?: number;
-    measurement?: number;
-    classification?: string;
-    notes?: string;
-  }): Promise<{ submission: VideoSubmission; session: AssessmentSession }>;
-  reject(id: string, reviewerId: string, notes: string): Promise<VideoSubmission>;
 }
 
 
@@ -222,29 +196,6 @@ class RestMeasurementApi implements IMeasurementApi {
   }
 }
 
-class RestSubmissionApi implements ISubmissionApi {
-  constructor(private base: string) {}
-  submitVideo(args: Parameters<ISubmissionApi["submitVideo"]>[0]) {
-    return apiFetch<VideoSubmission>(`${this.base}/api/submissions/video`, { method: "POST", body: args });
-  }
-  getVideoUrl(_submissionId: string): string | null { return null; }
-  listForClient(clientId: string) {
-    return apiFetch<VideoSubmission[]>(`${this.base}/api/submissions/client/${clientId}`);
-  }
-  listPending() {
-    return apiFetch<VideoSubmission[]>(`${this.base}/api/submissions/pending`);
-  }
-  async deleteOwn(id: string, clientId: string): Promise<void> {
-    await apiFetch<void>(`${this.base}/api/submissions/${id}`, { method: "DELETE", body: { clientId } });
-  }
-  approve(args: Parameters<ISubmissionApi["approve"]>[0]) {
-    return apiFetch<{ submission: VideoSubmission; session: AssessmentSession }>(`${this.base}/api/submissions/${args.id}/approve`, { method: "POST", body: args });
-  }
-  reject(id: string, reviewerId: string, notes: string) {
-    return apiFetch<VideoSubmission>(`${this.base}/api/submissions/${id}/reject`, { method: "POST", body: { reviewerId, notes } });
-  }
-}
-
 class RestQuestionnaireApi implements IQuestionnaireApi {
   constructor(private base: string) {}
   submit(args: Parameters<IQuestionnaireApi["submit"]>[0]) {
@@ -259,7 +210,7 @@ class RestQuestionnaireApi implements IQuestionnaireApi {
 import {
   MockAIApi, MockAuditApi, MockConsentApi, MockMeasurementApi,
   MockPlanApi, MockQuestionnaireApi, MockScheduleApi, MockSessionApi,
-  MockSubmissionApi, MockUserApi,
+  MockUserApi,
 } from "./mockApi";
 
 const USE_MOCK = (import.meta.env.VITE_USE_MOCK_API ?? "true") === "true";
@@ -272,7 +223,6 @@ export const auditApi:     IAuditApi    = USE_MOCK ? new MockAuditApi()    : new
 export const aiApi:        IAIApi       = USE_MOCK ? new MockAIApi()       : new RestAIApi(BASE_URL);
 export const planApi:      IPlanApi     = USE_MOCK ? new MockPlanApi()     : new RestPlanApi(BASE_URL);
 export const measurementApi:   IMeasurementApi   = USE_MOCK ? new MockMeasurementApi()   : new RestMeasurementApi(BASE_URL);
-export const submissionApi:    ISubmissionApi    = USE_MOCK ? new MockSubmissionApi()    : new RestSubmissionApi(BASE_URL);
 export const questionnaireApi: IQuestionnaireApi = USE_MOCK ? new MockQuestionnaireApi() : new RestQuestionnaireApi(BASE_URL);
 
 if (typeof window !== "undefined") {

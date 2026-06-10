@@ -1,9 +1,8 @@
 import {
-  ClipboardList, TrendingUp, Award, ChevronRight,
+  ClipboardList, TrendingUp, ChevronRight,
   Activity, Shield, Lock,
 } from "lucide-react";
 import { cls } from "../../../utils/helpers";
-import { BADGES_DATA } from "../../../utils/constants";
 import type { AssessmentSession, User } from "../../../types";
 
 interface HomeProps {
@@ -29,7 +28,6 @@ export default function Home({ user, sessions, onStart }: HomeProps) {
         {([
           [String(sessions.length), "Assessments",   "this month",       ClipboardList, "text-violet-600",  "bg-violet-50"],
           ["78%",                   "Adherence",     "last 30 days",     TrendingUp,    "text-emerald-600", "bg-emerald-50"],
-          [String(BADGES_DATA.filter(b => b.earned).length), "Badges", `of ${BADGES_DATA.length}`, Award, "text-amber-600", "bg-amber-50"],
         ] as const).map(([v, l, s, Icon, col, bg]) => (
           <div key={l} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
             <div className={cls("w-9 h-9 rounded-xl flex items-center justify-center mb-2", bg)}><Icon size={18} className={col} /></div>

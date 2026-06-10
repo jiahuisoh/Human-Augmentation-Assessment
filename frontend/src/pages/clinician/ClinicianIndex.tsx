@@ -4,13 +4,13 @@ import {
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
 import {
-  aiApi, auditApi, planApi, sessionApi, submissionApi, userApi,
+  aiApi, auditApi, planApi, sessionApi, userApi,
 } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
-  AIRecommendation, InterventionPlanItem, TestId, User, VideoSubmission,
+  AIRecommendation, InterventionPlanItem, TestId, User,
 } from "../../types";
 
 import { calcAge, type PatientView } from "./ClinicianShared";
@@ -44,19 +44,11 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
   const [aiRecs, setAiRecs]           = useState<AIRecommendation[]>([]);
   const [search, setSearch]           = useState("");
   const [activeCv, setActiveCv]       = useState<{ clientId: string; testId: TestId } | null>(null);
-  const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
 
   useEffect(() => {
     void loadPatients();
     void aiApi.pendingFor(user._id).then(setAiRecs);
-    void reloadSubmissions();
   }, []);
-
-  async function reloadSubmissions(): Promise<void> {
-    const all = await submissionApi.listPending();
-    const assigned = new Set(user.assignedClientIds ?? []);
-    setSubmissions(all.filter(s => assigned.has(s.clientId)));
-  }
 
   async function loadPatients(): Promise<void> {
     const ids = user.assignedClientIds ?? [];
@@ -90,23 +82,6 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
 
     await loadPatients();
     setActiveCv(null);
-  };
-
-  const handleApproveSubmission = async (
-    sub: VideoSubmission,
-    overrides: { reps?: number; measurement?: number; classification?: string; notes?: string },
-  ): Promise<void> => {
-    await submissionApi.approve({
-      id: sub._id, reviewerId: user._id, reviewerRole: "clinician",
-      ...overrides,
-    });
-    await reloadSubmissions();
-    await loadPatients();
-  };
-
-  const handleRejectSubmission = async (sub: VideoSubmission, notes: string): Promise<void> => {
-    await submissionApi.reject(sub._id, user._id, notes);
-    await reloadSubmissions();
   };
 
   const handleOverride = async (sessionId: string, reason: string, original: number, next: number): Promise<void> => {
@@ -176,10 +151,7 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
       {tab === "assessments" && (
         <Assessments
           patients={patients}
-          submissions={submissions}
           onLaunchCV={(clientId, testId) => setActiveCv({ clientId, testId })}
-          onApproveSubmission={handleApproveSubmission}
-          onRejectSubmission={handleRejectSubmission}
         />
       )}
       {tab === "ai"          && <AI          recs={aiRecs} onApprove={handleApproveAI} onOverride={handleOverrideAI} />}

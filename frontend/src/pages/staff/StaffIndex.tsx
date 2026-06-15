@@ -1,26 +1,24 @@
 import { useEffect, useState } from "react";
 import {
-  Users, Calendar, CheckCircle, ShoppingBag, ShieldCheck,
+  Users, Calendar, CheckCircle, ShieldCheck,
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
-import { auditApi, scheduleApi, tokenApi, userApi } from "../../utils/api";
+import { auditApi, scheduleApi, userApi } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
-import type { RedemptionCatalogueItem, ScheduleEntry, User } from "../../types";
+import type { ScheduleEntry, User } from "../../types";
 
 import Schedule    from "./tabs/Schedule";
 import ClientList  from "./tabs/ClientList";
 import Attendance  from "./tabs/Attendance";
 import Nric        from "./tabs/Nric";
-import Catalogue   from "./tabs/Catalogue";
 
-type TabId = "schedule" | "patients" | "attendance" | "nric" | "catalogue";
+type TabId = "schedule" | "patients" | "attendance" | "nric";
 
 const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
   { id: "schedule",   label: "Today's Schedule",  Icon: Calendar    },
   { id: "patients",   label: "Client List",       Icon: Users       },
   { id: "attendance", label: "Record Attendance", Icon: CheckCircle },
   { id: "nric",       label: "NRIC Verification", Icon: ShieldCheck },
-  { id: "catalogue",  label: "Redemption (View)", Icon: ShoppingBag },
 ];
 
 interface StaffProps {
@@ -32,11 +30,9 @@ export default function Staff({ user, onSignOut }: StaffProps) {
   const [tab, setTab]             = useState<TabId>("schedule");
   const [schedule, setSchedule]   = useState<ScheduleEntry[]>([]);
   const [search, setSearch]       = useState("");
-  const [catalogue, setCatalogue] = useState<RedemptionCatalogueItem[]>([]);
 
   useEffect(() => {
     void scheduleApi.listToday().then(setSchedule);
-    void tokenApi.redemptionCatalogue().then(setCatalogue);
   }, []);
 
   const completed   = schedule.filter(s => s.status === "completed" || s.status === "present").length;
@@ -81,7 +77,6 @@ export default function Staff({ user, onSignOut }: StaffProps) {
       {tab === "patients"   && <ClientList  schedule={schedule} search={search} onSearch={setSearch} />}
       {tab === "attendance" && <Attendance  schedule={schedule} onMark={markAttendance} />}
       {tab === "nric"       && <Nric        schedule={schedule} onVerify={verifyNric} />}
-      {tab === "catalogue"  && <Catalogue   items={catalogue} />}
     </SidebarLayout>
   );
 }

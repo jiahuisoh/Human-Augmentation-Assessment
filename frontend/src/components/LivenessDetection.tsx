@@ -34,7 +34,7 @@ export default function LivenessDetection({ score, showDetails = false }: Livene
       {showDetails && (
         <p className="text-xs text-gray-500 mt-2">
           {pct >= threshold
-            ? "Live human confirmed — tokens will be awarded"
+            ? "Live human confirmed"
             : pct >= 40
             ? "Keep going — make sure your full body is visible"
             : "Stand in front of the camera in good lighting"}

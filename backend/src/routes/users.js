@@ -10,7 +10,6 @@ const writeAudit = require("../middleware/auditLogger");
 // ── Public routes ─────────────────────────────────────────────────────────────
 
 // POST /api/users — register new client
-// Frontend NewUserPayload: email, password, name, dateOfBirth, gender, height, weight
 router.post("/", async (req, res) => {
   try {
     const { email, password, name, dateOfBirth, gender, height, weight } = req.body;
@@ -22,7 +21,7 @@ router.post("/", async (req, res) => {
 
     const user = await User.create({ email, password, name, dateOfBirth, gender, height, weight, role: "client" });
     const token = signToken(user);
-    res.status(201).json({ user, token }); // AuthResponse: { user, token }
+    res.status(201).json({ user, token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -40,7 +39,7 @@ router.post("/login", async (req, res) => {
     }
     const token = signToken(user);
     await writeAudit({ user: { id: user._id, role: user.role } }, "AUTH", `User logged in: ${email}`, { userId: user._id });
-    res.json({ user, token }); // AuthResponse: { user, token }
+    res.json({ user, token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -48,7 +47,7 @@ router.post("/login", async (req, res) => {
 
 // ── Authenticated routes ──────────────────────────────────────────────────────
 
-// GET /api/users/me — getCurrent()
+// GET /api/users/me
 router.get("/me", verifyJWT, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -59,7 +58,7 @@ router.get("/me", verifyJWT, async (req, res) => {
   }
 });
 
-// GET /api/users/:id — getById()
+// GET /api/users/:id
 router.get("/:id", verifyJWT, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -70,10 +69,9 @@ router.get("/:id", verifyJWT, async (req, res) => {
   }
 });
 
-// PATCH /api/users/:id/emergency — saveEmergencyContact()
+// PATCH /api/users/:id/emergency
 router.patch("/:id/emergency", verifyJWT, async (req, res) => {
   try {
-    // Clients can only update their own record; admin can update anyone
     if (req.user.role !== "administrator" && req.user.id !== req.params.id) {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -87,7 +85,7 @@ router.patch("/:id/emergency", verifyJWT, async (req, res) => {
 
 // ── Measurements ──────────────────────────────────────────────────────────────
 
-// GET /api/users/:clientId/measurements — listForClient()
+// GET /api/users/:clientId/measurements
 router.get("/:clientId/measurements", verifyJWT, async (req, res) => {
   try {
     const measurements = await Measurement.find({ clientId: req.params.clientId }).sort({ createdAt: -1 });
@@ -97,19 +95,16 @@ router.get("/:clientId/measurements", verifyJWT, async (req, res) => {
   }
 });
 
-// POST /api/users/:clientId/measurements — save()
-// Auto-calculates BMI and syncs height/weight back to user document
+// POST /api/users/:clientId/measurements
 router.post("/:clientId/measurements", verifyJWT, async (req, res) => {
   try {
     const { height, weight } = req.body;
     if (!height || !weight) return res.status(400).json({ error: "height and weight required" });
 
     const bmi = parseFloat((weight / ((height / 100) ** 2)).toFixed(1));
-
-    // Save measurement record
     const m = await Measurement.create({ clientId: req.params.clientId, height, weight, bmi });
 
-    // Sync latest measurements back to user document so profile stays up to date
+    // Sync latest measurements back to user document
     await User.findByIdAndUpdate(req.params.clientId, { height, weight });
 
     res.status(201).json(m);
@@ -120,7 +115,7 @@ router.post("/:clientId/measurements", verifyJWT, async (req, res) => {
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
 
-// GET /api/admin/users — list()
+// GET /api/admin/users
 router.get("/admin/users", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
@@ -130,7 +125,7 @@ router.get("/admin/users", verifyJWT, requireRole("administrator"), async (req, 
   }
 });
 
-// POST /api/admin/users — create() — admin creates any role account
+// POST /api/admin/users
 router.post("/admin/users", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     const { email, password, name, role, dateOfBirth, gender, height, weight } = req.body;
@@ -148,7 +143,7 @@ router.post("/admin/users", verifyJWT, requireRole("administrator"), async (req,
   }
 });
 
-// PATCH /api/admin/users/:id/status — setStatus()
+// PATCH /api/admin/users/:id/status
 router.patch("/admin/users/:id/status", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     const { verificationStatus } = req.body;
@@ -161,7 +156,31 @@ router.patch("/admin/users/:id/status", verifyJWT, requireRole("administrator"),
   }
 });
 
-// DELETE /api/admin/users/:id — delete()
+// PATCH /api/admin/users/:clinicianId/assign-client
+// Admin assigns or unassigns a client to a clinician
+router.patch("/admin/users/:clinicianId/assign-client", verifyJWT, requireRole("administrator"), async (req, res) => {
+  try {
+    const { clientId, assign } = req.body;
+    if (!clientId || assign === undefined) {
+      return res.status(400).json({ error: "clientId and assign (boolean) are required" });
+    }
+    const update = assign
+      ? { $addToSet: { assignedClientIds: clientId } }  // add without duplicates
+      : { $pull: { assignedClientIds: clientId } };     // remove
+
+    const clinician = await User.findByIdAndUpdate(req.params.clinicianId, update, { new: true });
+    if (!clinician) return res.status(404).json({ error: "Clinician not found" });
+
+    await writeAudit(req, "ADMIN", `Client ${assign ? "assigned to" : "removed from"} clinician`, {
+      clinicianId: req.params.clinicianId, clientId,
+    });
+    res.json(clinician);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/users/:id
 router.delete("/admin/users/:id", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -174,7 +193,7 @@ router.delete("/admin/users/:id", verifyJWT, requireRole("administrator"), async
 
 // ── Staff routes ──────────────────────────────────────────────────────────────
 
-// POST /api/staff/users/:id/verify-nric — verifyNric()
+// POST /api/staff/users/:id/verify-nric
 router.post("/staff/users/:id/verify-nric", verifyJWT, requireRole("staff", "administrator"), async (req, res) => {
   try {
     const { nricLast4 } = req.body;

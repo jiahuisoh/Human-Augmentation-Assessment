@@ -15,6 +15,26 @@ MeasurementSchema.methods.toJSON = function () {
   return obj;
 };
 
+// ── AIRecommendation ──────────────────────────────────────────────────────────
+const AIRecommendationSchema = new mongoose.Schema({
+  clientId:       { type: String, required: true, index: true },
+  title:          { type: String, required: true },
+  detail:         { type: String, required: true },
+  confidence:     { type: Number, required: true },
+  basis:          { type: String, required: true },
+  status:         { type: String, enum: ["pending","approved","overridden"], default: "pending" },
+  reviewedBy:     { type: String },
+  overrideReason: { type: String },
+  assignedTo:     { type: String },
+}, { timestamps: true });
+
+AIRecommendationSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  obj._id = obj._id.toString();
+  obj.createdAt = obj.createdAt.toISOString();
+  return obj;
+};
+
 // ── InterventionPlan ──────────────────────────────────────────────────────────
 const PlanItemSchema = new mongoose.Schema({
   activity:  { type: String, required: true },
@@ -38,15 +58,15 @@ InterventionPlanSchema.methods.toJSON = function () {
 };
 
 // ── ScheduleEntry ─────────────────────────────────────────────────────────────
-// matches frontend ScheduleEntry type — note: no `date` field in frontend type
-// but we need it for filtering today's entries
+// time field added to match frontend ScheduleEntry type
 const ScheduleEntrySchema = new mongoose.Schema({
   clientId:     { type: String, required: true },
   clientName:   { type: String, required: true },
   testId:       { type: String, enum: ["chair_stand","back_scratch","sit_reach"], required: true },
+  time:         { type: String }, // e.g. "09:00" — matches frontend ScheduleEntry.time
   status:       { type: String, enum: ["scheduled","present","absent","in_progress","completed","pending_nric"], default: "scheduled" },
   nricVerified: { type: Boolean, default: false },
-  date:         { type: String, required: true }, // YYYY-MM-DD, used for filtering
+  date:         { type: String, required: true }, // YYYY-MM-DD for today filtering
 }, { timestamps: true });
 
 ScheduleEntrySchema.methods.toJSON = function () {
@@ -70,6 +90,7 @@ QuestionnaireSubmissionSchema.methods.toJSON = function () {
 
 module.exports = {
   Measurement:             mongoose.model("Measurement", MeasurementSchema),
+  AIRecommendation:        mongoose.model("AIRecommendation", AIRecommendationSchema),
   InterventionPlan:        mongoose.model("InterventionPlan", InterventionPlanSchema),
   ScheduleEntry:           mongoose.model("ScheduleEntry", ScheduleEntrySchema),
   QuestionnaireSubmission: mongoose.model("QuestionnaireSubmission", QuestionnaireSubmissionSchema),

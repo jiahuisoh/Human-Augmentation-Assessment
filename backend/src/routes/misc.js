@@ -4,7 +4,7 @@ const Submission = require("../models/Submission");
 const Consent = require("../models/Consent");
 const AuditLog = require("../models/Audit");
 const Session = require("../models/Session");
-const { InterventionPlan, ScheduleEntry, QuestionnaireSubmission } = require("../models/Misc");
+const { AIRecommendation, InterventionPlan, ScheduleEntry, QuestionnaireSubmission } = require("../models/Misc");
 const verifyJWT = require("../middleware/verifyJWT");
 const requireRole = require("../middleware/requireRole");
 const writeAudit = require("../middleware/auditLogger");
@@ -13,7 +13,7 @@ const writeAudit = require("../middleware/auditLogger");
 // VIDEO SUBMISSIONS
 // ══════════════════════════════════════════════════════════════════════════════
 
-// POST /api/submissions/video — submitVideo()
+// POST /api/submissions/video
 router.post("/submissions/video", verifyJWT, async (req, res) => {
   try {
     const sub = await Submission.create({
@@ -30,7 +30,7 @@ router.post("/submissions/video", verifyJWT, async (req, res) => {
   }
 });
 
-// GET /api/submissions/client/:clientId — listForClient()
+// GET /api/submissions/client/:clientId
 router.get("/submissions/client/:clientId", verifyJWT, async (req, res) => {
   try {
     const subs = await Submission.find({ clientId: req.params.clientId }).sort({ submittedAt: -1 });
@@ -40,7 +40,7 @@ router.get("/submissions/client/:clientId", verifyJWT, async (req, res) => {
   }
 });
 
-// GET /api/submissions/pending — listPending() — clinician/admin only
+// GET /api/submissions/pending
 router.get("/submissions/pending", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
   try {
     const subs = await Submission.find({ status: "pending" }).sort({ submittedAt: -1 });
@@ -50,7 +50,7 @@ router.get("/submissions/pending", verifyJWT, requireRole("clinician", "administ
   }
 });
 
-// DELETE /api/submissions/:id — deleteOwn() — client can only delete their own pending
+// DELETE /api/submissions/:id
 router.delete("/submissions/:id", verifyJWT, async (req, res) => {
   try {
     const sub = await Submission.findById(req.params.id);
@@ -65,8 +65,7 @@ router.delete("/submissions/:id", verifyJWT, async (req, res) => {
   }
 });
 
-// POST /api/submissions/:id/approve — approve()
-// Clinician reviews video, creates AssessmentSession atomically
+// POST /api/submissions/:id/approve
 router.post("/submissions/:id/approve", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
   try {
     const { reviewerId, reviewerRole, reps, measurement, classification, notes } = req.body;
@@ -74,17 +73,13 @@ router.post("/submissions/:id/approve", verifyJWT, requireRole("clinician", "adm
     const sub = await Submission.findById(req.params.id);
     if (!sub) return res.status(404).json({ error: "Submission not found" });
 
-    // Create the formal assessment session
     const session = await Session.create({
       clientId: sub.clientId,
       conductedBy: reviewerId,
       testId: sub.testId,
-      reps,
-      measurement,
-      classification,
+      reps, measurement, classification,
     });
 
-    // Update submission to approved and link to session
     const updatedSub = await Submission.findByIdAndUpdate(req.params.id, {
       status: "approved",
       reviewedBy: reviewerId,
@@ -103,7 +98,7 @@ router.post("/submissions/:id/approve", verifyJWT, requireRole("clinician", "adm
   }
 });
 
-// POST /api/submissions/:id/reject — reject()
+// POST /api/submissions/:id/reject
 router.post("/submissions/:id/reject", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
   try {
     const { reviewerId, notes } = req.body;
@@ -125,7 +120,7 @@ router.post("/submissions/:id/reject", verifyJWT, requireRole("clinician", "admi
 // CONSENT
 // ══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/consent/:clientId — historyFor()
+// GET /api/consent/:clientId
 router.get("/consent/:clientId", verifyJWT, async (req, res) => {
   try {
     const events = await Consent.find({ clientId: req.params.clientId }).sort({ createdAt: -1 });
@@ -135,7 +130,7 @@ router.get("/consent/:clientId", verifyJWT, async (req, res) => {
   }
 });
 
-// POST /api/consent/:clientId — set()
+// POST /api/consent/:clientId
 router.post("/consent/:clientId", verifyJWT, async (req, res) => {
   try {
     const { scope, granted } = req.body;
@@ -153,7 +148,7 @@ router.post("/consent/:clientId", verifyJWT, async (req, res) => {
 // AUDIT LOGS
 // ══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/audit — list() — admin only
+// GET /api/audit
 router.get("/audit", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 200;
@@ -164,7 +159,7 @@ router.get("/audit", verifyJWT, requireRole("administrator"), async (req, res) =
   }
 });
 
-// POST /api/audit — write() — any authenticated user can write audit entries
+// POST /api/audit
 router.post("/audit", verifyJWT, async (req, res) => {
   try {
     const log = await AuditLog.create(req.body);
@@ -175,10 +170,67 @@ router.post("/audit", verifyJWT, async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
+// AI RECOMMENDATIONS
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/ai/pending/:clinicianId — clinician sees their pending AI recs
+router.get("/ai/pending/:clinicianId", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
+  try {
+    const recs = await AIRecommendation.find({
+      assignedTo: req.params.clinicianId,
+      status: "pending",
+    });
+    res.json(recs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ai/client/:clientId — get all AI recs for a specific client
+router.get("/ai/client/:clientId", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
+  try {
+    const recs = await AIRecommendation.find({ clientId: req.params.clientId });
+    res.json(recs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ai/:id/approve
+router.post("/ai/:id/approve", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
+  try {
+    const rec = await AIRecommendation.findByIdAndUpdate(req.params.id, {
+      status: "approved", reviewedBy: req.body.byUserId,
+    }, { new: true });
+    if (!rec) return res.status(404).json({ error: "Recommendation not found" });
+    await writeAudit(req, "AI", `AI recommendation approved`, { recId: rec._id });
+    res.json(rec);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ai/:id/override
+router.post("/ai/:id/override", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
+  try {
+    const { byUserId, reason } = req.body;
+    if (!reason) return res.status(400).json({ error: "reason required for override" });
+    const rec = await AIRecommendation.findByIdAndUpdate(req.params.id, {
+      status: "overridden", reviewedBy: byUserId, overrideReason: reason,
+    }, { new: true });
+    if (!rec) return res.status(404).json({ error: "Recommendation not found" });
+    await writeAudit(req, "AI", `AI recommendation overridden`, { recId: rec._id, reason }, "WARN");
+    res.json(rec);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
 // INTERVENTION PLANS
 // ══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/plans/client/:clientId — forClient()
+// GET /api/plans/client/:clientId
 router.get("/plans/client/:clientId", verifyJWT, async (req, res) => {
   try {
     const plan = await InterventionPlan.findOne({ clientId: req.params.clientId }).sort({ createdAt: -1 });
@@ -188,7 +240,7 @@ router.get("/plans/client/:clientId", verifyJWT, async (req, res) => {
   }
 });
 
-// POST /api/plans — save() — clinician/admin only
+// POST /api/plans
 router.post("/plans", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
   try {
     const plan = await InterventionPlan.create(req.body);
@@ -203,7 +255,7 @@ router.post("/plans", verifyJWT, requireRole("clinician", "administrator"), asyn
 // SCHEDULE
 // ══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/schedule/today — listToday() — staff/admin only
+// GET /api/schedule/today
 router.get("/schedule/today", verifyJWT, requireRole("staff", "administrator"), async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0];
@@ -214,7 +266,7 @@ router.get("/schedule/today", verifyJWT, requireRole("staff", "administrator"), 
   }
 });
 
-// PATCH /api/schedule/:id/attendance — recordAttendance() — staff/admin only
+// PATCH /api/schedule/:id/attendance
 router.patch("/schedule/:id/attendance", verifyJWT, requireRole("staff", "administrator"), async (req, res) => {
   try {
     const { present } = req.body;
@@ -233,7 +285,7 @@ router.patch("/schedule/:id/attendance", verifyJWT, requireRole("staff", "admini
 // QUESTIONNAIRES
 // ══════════════════════════════════════════════════════════════════════════════
 
-// POST /api/questionnaires — submit()
+// POST /api/questionnaires
 router.post("/questionnaires", verifyJWT, async (req, res) => {
   try {
     const sub = await QuestionnaireSubmission.create(req.body);
@@ -243,7 +295,7 @@ router.post("/questionnaires", verifyJWT, async (req, res) => {
   }
 });
 
-// GET /api/questionnaires/client/:clientId — listForClient()
+// GET /api/questionnaires/client/:clientId
 router.get("/questionnaires/client/:clientId", verifyJWT, async (req, res) => {
   try {
     const subs = await QuestionnaireSubmission.find({ clientId: req.params.clientId }).sort({ submittedAt: -1 });

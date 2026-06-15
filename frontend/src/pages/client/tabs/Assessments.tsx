@@ -1,14 +1,13 @@
-import { Eye, Sparkles } from "lucide-react";
+import { Eye } from "lucide-react";
 import { cls } from "../../../utils/helpers";
 import { labelForTest } from "../ClientShared";
-import type { AIRecommendation, AssessmentSession } from "../../../types";
+import type { AssessmentSession } from "../../../types";
 
 interface AssessmentsProps {
   sessions: AssessmentSession[];
-  aiInsights: AIRecommendation[];
 }
 
-export default function Assessments({ sessions, aiInsights }: AssessmentsProps) {
+export default function Assessments({ sessions }: AssessmentsProps) {
   return (
     <div className="space-y-4">
       <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 text-sm text-violet-800 flex items-start gap-2">
@@ -18,27 +17,6 @@ export default function Assessments({ sessions, aiInsights }: AssessmentsProps) 
           clinic visits. Your latest signed-off results appear below.
         </p>
       </div>
-
-      {aiInsights.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={16} className="text-violet-500" />
-            <h3 className="text-base font-semibold text-gray-900">AI insights</h3>
-          </div>
-          <p className="text-xs text-gray-400 mb-4">Personalised suggestions from your clinician-reviewed AI analysis.</p>
-          <div className="space-y-3">
-            {aiInsights.map(r => (
-              <div key={r._id} className="bg-violet-50 rounded-xl p-4">
-                <p className="text-sm font-semibold text-violet-900 mb-1">{r.title}</p>
-                <p className="text-sm text-violet-800 leading-relaxed">{r.detail}</p>
-                <p className="text-xs text-violet-400 mt-2">
-                  {new Date(r.createdAt).toLocaleDateString("en-SG")}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-900 mb-1">Past results</h3>

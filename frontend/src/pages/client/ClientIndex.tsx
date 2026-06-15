@@ -7,13 +7,13 @@ import {
 } from "lucide-react";
 import { cls, firstNameOf, initialsOf } from "../../utils/helpers";
 import {
-  aiApi, auditApi, consentApi, planApi, sessionApi,
+  auditApi, consentApi, planApi, sessionApi,
 } from "../../utils/api";
 import VerificationBanner from "../../components/VerificationBanner";
 import TestRunner from "../../cv/TestRunner";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
-  AIRecommendation, AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
+  AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
   TestId, User,
 } from "../../types";
 import { calcAge, greeting } from "./ClientShared";
@@ -54,7 +54,6 @@ export default function Client({ user, onSignOut }: ClientProps) {
   const [sessions, setSessions]     = useState<AssessmentSession[]>([]);
   const [consents, setConsents]     = useState<ConsentEvent[]>([]);
   const [plan,     setPlan]         = useState<InterventionPlan | null>(null);
-  const [aiInsights,   setAiInsights]   = useState<AIRecommendation[]>([]);
   const [activeCv,     setActiveCv]     = useState<{ testId: TestId } | null>(null);
 
   useEffect(() => {
@@ -62,10 +61,8 @@ export default function Client({ user, onSignOut }: ClientProps) {
       sessionApi.listForClient(user._id),
       consentApi.historyFor(user._id),
       planApi.forClient(user._id),
-      aiApi.forClient(user._id),
-    ]).then(([s, c, p, ai]) => {
+    ]).then(([s, c, p]) => {
       setSessions(s); setConsents(c); setPlan(p);
-      setAiInsights(ai);
     });
   }, [user._id]);
 
@@ -141,7 +138,7 @@ export default function Client({ user, onSignOut }: ClientProps) {
         {user.verificationStatus !== "verified" && <VerificationBanner status={user.verificationStatus} />}
 
         {tab === "home"             && <Home            user={user} sessions={sessions} onStart={() => setTab("self_test")} />}
-        {tab === "assessments"      && <Assessments     sessions={sessions} aiInsights={aiInsights} />}
+        {tab === "assessments"      && <Assessments     sessions={sessions} />}
         {tab === "self_test"        && <SelfTest        onStart={testId => setActiveCv({ testId })} />}
         {tab === "questionnaire"    && <Questionnaire   user={user} />}
         {tab === "plan"             && <Plan            plan={plan} />}

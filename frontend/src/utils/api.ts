@@ -1,5 +1,5 @@
 import type {
-  AIRecommendation, AssessmentSession, AuditLog, AuthResponse, ConsentEvent,
+  AssessmentSession, AuditLog, AuthResponse, ConsentEvent,
   EmergencyContact, InterventionPlan, Measurement, NewUserPayload,
   QuestionnaireSubmission, Role, ScheduleEntry,
   User,
@@ -77,13 +77,6 @@ export interface IConsentApi {
 export interface IAuditApi {
   list(limit?: number): Promise<AuditLog[]>;
   write(payload: Omit<AuditLog, "_id" | "createdAt">): Promise<AuditLog>;
-}
-
-export interface IAIApi {
-  pendingFor(clinicianId: string): Promise<AIRecommendation[]>;
-  forClient(clientId: string): Promise<AIRecommendation[]>;
-  approve(id: string, byUserId: string): Promise<AIRecommendation>;
-  override(id: string, byUserId: string, reason: string): Promise<AIRecommendation>;
 }
 
 export interface IPlanApi {
@@ -170,14 +163,6 @@ class RestAuditApi implements IAuditApi {
   write(p: Omit<AuditLog, "_id" | "createdAt">) { return apiFetch<AuditLog>(`${this.base}/api/audit`, { method: "POST", body: p }); }
 }
 
-class RestAIApi implements IAIApi {
-  constructor(private base: string) {}
-  pendingFor(clinicianId: string) { return apiFetch<AIRecommendation[]>(`${this.base}/api/ai/pending/${clinicianId}`); }
-  forClient(clientId: string) { return apiFetch<AIRecommendation[]>(`${this.base}/api/ai/client/${clientId}`); }
-  approve(id: string, byUserId: string) { return apiFetch<AIRecommendation>(`${this.base}/api/ai/${id}/approve`, { method: "POST", body: { byUserId } }); }
-  override(id: string, byUserId: string, reason: string) { return apiFetch<AIRecommendation>(`${this.base}/api/ai/${id}/override`, { method: "POST", body: { byUserId, reason } }); }
-}
-
 class RestPlanApi implements IPlanApi {
   constructor(private base: string) {}
   forClient(clientId: string) { return apiFetch<InterventionPlan | null>(`${this.base}/api/plans/client/${clientId}`); }
@@ -208,7 +193,7 @@ class RestQuestionnaireApi implements IQuestionnaireApi {
 
 
 import {
-  MockAIApi, MockAuditApi, MockConsentApi, MockMeasurementApi,
+  MockAuditApi, MockConsentApi, MockMeasurementApi,
   MockPlanApi, MockQuestionnaireApi, MockScheduleApi, MockSessionApi,
   MockUserApi,
 } from "./mockApi";
@@ -220,7 +205,6 @@ export const sessionApi:   ISessionApi  = USE_MOCK ? new MockSessionApi()  : new
 export const scheduleApi:  IScheduleApi = USE_MOCK ? new MockScheduleApi() : new RestScheduleApi(BASE_URL);
 export const consentApi:   IConsentApi  = USE_MOCK ? new MockConsentApi()  : new RestConsentApi(BASE_URL);
 export const auditApi:     IAuditApi    = USE_MOCK ? new MockAuditApi()    : new RestAuditApi(BASE_URL);
-export const aiApi:        IAIApi       = USE_MOCK ? new MockAIApi()       : new RestAIApi(BASE_URL);
 export const planApi:      IPlanApi     = USE_MOCK ? new MockPlanApi()     : new RestPlanApi(BASE_URL);
 export const measurementApi:   IMeasurementApi   = USE_MOCK ? new MockMeasurementApi()   : new RestMeasurementApi(BASE_URL);
 export const questionnaireApi: IQuestionnaireApi = USE_MOCK ? new MockQuestionnaireApi() : new RestQuestionnaireApi(BASE_URL);

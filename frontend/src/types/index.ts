@@ -123,19 +123,6 @@ export interface AuditLog {
   createdAt: string;
 }
 
-export interface AIRecommendation {
-  _id: string;
-  clientId: string;
-  title: string;
-  detail: string;
-  confidence: number;  
-  basis: string;
-  status: "pending" | "approved" | "overridden";
-  reviewedBy?: string;
-  overrideReason?: string;
-  createdAt: string;
-}
-
 
 export interface InterventionPlanItem {
   activity: string;

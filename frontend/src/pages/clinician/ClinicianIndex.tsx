@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import {
-  Users, ClipboardList, Brain, Activity, BarChart2, ArrowLeft,
+  Users, ClipboardList, Activity, BarChart2, ArrowLeft,
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
 import {
-  aiApi, auditApi, planApi, sessionApi, userApi,
+  auditApi, planApi, sessionApi, userApi,
 } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
-  AIRecommendation, InterventionPlanItem, TestId, User,
+  InterventionPlanItem, TestId, User,
 } from "../../types";
 
 import { calcAge, type PatientView } from "./ClinicianShared";
@@ -19,16 +19,14 @@ import Overview      from "./tabs/Overview";
 import PatientList   from "./tabs/PatientList";
 import PatientDetail from "./tabs/PatientDetail";
 import Assessments   from "./tabs/Assessments";
-import AI            from "./tabs/AI";
 import Plans         from "./tabs/Plans";
 
-type TabId = "overview" | "patients" | "assessments" | "ai" | "plans";
+type TabId = "overview" | "patients" | "assessments" | "plans";
 
 const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
   { id: "overview",    label: "Overview",    Icon: BarChart2     },
   { id: "patients",    label: "My Patients", Icon: Users         },
   { id: "assessments", label: "Assessments", Icon: ClipboardList },
-  { id: "ai",          label: "AI Insights", Icon: Brain         },
   { id: "plans",       label: "Care Plans",  Icon: Activity      },
 ];
 
@@ -41,13 +39,11 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
   const [tab, setTab]                 = useState<TabId>("overview");
   const [patients, setPatients]       = useState<PatientView[]>([]);
   const [selected, setSelected]       = useState<PatientView | null>(null);
-  const [aiRecs, setAiRecs]           = useState<AIRecommendation[]>([]);
   const [search, setSearch]           = useState("");
   const [activeCv, setActiveCv]       = useState<{ clientId: string; testId: TestId } | null>(null);
 
   useEffect(() => {
     void loadPatients();
-    void aiApi.pendingFor(user._id).then(setAiRecs);
   }, []);
 
   async function loadPatients(): Promise<void> {
@@ -93,18 +89,6 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
     await loadPatients();
   };
 
-  const handleApproveAI = async (id: string): Promise<void> => {
-    await aiApi.approve(id, user._id);
-    await auditApi.write({ actorId: user._id, actorRole: "clinician", category: "AI", level: "INFO", message: `AI recommendation ${id} approved` });
-    setAiRecs(prev => prev.filter(r => r._id !== id));
-  };
-
-  const handleOverrideAI = async (id: string, reason: string): Promise<void> => {
-    await aiApi.override(id, user._id, reason);
-    await auditApi.write({ actorId: user._id, actorRole: "clinician", category: "AI", level: "WARN", message: `AI recommendation ${id} overridden — ${reason}` });
-    setAiRecs(prev => prev.filter(r => r._id !== id));
-  };
-
   const handleSavePlan = async (clientId: string, items: InterventionPlanItem[]): Promise<void> => {
     const plan = await planApi.save({ clientId, authoredBy: user._id, items });
     await auditApi.write({ actorId: user._id, actorRole: "clinician", category: "ASSESSMENT", level: "INFO", message: `Intervention plan saved for client ${clientId}` });
@@ -145,7 +129,7 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
         </div>
       )}
     >
-      {tab === "overview"    && !selected && <Overview      patients={patients} aiCount={aiRecs.length} onOpen={p => { setSelected(p); setTab("patients"); }} onGoAI={() => setTab("ai")} />}
+      {tab === "overview"    && !selected && <Overview      patients={patients} onOpen={p => { setSelected(p); setTab("patients"); }} />}
       {tab === "patients"    && !selected && <PatientList   patients={patients} search={search} onSearch={setSearch} onOpen={setSelected} />}
       {tab === "patients"    && selected  && <PatientDetail patient={selected} onOverride={handleOverride} />}
       {tab === "assessments" && (
@@ -154,7 +138,6 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
           onLaunchCV={(clientId, testId) => setActiveCv({ clientId, testId })}
         />
       )}
-      {tab === "ai"          && <AI          recs={aiRecs} onApprove={handleApproveAI} onOverride={handleOverrideAI} />}
       {tab === "plans"       && <Plans       patients={patients} onSave={handleSavePlan} />}
     </SidebarLayout>
   );

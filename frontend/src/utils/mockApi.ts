@@ -1,11 +1,11 @@
 import type {
-  AIRecommendation, AssessmentSession, AuditLog, ConsentEvent, EmergencyContact,
+  AssessmentSession, AuditLog, ConsentEvent, EmergencyContact,
   InterventionPlan, Measurement, NewUserPayload, QuestionnaireSubmission,
   Role, ScheduleEntry,
   User,
 } from "../types";
 import {
-  type IAIApi, type IAuditApi, type IConsentApi,
+  type IAuditApi, type IConsentApi,
   type IMeasurementApi, type IPlanApi, type IQuestionnaireApi, type IScheduleApi,
   type ISessionApi, type IUserApi,
 } from "./api";
@@ -20,7 +20,6 @@ interface MockDb {
   schedule: ScheduleEntry[];
   consents: ConsentEvent[];
   audits: AuditLog[];
-  aiRecs: AIRecommendation[];
   plans: InterventionPlan[];
   measurements: Measurement[];
   questionnaires: QuestionnaireSubmission[];
@@ -94,10 +93,6 @@ function seedDb(): MockDb {
       { _id: "a5", actorId: "u_dev_001",   actorRole: "developer",     category: "CONTRACT", level: "INFO", message: "IncentiveToken.sol v2.2.0-dev approved for sandbox deployment", createdAt: nowIso() },
       { _id: "a6", actorId: "u_client_001",actorRole: "client",        category: "CONSENT",  level: "WARN", message: "Consent revoked by client for third-party data sharing", createdAt: nowIso() },
       { _id: "a7", actorId: "u_clin_001",  actorRole: "clinician",     category: "AI",       level: "INFO", message: "AI recommendation approved — balance training increase", createdAt: nowIso() },
-    ],
-    aiRecs: [
-      { _id: "ai1", clientId: "u_client_001", title: "Increase balance training frequency", detail: "23% improvement but plateau suggests increased dosage would benefit.", confidence: 87, basis: "3 months of session data", status: "pending", createdAt: nowIso() },
-      { _id: "ai2", clientId: "u_client_001", title: "Refer for grip strength specialist",  detail: "Grip strength below age-appropriate norms for 3 consecutive assessments.", confidence: 79, basis: "Clinical norms",         status: "pending", createdAt: nowIso() },
     ],
     plans: [
       { _id: "pl1", clientId: "u_client_001", authoredBy: "u_clin_001",
@@ -289,32 +284,6 @@ export class MockAuditApi implements IAuditApi {
     db.audits.unshift(log);
     persistDb(db);
     return log;
-  }
-}
-
-export class MockAIApi implements IAIApi {
-  async pendingFor(_clinicianId: string): Promise<AIRecommendation[]> {
-    return db.aiRecs.filter(r => r.status === "pending");
-  }
-  async forClient(clientId: string): Promise<AIRecommendation[]> {
-    return db.aiRecs.filter(r => r.clientId === clientId && r.status === "approved");
-  }
-  async approve(id: string, byUserId: string): Promise<AIRecommendation> {
-    const r = db.aiRecs.find(x => x._id === id);
-    if (!r) throw new Error("Recommendation not found");
-    r.status = "approved";
-    r.reviewedBy = byUserId;
-    persistDb(db);
-    return r;
-  }
-  async override(id: string, byUserId: string, reason: string): Promise<AIRecommendation> {
-    const r = db.aiRecs.find(x => x._id === id);
-    if (!r) throw new Error("Recommendation not found");
-    r.status = "overridden";
-    r.reviewedBy = byUserId;
-    r.overrideReason = reason;
-    persistDb(db);
-    return r;
   }
 }
 

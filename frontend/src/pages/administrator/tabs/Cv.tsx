@@ -13,8 +13,8 @@ interface CvProps {
 export default function Cv({ schedule, authorised, onAuthorise, onLaunch }: CvProps) {
   return (
     <div className="space-y-4">
-      <div className="bg-amber-950/40 border border-amber-800 rounded-lg p-4 text-xs text-amber-300 flex items-start gap-3">
-        <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800 flex items-start gap-3">
+        <AlertTriangle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
           <div className="font-semibold mb-1">CV access for administrators is gated</div>
           <p>
@@ -30,23 +30,23 @@ export default function Cv({ schedule, authorised, onAuthorise, onLaunch }: CvPr
       </div>
 
       {authorised ? (
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-5">
-          <h3 className="text-sm font-semibold text-slate-200 mb-3">Launch CV for scheduled clients</h3>
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Launch CV for scheduled clients</h3>
           {schedule.map(s => (
-            <div key={s._id} className="flex items-center justify-between py-3 border-b border-slate-700 last:border-0">
+            <div key={s._id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
               <div>
-                <div className="text-sm text-slate-200">{s.clientName}</div>
-                <div className="text-xs text-slate-500">{s.time} · {s.testId.replace(/_/g, " ")}</div>
+                <div className="text-sm text-gray-900">{s.clientName}</div>
+                <div className="text-xs text-gray-500">{s.time} · {s.testId.replace(/_/g, " ")}</div>
               </div>
               <button type="button" onClick={() => onLaunch(s.clientId, s.testId)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-700 hover:bg-violet-600 text-violet-100 text-xs font-semibold rounded-lg">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold rounded-lg">
                 <Camera size={12} /> Launch CV
               </button>
             </div>
           ))}
         </div>
       ) : (
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 text-center text-sm text-slate-500">
+        <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-sm text-gray-500">
           CV launch disabled until you confirm clinical authorisation above.
         </div>
       )}

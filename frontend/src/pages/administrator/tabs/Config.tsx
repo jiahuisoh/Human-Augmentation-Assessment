@@ -32,12 +32,12 @@ export default function Config() {
   return (
     <div className="grid grid-cols-2 gap-4">
       {SECTIONS.map(({ title, items }) => (
-        <div key={title} className="bg-slate-800 border border-slate-700 rounded-lg p-5">
-          <h3 className="text-sm font-semibold text-slate-200 mb-3">{title}</h3>
+        <div key={title} className="bg-white border border-gray-200 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{title}</h3>
           {items.map(([l, v]) => (
-            <div key={l} className="flex items-center justify-between py-1.5 border-b border-slate-700 last:border-0">
-              <span className="text-xs text-slate-500">{l}</span>
-              <span className="text-xs font-semibold text-emerald-400">{v}</span>
+            <div key={l} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+              <span className="text-xs text-gray-500">{l}</span>
+              <span className="text-xs font-semibold text-emerald-600">{v}</span>
             </div>
           ))}
         </div>

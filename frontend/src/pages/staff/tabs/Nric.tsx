@@ -14,7 +14,7 @@ export default function Nric({ schedule, onVerify }: NricProps) {
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="text-sm font-semibold text-gray-900 mb-1">NRIC verification</h3>
         <p className="text-xs text-gray-400 mb-4">
-          Enter the last 4 digits of the client's NRIC. Verification unlocks token rewards for the client.
+          Enter the last 4 digits of the client's NRIC.
           Per HANA CRM doc, this is the Staff role's primary identity-management responsibility.
         </p>
         {pending.length === 0

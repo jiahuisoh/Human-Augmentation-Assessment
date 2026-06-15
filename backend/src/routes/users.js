@@ -1,23 +1,28 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
+const { Measurement } = require("../models/Misc");
 const { signToken } = require("../utils/jwt");
 const verifyJWT = require("../middleware/verifyJWT");
 const requireRole = require("../middleware/requireRole");
 const writeAudit = require("../middleware/auditLogger");
 
-// POST /api/users — public registration (creates client by default)
+// ── Public routes ─────────────────────────────────────────────────────────────
+
+// POST /api/users — register new client
+// Frontend NewUserPayload: email, password, name, dateOfBirth, gender, height, weight
 router.post("/", async (req, res) => {
   try {
     const { email, password, name, dateOfBirth, gender, height, weight } = req.body;
-    if (!email || !password || !name) return res.status(400).json({ error: "email, password and name are required" });
-
+    if (!email || !password || !name || !dateOfBirth || !gender) {
+      return res.status(400).json({ error: "email, password, name, dateOfBirth and gender are required" });
+    }
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ error: "Email already registered" });
 
     const user = await User.create({ email, password, name, dateOfBirth, gender, height, weight, role: "client" });
     const token = signToken(user);
-    res.status(201).json({ user, token });
+    res.status(201).json({ user, token }); // AuthResponse: { user, token }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -33,16 +38,17 @@ router.post("/login", async (req, res) => {
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
-
     const token = signToken(user);
     await writeAudit({ user: { id: user._id, role: user.role } }, "AUTH", `User logged in: ${email}`, { userId: user._id });
-    res.json({ user, token });
+    res.json({ user, token }); // AuthResponse: { user, token }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/users/me — get current user from JWT
+// ── Authenticated routes ──────────────────────────────────────────────────────
+
+// GET /api/users/me — getCurrent()
 router.get("/me", verifyJWT, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -53,7 +59,7 @@ router.get("/me", verifyJWT, async (req, res) => {
   }
 });
 
-// GET /api/users/:id — get user by ID (authenticated)
+// GET /api/users/:id — getById()
 router.get("/:id", verifyJWT, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -64,10 +70,10 @@ router.get("/:id", verifyJWT, async (req, res) => {
   }
 });
 
-// PATCH /api/users/:id/emergency — save emergency contact (own record only)
+// PATCH /api/users/:id/emergency — saveEmergencyContact()
 router.patch("/:id/emergency", verifyJWT, async (req, res) => {
   try {
-    // clients can only update their own record; admin can update anyone
+    // Clients can only update their own record; admin can update anyone
     if (req.user.role !== "administrator" && req.user.id !== req.params.id) {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -79,9 +85,9 @@ router.patch("/:id/emergency", verifyJWT, async (req, res) => {
   }
 });
 
-// GET /api/users/:clientId/measurements — list measurements
-const { Measurement } = require("../models/Misc");
+// ── Measurements ──────────────────────────────────────────────────────────────
 
+// GET /api/users/:clientId/measurements — listForClient()
 router.get("/:clientId/measurements", verifyJWT, async (req, res) => {
   try {
     const measurements = await Measurement.find({ clientId: req.params.clientId }).sort({ createdAt: -1 });
@@ -91,22 +97,30 @@ router.get("/:clientId/measurements", verifyJWT, async (req, res) => {
   }
 });
 
-// POST /api/users/:clientId/measurements — save measurement + auto-calc BMI
+// POST /api/users/:clientId/measurements — save()
+// Auto-calculates BMI and syncs height/weight back to user document
 router.post("/:clientId/measurements", verifyJWT, async (req, res) => {
   try {
     const { height, weight } = req.body;
     if (!height || !weight) return res.status(400).json({ error: "height and weight required" });
+
     const bmi = parseFloat((weight / ((height / 100) ** 2)).toFixed(1));
+
+    // Save measurement record
     const m = await Measurement.create({ clientId: req.params.clientId, height, weight, bmi });
+
+    // Sync latest measurements back to user document so profile stays up to date
+    await User.findByIdAndUpdate(req.params.clientId, { height, weight });
+
     res.status(201).json(m);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── Admin-only routes ─────────────────────────────────────────────────────────
+// ── Admin routes ──────────────────────────────────────────────────────────────
 
-// GET /api/admin/users — list all users
+// GET /api/admin/users — list()
 router.get("/admin/users", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     const users = await User.find().sort({ createdAt: -1 });
@@ -116,12 +130,13 @@ router.get("/admin/users", verifyJWT, requireRole("administrator"), async (req, 
   }
 });
 
-// POST /api/admin/users — create any role user
+// POST /api/admin/users — create() — admin creates any role account
 router.post("/admin/users", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     const { email, password, name, role, dateOfBirth, gender, height, weight } = req.body;
-    if (!email || !password || !name || !role) return res.status(400).json({ error: "email, password, name, role required" });
-
+    if (!email || !password || !name || !role) {
+      return res.status(400).json({ error: "email, password, name and role are required" });
+    }
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ error: "Email already registered" });
 
@@ -133,7 +148,7 @@ router.post("/admin/users", verifyJWT, requireRole("administrator"), async (req,
   }
 });
 
-// PATCH /api/admin/users/:id/status — set verification status
+// PATCH /api/admin/users/:id/status — setStatus()
 router.patch("/admin/users/:id/status", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     const { verificationStatus } = req.body;
@@ -146,7 +161,7 @@ router.patch("/admin/users/:id/status", verifyJWT, requireRole("administrator"),
   }
 });
 
-// DELETE /api/admin/users/:id — restricted admin only
+// DELETE /api/admin/users/:id — delete()
 router.delete("/admin/users/:id", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -159,7 +174,7 @@ router.delete("/admin/users/:id", verifyJWT, requireRole("administrator"), async
 
 // ── Staff routes ──────────────────────────────────────────────────────────────
 
-// POST /api/staff/users/:id/verify-nric — staff NRIC verification
+// POST /api/staff/users/:id/verify-nric — verifyNric()
 router.post("/staff/users/:id/verify-nric", verifyJWT, requireRole("staff", "administrator"), async (req, res) => {
   try {
     const { nricLast4 } = req.body;

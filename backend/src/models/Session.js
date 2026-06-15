@@ -10,20 +10,20 @@ const OverrideSchema = new mongoose.Schema({
 }, { _id: false });
 
 const SessionSchema = new mongoose.Schema({
-  clientId:       { type: String, required: true, index: true },
-  conductedBy:    { type: String, required: true },
-  testId:         { type: String, enum: ["chair_stand", "back_scratch", "sit_reach"], required: true },
-  reps:           { type: Number },
-  measurement:    { type: Number },
-  classification: { type: String },
-  riskLevel:      { type: String, enum: ["low", "moderate", "high"] },
-  interpretation: { type: String },
-  normLow:        { type: Number },
-  normHigh:       { type: Number },
-  terminatedEarly:{ type: Boolean, default: false },
-  livenessScore:  { type: Number },
-  recordHash:     { type: String },
-  overrides:      [OverrideSchema],
+  clientId:        { type: String, required: true, index: true },
+  conductedBy:     { type: String, required: true },
+  testId:          { type: String, enum: ["chair_stand","back_scratch","sit_reach"], required: true },
+  reps:            { type: Number },
+  measurement:     { type: Number },
+  classification:  { type: String },
+  riskLevel:       { type: String, enum: ["low","moderate","high"] },
+  interpretation:  { type: String },
+  normLow:         { type: Number },
+  normHigh:        { type: Number },
+  terminatedEarly: { type: Boolean, default: false },
+  livenessScore:   { type: Number },
+  recordHash:      { type: String },
+  overrides:       [OverrideSchema],
 }, { timestamps: true });
 
 SessionSchema.methods.toJSON = function () {

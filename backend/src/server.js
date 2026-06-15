@@ -7,7 +7,7 @@ const connectDB = require("./config/db");
 
 const app = express();
 
-// ── Connect to MongoDB ────────────────────────────────────────────────────────
+// ── Connect to MongoDB Atlas ──────────────────────────────────────────────────
 connectDB();
 
 // ── Security middleware ───────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting — 100 requests per 15 minutes per IP
+// Rate limiting: 100 requests per 15 minutes per IP
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -33,19 +33,19 @@ app.get("/health", (req, res) => {
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-const userRoutes = require("./routes/users");
+const userRoutes    = require("./routes/users");
 const sessionRoutes = require("./routes/sessions");
-const tokenRoutes = require("./routes/tokens");
-const miscRoutes = require("./routes/misc");
+const miscRoutes    = require("./routes/misc");
 
-// User routes handle /api/users, /api/admin/users, /api/staff/users
-app.use("/api/users",       userRoutes);
-app.use("/api/admin",       userRoutes);
-app.use("/api/staff",       userRoutes);
-app.use("/api/sessions",    sessionRoutes);
-app.use("/api/tokens",      tokenRoutes);
+// User routes handle /api/users, /api/admin/*, /api/staff/*
+app.use("/api/users",    userRoutes);
+app.use("/api/admin",    userRoutes);
+app.use("/api/staff",    userRoutes);
 
-// Misc routes handle submissions, consent, audit, ai, plans, contracts, schedule, questionnaires
+// Session routes
+app.use("/api/sessions", sessionRoutes);
+
+// All other routes: submissions, consent, audit, plans, schedule, questionnaires
 app.use("/api", miscRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────

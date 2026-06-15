@@ -11,12 +11,12 @@ const UserSchema = new mongoose.Schema({
   email:              { type: String, required: true, unique: true, lowercase: true, trim: true },
   password:           { type: String, required: true, select: false },
   name:               { type: String, required: true, trim: true },
-  role:               { type: String, enum: ["client", "staff", "clinician", "developer", "administrator"], default: "client" },
+  role:               { type: String, enum: ["client","staff","clinician","developer","administrator"], default: "client" },
   dateOfBirth:        { type: String },
-  gender:             { type: String, enum: ["male", "female", "other"] },
+  gender:             { type: String, enum: ["male","female","other"] },
   height:             { type: Number },
   weight:             { type: Number },
-  verificationStatus: { type: String, enum: ["unverified", "pending", "verified", "suspended"], default: "unverified" },
+  verificationStatus: { type: String, enum: ["unverified","pending","verified","suspended"], default: "unverified" },
   emergencyContact:   { type: EmergencyContactSchema },
   programmeIds:       [{ type: String }],
   assignedClientIds:  [{ type: String }],
@@ -29,12 +29,12 @@ UserSchema.pre("save", async function (next) {
   next();
 });
 
-// Compare password method
+// Compare password on login
 UserSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-// Strip password from JSON output
+// Strip password and format fields for frontend
 UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;

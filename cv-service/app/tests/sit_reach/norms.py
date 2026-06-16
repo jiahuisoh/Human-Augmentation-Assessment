@@ -28,11 +28,13 @@ def classify_sit_reach(cm: float, age: int | None, sex: Sex) -> SitReachClassifi
     else:
         low = min(band.male[0], band.female[0])
         high = max(band.male[1], band.female[1])
-    if cm < low:
-        return SitReachClassification(classification='Below Average', risk_level='high', interpretation='Your lower-body flexibility is below the typical range. Regular hamstring and lower-back stretches will help.', norm_low=low, norm_high=high)
-    if cm > high:
-        return SitReachClassification(classification='Above Average', risk_level='low', interpretation='Excellent lower-body flexibility for your age group.', norm_low=low, norm_high=high)
-    return SitReachClassification(classification='Average', risk_level='moderate', interpretation='Within the typical range. Daily stretches will help maintain it.', norm_low=low, norm_high=high)
+    norm_low = -high
+    norm_high = -low
+    if cm > norm_high:
+        return SitReachClassification(classification='Below Average', risk_level='high', interpretation='Your lower-body flexibility is below the typical range. Regular hamstring and lower-back stretches will help.', norm_low=norm_low, norm_high=norm_high)
+    if cm < norm_low:
+        return SitReachClassification(classification='Above Average', risk_level='low', interpretation='Excellent lower-body flexibility for your age group.', norm_low=norm_low, norm_high=norm_high)
+    return SitReachClassification(classification='Average', risk_level='moderate', interpretation='Within the typical range. Daily stretches will help maintain it.', norm_low=norm_low, norm_high=norm_high)
 
 def _pick_band(age: int) -> _Band:
     if age < _AGE_BANDS[0].min_age:

@@ -1,4 +1,4 @@
-"""Tests for sit-reach forward-axis geometry."""
+"""Tests for sit-reach forward-axis geometry (reach measured along the leg axis)."""
 
 from app.cv.types import Landmark
 from app.tests.sit_reach.strategy import forward_reach_norm, forward_unit
@@ -9,27 +9,32 @@ def _v(x: float, y: float) -> Landmark:
 
 
 class TestSitReachGeometry:
-    def test_forward_unit_points_toward_toes(self) -> None:
-        hip = _v(0.3, 0.5)
-        ankle = _v(0.3, 0.9)
-        toe = _v(0.55, 0.9)
-        fwd = forward_unit(hip, ankle, toe)
-        assert fwd[0] > 0
+    def test_forward_unit_points_along_leg_toward_feet(self) -> None:
+        hip = _v(0.30, 0.50)
+        ankle = _v(0.70, 0.50)
+        fwd = forward_unit(hip, ankle)
+        assert fwd[0] > 0.99
         assert abs(fwd[1]) < 0.01
 
     def test_forward_reach_zero_when_finger_at_toe(self) -> None:
-        hip = _v(0.3, 0.5)
-        ankle = _v(0.3, 0.9)
-        toe = _v(0.55, 0.9)
-        finger = _v(0.55, 0.9)
-        fwd = forward_unit(hip, ankle, toe)
-        assert forward_reach_norm(finger, toe, fwd) == 0.0
+        hip = _v(0.30, 0.50)
+        ankle = _v(0.70, 0.50)
+        toe = _v(0.75, 0.50)
+        fwd = forward_unit(hip, ankle)
+        assert forward_reach_norm(toe, toe, fwd) == 0.0
+
+    def test_finger_past_toe_is_positive(self) -> None:
+        hip = _v(0.30, 0.50)
+        ankle = _v(0.70, 0.50)
+        toe = _v(0.75, 0.50)
+        finger = _v(0.83, 0.52)
+        fwd = forward_unit(hip, ankle)
+        assert forward_reach_norm(finger, toe, fwd) > 0.05
 
     def test_tilted_leg_axis_still_measures_forward_reach(self) -> None:
         hip = _v(0.30, 0.50)
-        ankle = _v(0.36, 0.88)
-        toe = _v(0.58, 0.86)
-        finger = _v(0.68, 0.84)
-        fwd = forward_unit(hip, ankle, toe)
-        reach = forward_reach_norm(finger, toe, fwd)
-        assert reach > 0.05
+        ankle = _v(0.68, 0.62)
+        toe = _v(0.72, 0.64)
+        finger = _v(0.82, 0.67)
+        fwd = forward_unit(hip, ankle)
+        assert forward_reach_norm(finger, toe, fwd) > 0.05

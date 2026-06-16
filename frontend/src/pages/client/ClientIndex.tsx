@@ -73,22 +73,32 @@ export default function Client({ user, onSignOut }: ClientProps) {
 
   const handleSelfTestComplete = async (outcome: TestOutcomeWire): Promise<void> => {
     if (!activeCv) return;
-    const saved = await sessionApi.save({
-      clientId: user._id, conductedBy: user._id, testId: activeCv.testId,
-      reps: outcome.reps, measurement: outcome.measurement,
-      classification: outcome.classification, riskLevel: outcome.risk_level,
-      interpretation: outcome.interpretation,
-      normLow: outcome.norm_low, normHigh: outcome.norm_high,
-      terminatedEarly: outcome.terminated_early, livenessScore: outcome.liveness_score,
-      recordHash: "0x" + Math.random().toString(16).slice(2, 18),
-    });
-    await auditApi.write({
-      actorId: user._id, actorRole: "client", category: "CV", level: "INFO",
-      message: `Client self-administered ${activeCv.testId} at home`,
-      context: { sessionId: saved._id, liveness: outcome.liveness_score, selfAdministered: true },
-    });
-    setSessions(await sessionApi.listForClient(user._id));
-    setActiveCv(null);
+    try {
+      // Backend gates client-initiated saves on assessment_data consent (PDPA).
+      // Submitting a self-administered test is the affirmative consent action.
+      if (!consents.some(c => c.scope === "assessment_data" && c.granted)) {
+        await consentApi.set(user._id, "assessment_data", true);
+      }
+      const saved = await sessionApi.save({
+        clientId: user._id, conductedBy: user._id, testId: activeCv.testId,
+        reps: outcome.reps, measurement: outcome.measurement,
+        classification: outcome.classification, riskLevel: outcome.risk_level,
+        interpretation: outcome.interpretation,
+        normLow: outcome.norm_low, normHigh: outcome.norm_high,
+        terminatedEarly: outcome.terminated_early, livenessScore: outcome.liveness_score,
+        recordHash: "0x" + Math.random().toString(16).slice(2, 18),
+      });
+      await auditApi.write({
+        actorId: user._id, actorRole: "client", category: "CV", level: "INFO",
+        message: `Client self-administered ${activeCv.testId} at home`,
+        context: { sessionId: saved._id, liveness: outcome.liveness_score, selfAdministered: true },
+      });
+      setSessions(await sessionApi.listForClient(user._id));
+    } catch (err) {
+      alert(`Could not save your result: ${err instanceof Error ? err.message : "unknown error"}`);
+    } finally {
+      setActiveCv(null);
+    }
   };
 
   if (activeCv) {

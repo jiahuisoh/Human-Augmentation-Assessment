@@ -44,8 +44,8 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold text-gray-900">
-                  {s.reps !== undefined ? `${s.reps} reps`
-                    : s.measurement !== undefined ? `${s.measurement} cm`
+                  {s.reps != null ? `${s.reps} reps`
+                    : s.measurement != null ? `${s.measurement} cm`
                     : "—"}
                 </div>
                 <div className="text-xs text-gray-400">{s.classification ?? ""}</div>

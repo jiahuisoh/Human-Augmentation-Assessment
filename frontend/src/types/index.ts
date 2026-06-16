@@ -96,7 +96,7 @@ export interface QuestionnaireSubmission {
 }
 
 
-export type ConsentScope = "research" | "clinician_share" | "third_party" | "institutional";
+export type ConsentScope = "research" | "clinician_share" | "third_party" | "institutional" | "assessment_data";
 
 export interface ConsentEvent {
   _id: string;

@@ -1,14 +1,22 @@
 import statistics
+from collections import deque
 from typing import Sequence
+from app.cv.hand_detector import HAND_LANDMARK
 from app.cv.landmarks import LANDMARK, all_visible, distance, pick_better_side
-from app.cv.types import Landmark, TestOutcome
+from app.cv.types import Landmark, Sex, TestOutcome
 from app.tests.base import FinalizeContext, TestStateUpdate, TestStrategy
 from app.tests.sit_reach.norms import classify_sit_reach
-_ASSUMED_LEG_LENGTH_CM = 90.0
+LEG_LENGTH_FRACTION_OF_HEIGHT = 0.53
 _MIN_CALIB_SAMPLES = 3
 _MIN_TEST_SAMPLES = 10
+HOLD_SECONDS = 2.5
+_HOLD_MS = HOLD_SECONDS * 1000.0
+_MIN_HOLD_FRAMES = 8
+_HOLD_MAX_STDEV_CM = 4.0
+_LIVE_SMOOTH_FRAMES = 5
 _LEFT_LEG = (LANDMARK.LEFT_HIP, LANDMARK.LEFT_ANKLE)
 _RIGHT_LEG = (LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_ANKLE)
+
 
 class SitReachStrategy(TestStrategy):
     test_id = 'sit_reach'
@@ -16,21 +24,33 @@ class SitReachStrategy(TestStrategy):
     countdown_s = 3
     active_duration_s = 30
     min_calibration_samples = _MIN_CALIB_SAMPLES
+    requires_hands = True
     calibration_prompt = 'Sit sideways to the camera with your test leg straight out.'
 
     def __init__(self) -> None:
+        self._user_height_cm: float | None = None
         self._leg_samples: list[float] = []
         self._cm_per_unit: float | None = None
         self._best_side: str = 'right'
-        self._reach_cm: float | None = None
-        self._all_reaches: list[float] = []
+        self._samples: deque[tuple[float, float]] = deque()
+        self._frames_scored: int = 0
+        self._best_held_cm: float | None = None
+        self._best_seen_cm: float | None = None
+        self._last_reach_cm: float | None = None
 
     def reset(self) -> None:
         self._leg_samples.clear()
         self._cm_per_unit = None
         self._best_side = 'right'
-        self._reach_cm = None
-        self._all_reaches.clear()
+        self._samples.clear()
+        self._frames_scored = 0
+        self._best_held_cm = None
+        self._best_seen_cm = None
+        self._last_reach_cm = None
+
+    def on_init(self, user_age: int | None, user_sex: Sex, user_height: float | None) -> None:
+        _ = (user_age, user_sex)
+        self._user_height_cm = user_height
 
     def is_frame_usable(self, landmarks: Sequence[Landmark]) -> bool:
         return all_visible(landmarks, _LEFT_LEG) or all_visible(landmarks, _RIGHT_LEG)
@@ -52,33 +72,64 @@ class SitReachStrategy(TestStrategy):
     def finish_calibration(self) -> tuple[bool, str | None]:
         if len(self._leg_samples) < _MIN_CALIB_SAMPLES:
             return (False, 'Could not see your leg clearly. Sit sideways to the camera with your test leg fully visible.')
+        if self._user_height_cm is None or self._user_height_cm <= 0:
+            return (False, 'No height on file for this client. Add their height to their profile, then retry.')
         median_leg = statistics.median(self._leg_samples)
-        self._cm_per_unit = _ASSUMED_LEG_LENGTH_CM / median_leg
+        leg_length_cm = self._user_height_cm * LEG_LENGTH_FRACTION_OF_HEIGHT
+        self._cm_per_unit = leg_length_cm / median_leg
         return (True, None)
 
     def update(self, landmarks: Sequence[Landmark], elapsed_ms: float, hand_landmarks: Sequence[Sequence[Landmark]] | None=None) -> TestStateUpdate:
-        _ = hand_landmarks
         if self._cm_per_unit is None:
-            return TestStateUpdate(measurement=self._reach_cm)
-        idx_finger = LANDMARK.LEFT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_INDEX
+            return TestStateUpdate(measurement=self._last_reach_cm, best_measurement=self._best_held_cm)
         idx_foot = LANDMARK.LEFT_FOOT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
         idx_hip = LANDMARK.LEFT_HIP if self._best_side == 'left' else LANDMARK.RIGHT_HIP
-        if not all_visible(landmarks, (idx_finger, idx_foot, idx_hip)):
-            return TestStateUpdate(measurement=self._reach_cm, best_measurement=max(self._all_reaches) if self._all_reaches else None)
-        finger = landmarks[idx_finger]
+        if not all_visible(landmarks, (idx_foot, idx_hip)):
+            return TestStateUpdate(measurement=self._last_reach_cm, best_measurement=self._best_held_cm)
         toe = landmarks[idx_foot]
         hip = landmarks[idx_hip]
         forward_sign = 1.0 if toe.x - hip.x >= 0 else -1.0
-        cm = round((finger.x - toe.x) * forward_sign * self._cm_per_unit, 1)
-        self._reach_cm = cm
-        self._all_reaches.append(cm)
-        return TestStateUpdate(measurement=cm, best_measurement=max(self._all_reaches))
+        finger = self._reach_fingertip(landmarks, hand_landmarks, forward_sign)
+        if finger is None:
+            return TestStateUpdate(measurement=self._last_reach_cm, best_measurement=self._best_held_cm)
+        raw_cm = round((finger.x - toe.x) * forward_sign * self._cm_per_unit, 1)
+        self._frames_scored += 1
+
+        self._samples.append((elapsed_ms, raw_cm))
+        cutoff = elapsed_ms - _HOLD_MS
+        while len(self._samples) >= 2 and self._samples[1][0] < cutoff:
+            self._samples.popleft()
+        reaches = [r for _, r in self._samples]
+
+        live = round(statistics.median(reaches[-_LIVE_SMOOTH_FRAMES:]), 1)
+        self._last_reach_cm = live
+        self._best_seen_cm = live if self._best_seen_cm is None else max(self._best_seen_cm, live)
+
+        span_ms = self._samples[-1][0] - self._samples[0][0]
+        if span_ms >= _HOLD_MS and len(reaches) >= _MIN_HOLD_FRAMES and statistics.pstdev(reaches) <= _HOLD_MAX_STDEV_CM:
+            held = round(statistics.median(reaches), 1)
+            self._best_held_cm = held if self._best_held_cm is None else max(self._best_held_cm, held)
+
+        return TestStateUpdate(measurement=live, best_measurement=self._best_held_cm)
 
     def finalize(self, ctx: FinalizeContext) -> TestOutcome:
-        if len(self._all_reaches) < _MIN_TEST_SAMPLES:
+        if self._frames_scored < _MIN_TEST_SAMPLES:
             return TestOutcome(measurement=0.0, terminated_early=ctx.terminated_early)
-        best = max(self._all_reaches)
+        best = self._best_held_cm if self._best_held_cm is not None else self._best_seen_cm
+        if best is None:
+            return TestOutcome(measurement=0.0, terminated_early=ctx.terminated_early)
         classification = classify_sit_reach(best, ctx.user_age, ctx.user_sex)
         if classification is None:
             return TestOutcome(measurement=best, terminated_early=ctx.terminated_early)
         return TestOutcome(measurement=best, terminated_early=ctx.terminated_early, classification=classification.classification, risk_level=classification.risk_level, interpretation=classification.interpretation, norm_low=classification.norm_low, norm_high=classification.norm_high)
+
+    def _reach_fingertip(self, landmarks: Sequence[Landmark], hand_landmarks: Sequence[Sequence[Landmark]] | None, forward_sign: float) -> Landmark | None:
+        if hand_landmarks:
+            tips = [h[HAND_LANDMARK.MIDDLE_FINGER_TIP] for h in hand_landmarks if len(h) > HAND_LANDMARK.MIDDLE_FINGER_TIP]
+            if tips:
+                return max(tips, key=lambda t: t.x * forward_sign)
+        idx_finger = LANDMARK.LEFT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_INDEX
+        if all_visible(landmarks, (idx_finger,)):
+            return landmarks[idx_finger]
+        return None
+

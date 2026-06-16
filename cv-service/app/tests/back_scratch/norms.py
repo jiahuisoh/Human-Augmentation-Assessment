@@ -28,11 +28,13 @@ def classify_back_scratch(cm: float, age: int | None, sex: Sex) -> BackScratchCl
     else:
         low = min(band.male[0], band.female[0])
         high = max(band.male[1], band.female[1])
-    if cm < low:
-        return BackScratchClassification(classification='Below Average', risk_level='high', interpretation='Your shoulder flexibility is below the typical range. Daily shoulder and chest stretches can help.', norm_low=low, norm_high=high)
-    if cm > high:
-        return BackScratchClassification(classification='Above Average', risk_level='low', interpretation='Excellent shoulder flexibility for your age group.', norm_low=low, norm_high=high)
-    return BackScratchClassification(classification='Average', risk_level='moderate', interpretation='Within the typical range. Stretch regularly to maintain it.', norm_low=low, norm_high=high)
+    norm_low = -high
+    norm_high = -low
+    if cm > norm_high:
+        return BackScratchClassification(classification='Below Average', risk_level='high', interpretation='Your shoulder flexibility is below the typical range. Daily shoulder and chest stretches can help.', norm_low=norm_low, norm_high=norm_high)
+    if cm < norm_low:
+        return BackScratchClassification(classification='Above Average', risk_level='low', interpretation='Excellent shoulder flexibility for your age group.', norm_low=norm_low, norm_high=norm_high)
+    return BackScratchClassification(classification='Average', risk_level='moderate', interpretation='Within the typical range. Stretch regularly to maintain it.', norm_low=norm_low, norm_high=norm_high)
 
 def _pick_band(age: int) -> _Band:
     if age < _AGE_BANDS[0].min_age:

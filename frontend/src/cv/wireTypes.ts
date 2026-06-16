@@ -13,6 +13,7 @@ export interface TestOutcomeWire {
   norm_low?:         number;
   norm_high?:        number;
   terminated_early?: boolean;
+  calibration_quality?: number;
   liveness_score?:   number;
 }
 
@@ -30,8 +31,9 @@ export interface UpdateMessage {
 
   // Calibration phase
   calib_progress?:    number;
-  calib_samples?:     number;
-  calib_remaining_s?: number;
+    calib_samples?:     number;
+    calib_remaining_s?: number;
+    calib_quality?:     number;
 
   // Countdown phase
   countdown?: number;

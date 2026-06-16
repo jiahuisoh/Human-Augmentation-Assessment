@@ -86,7 +86,8 @@ class _Session:
         elif action == 'start':
             self._goto_phase('calibrating')
             self.strategy.reset()
-            self.smoother.reset()
+            mc, beta = self.strategy.smoother_config()
+            self.smoother = LandmarkSmoother(min_cutoff=mc, beta=beta)
         elif action == 'stop_early':
             await self._finalize(terminated_early=True)
 
@@ -112,7 +113,15 @@ class _Session:
             calib_ms = self.strategy.calibration_s * 1000
             progress = min(1.0, elapsed_ms / calib_ms)
             remaining = max(0.0, self.strategy.calibration_s - elapsed_ms / 1000)
-            await self._send_update(landmarks=landmarks, hand_landmarks=hand_landmarks, detection=detection, calib_progress=round(progress, 2), calib_samples=self.strategy.get_calibration_sample_count(), calib_remaining_s=round(remaining, 2))
+            await self._send_update(
+                landmarks=landmarks,
+                hand_landmarks=hand_landmarks,
+                detection=detection,
+                calib_progress=round(progress, 2),
+                calib_samples=self.strategy.get_calibration_sample_count(),
+                calib_remaining_s=round(remaining, 2),
+                calib_quality=self.strategy.get_calibration_quality(),
+            )
             if elapsed_ms >= calib_ms and self.strategy.get_calibration_sample_count() >= self.strategy.min_calibration_samples:
                 ok, reason = self.strategy.finish_calibration()
                 if not ok:

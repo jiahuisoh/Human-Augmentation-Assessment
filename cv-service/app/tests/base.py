@@ -63,3 +63,11 @@ class TestStrategy(ABC):
         if landmarks is None:
             return 'missing'
         return 'ok' if self.is_frame_usable(landmarks) else 'partial'
+
+    def smoother_config(self) -> tuple[float, float]:
+        """One Euro filter (min_cutoff, beta) for pose landmark smoothing."""
+        return (1.5, 0.05)
+
+    def get_calibration_quality(self) -> float | None:
+        """0–1 score after calibration; None if not yet calibrated."""
+        return None

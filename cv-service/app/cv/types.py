@@ -24,6 +24,7 @@ class TestOutcome(BaseModel):
     norm_low: Optional[float] = None
     norm_high: Optional[float] = None
     terminated_early: bool = False
+    calibration_quality: Optional[float] = None
 
 class UpdateMessage(BaseModel):
     type: Literal['update'] = 'update'
@@ -34,6 +35,7 @@ class UpdateMessage(BaseModel):
     calib_progress: Optional[float] = None
     calib_samples: Optional[int] = None
     calib_remaining_s: Optional[float] = None
+    calib_quality: Optional[float] = None
     countdown: Optional[int] = None
     reps: Optional[int] = None
     posture: Optional[Posture] = None

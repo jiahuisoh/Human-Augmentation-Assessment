@@ -11,6 +11,7 @@ export interface TestDefinition {
   name: string;
   shortDesc: string;
   instructions: readonly string[];
+  calibrationPrompt: string;
   safetyNote: string;
   Icon: LucideIcon;
   metricLabel: string;
@@ -28,6 +29,7 @@ export const TESTS: readonly TestDefinition[] = [
       "On 'Start', rise to a full standing position, then sit back down.",
       "Repeat as many times as you can in 30 seconds.",
     ],
+    calibrationPrompt: "Stand straight, sideways to the camera.",
     safetyNote: "Stop immediately if you feel dizzy, pain, or short of breath.",
     Icon: Armchair,
     metricLabel: "Repetitions",
@@ -43,6 +45,7 @@ export const TESTS: readonly TestDefinition[] = [
       "Stretch your fingers toward each other.",
       "Hold the stretch for at least 2 seconds.",
     ],
+    calibrationPrompt: "Face the camera with your full upper body visible.",
     safetyNote: "Do not force the stretch. Stop if you feel any shoulder pain.",
     Icon: Hand,
     metricLabel: "Distance (cm)",
@@ -58,6 +61,7 @@ export const TESTS: readonly TestDefinition[] = [
       "Slowly reach forward toward your toes as far as you can.",
       "Hold the furthest point for at least 2 seconds.",
     ],
+    calibrationPrompt: "Sit sideways to the camera with your test leg straight out.",
     safetyNote: "Try not to bend your knees throughout the test.",
     Icon: Footprints,
     metricLabel: "Distance (cm)",

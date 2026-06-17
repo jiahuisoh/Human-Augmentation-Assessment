@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, Trash2, UserX, UserCheck, X, Check } from "lucide-react";
 import RoleBadge from "../../../components/RoleBadge";
 import { auditApi, userApi } from "../../../utils/api";
-import type { User, VerificationStatus } from "../../../types";
+import type { Role, Sex, User, VerificationStatus } from "../../../types";
 
 interface UsersProps {
   users: User[];
@@ -13,6 +13,10 @@ interface UsersProps {
 export default function Users_({ users, actor, onChange }: UsersProps) {
   const [assigningClient, setAssigningClient] = useState<User | null>(null);
   const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createErr, setCreateErr] = useState("");
+  const blankForm = { name: "", email: "", password: "", role: "clinician" as Role, dateOfBirth: "", gender: "other" as Sex, height: "", weight: "" };
+  const [form, setForm] = useState(blankForm);
 
   const clinicians = users.filter(u => u.role === "clinician");
   const clients    = users.filter(u => u.role === "client");
@@ -61,11 +65,44 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
     }
   };
 
+  const submitCreate = async (): Promise<void> => {
+    if (!form.name.trim() || !form.email.trim() || !form.password) {
+      setCreateErr("Name, email and password are required.");
+      return;
+    }
+    setBusy(true);
+    setCreateErr("");
+    try {
+      await userApi.create({
+        email: form.email.trim(),
+        password: form.password,
+        name: form.name.trim(),
+        role: form.role,
+        dateOfBirth: form.role === "client" ? form.dateOfBirth : "",
+        gender: form.role === "client" ? form.gender : "other",
+        height: form.role === "client" ? (Number(form.height) || 0) : 0,
+        weight: form.role === "client" ? (Number(form.weight) || 0) : 0,
+      });
+      await auditApi.write({
+        actorId: actor._id, actorRole: "administrator", category: "ADMIN", level: "INFO",
+        message: `Created ${form.role} account: ${form.email.trim()}`,
+      }).catch(() => undefined);
+      await onChange();
+      setCreating(false);
+      setForm(blankForm);
+    } catch (e) {
+      setCreateErr(e instanceof Error ? e.message : "Failed to create account.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <span className="text-sm text-gray-500">{users.length} accounts across all roles</span>
         <button type="button"
+          onClick={() => { setCreateErr(""); setForm(blankForm); setCreating(true); }}
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
           <Plus size={13} /> New account
         </button>
@@ -171,6 +208,69 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
               <button type="button" onClick={() => setAssigningClient(null)}
                 className="mt-3 w-full py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition-colors">
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {creating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">New account</h3>
+              <button type="button" onClick={() => setCreating(false)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Full name"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+              <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="Email" type="email"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+              <input value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                placeholder="Password" type="password"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+              <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-indigo-500 focus:outline-none">
+                {(["client", "staff", "clinician", "developer", "administrator"] as const).map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+
+              {form.role === "client" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <input value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
+                    type="date" title="Date of birth"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+                  <select value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value as Sex }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-indigo-500 focus:outline-none">
+                    {(["male", "female", "other"] as const).map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                  <input value={form.height} onChange={e => setForm(f => ({ ...f, height: e.target.value }))}
+                    placeholder="Height (cm)" type="number"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+                  <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
+                    placeholder="Weight (kg)" type="number"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+                </div>
+              )}
+            </div>
+
+            {createErr && <p className="mt-3 text-xs text-red-600">{createErr}</p>}
+
+            <div className="mt-5 flex gap-2">
+              <button type="button" disabled={busy} onClick={() => void submitCreate()}
+                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors">
+                {busy ? "Creating…" : "Create account"}
+              </button>
+              <button type="button" onClick={() => setCreating(false)}
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition-colors">
+                Cancel
               </button>
             </div>
           </div>

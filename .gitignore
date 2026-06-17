@@ -22,3 +22,6 @@ venv
 .vscode/
 *.swp
 Thumbs.db
+
+.postman/
+postman/

@@ -37,16 +37,19 @@ const userRoutes    = require("./routes/users");
 const sessionRoutes = require("./routes/sessions");
 const miscRoutes    = require("./routes/misc");
 
-// User routes handle /api/users, /api/admin/*, /api/staff/*
+// Base user routes: /api/users/login, /me, /:id, /:id/emergency, /:clientId/measurements
 app.use("/api/users",    userRoutes);
-app.use("/api/admin",    userRoutes);
-app.use("/api/staff",    userRoutes);
 
 // Session routes
 app.use("/api/sessions", sessionRoutes);
 
 // All other routes: submissions, consent, audit, plans, schedule, questionnaires
 app.use("/api", miscRoutes);
+
+// Admin (/api/admin/users/*) and staff (/api/staff/users/*) routes are defined in the
+// user router under /admin/* and /staff/* paths. Mounted at /api AFTER misc so misc's
+// specific routes resolve first and the router's /:id catch-all only sees leftovers.
+app.use("/api", userRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

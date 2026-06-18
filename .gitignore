@@ -22,3 +22,7 @@ venv
 .vscode/
 *.swp
 Thumbs.db
+
+# Local CV validation files
+cv-service/local_validation_videos/
+cv-service/validation_results/

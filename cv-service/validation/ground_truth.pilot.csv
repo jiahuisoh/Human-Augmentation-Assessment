@@ -1,0 +1,6 @@
+session_id,environment,age_group,user_height_cm,manual_reach_cm,cv_reach_cm,notes
+sr-p01,bedroom,young_adult,,,,"Pilot 1: you at home desk; ruler at toe line; sideways webcam; fill height + manual + cv after run"
+sr-p02,bedroom,young_adult,,,,"Pilot 2: second person OR different lighting in same room; compare to sr-p01"
+sr-p03,centre,young_adult,,,,"Pilot 3: open floor / bright room (SLEC proxy); note camera height + distance"
+sr-p04,bedroom,older_adult,,,,"Pilot 4: older adult or slower reach; allow full 30s + 2s hold"
+sr-p05,centre,older_adult,,,,"Pilot 5: centre + older adult if possible; else repeat sr-p03 setup with form-focus"

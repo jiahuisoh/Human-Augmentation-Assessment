@@ -18,6 +18,12 @@ __pycache__/
 .venv
 venv
 
+# Filled MAE datasets (keep *.template.csv and ground_truth.pilot.csv in repo)
+cv-service/validation/ground_truth.csv
+cv-service/validation/synthda/sequences/*.jsonl
+!cv-service/validation/synthda/sequences/.gitkeep
+cv-service/validation/synthda/sequences/*.mp4
+
 .idea/
 .vscode/
 *.swp

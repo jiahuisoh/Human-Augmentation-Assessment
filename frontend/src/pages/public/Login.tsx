@@ -27,7 +27,7 @@ export default function Login({ onLogin, onCreateAccount }: LoginProps) {
       onLogin(user);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Login failed.";
-      setError(msg === "BACKEND_UNREACHABLE" ? "Cannot reach the server. Start the backend or use mock mode." : msg);
+      setError(msg === "BACKEND_UNREACHABLE" ? "Cannot reach the server. Make sure the backend is running and WAKE UP." : msg);
     } finally {
       setLoading(false);
     }

@@ -7,7 +7,7 @@ from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 from app.cv.types import Landmark
 from app.config.settings import settings
-log = logging.getLogger('vitalage.cv.hands')
+log = logging.getLogger('hana.cv.hands')
 
 class HAND_LANDMARK:
     WRIST = 0

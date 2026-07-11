@@ -14,10 +14,10 @@ def create_app() -> FastAPI:
     configure_logging()
     detector.init()
     hand_detector.init()
-    app = FastAPI(title='VitalAge CV Service', version='0.1.0', description='Pose detection over WebSocket. See /docs for the HTTP API.')
+    app = FastAPI(title='HANA CV Service', version='0.1.0', description='Pose detection over WebSocket. See /docs for the HTTP API.')
     app.add_middleware(CORSMiddleware, allow_origins=[settings.cors_origin], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
     app.include_router(health_router)
     app.include_router(websocket_router)
-    logging.getLogger('vitalage.cv').info('CV service ready — model=%s, cors_origin=%s', settings.pose_model_variant, settings.cors_origin)
+    logging.getLogger('hana.cv').info('CV service ready — model=%s, cors_origin=%s', settings.pose_model_variant, settings.cors_origin)
     return app
 app = create_app()

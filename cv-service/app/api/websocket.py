@@ -12,7 +12,7 @@ from app.cv.types import CompleteMessage, ErrorMessage, Landmark, ReadyMessage, 
 from app.tests.base import FinalizeContext, TestStrategy
 from app.tests.strategies import strategy_for
 router = APIRouter()
-log = logging.getLogger('vitalage.cv.ws')
+log = logging.getLogger('hana.cv.ws')
 
 def _now_ms() -> float:
     return time.monotonic() * 1000.0

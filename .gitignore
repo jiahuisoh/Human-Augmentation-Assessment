@@ -8,6 +8,9 @@ dist-ssr
 .vite
 .DS_Store
 *.log
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 .claude/
 

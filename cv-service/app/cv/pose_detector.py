@@ -7,7 +7,7 @@ from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 from app.cv.types import Landmark
 from app.config.settings import settings
-log = logging.getLogger('vitalage.cv.detector')
+log = logging.getLogger('hana.cv.detector')
 
 class PoseDetector:
 

@@ -192,26 +192,11 @@ class RestQuestionnaireApi implements IQuestionnaireApi {
 }
 
 
-import {
-  MockAuditApi, MockConsentApi, MockMeasurementApi,
-  MockPlanApi, MockQuestionnaireApi, MockScheduleApi, MockSessionApi,
-  MockUserApi,
-} from "./mockApi";
-
-const USE_MOCK = (import.meta.env.VITE_USE_MOCK_API ?? "true") === "true";
-
-export const userApi:      IUserApi     = USE_MOCK ? new MockUserApi()     : new RestUserApi(BASE_URL);
-export const sessionApi:   ISessionApi  = USE_MOCK ? new MockSessionApi()  : new RestSessionApi(BASE_URL);
-export const scheduleApi:  IScheduleApi = USE_MOCK ? new MockScheduleApi() : new RestScheduleApi(BASE_URL);
-export const consentApi:   IConsentApi  = USE_MOCK ? new MockConsentApi()  : new RestConsentApi(BASE_URL);
-export const auditApi:     IAuditApi    = USE_MOCK ? new MockAuditApi()    : new RestAuditApi(BASE_URL);
-export const planApi:      IPlanApi     = USE_MOCK ? new MockPlanApi()     : new RestPlanApi(BASE_URL);
-export const measurementApi:   IMeasurementApi   = USE_MOCK ? new MockMeasurementApi()   : new RestMeasurementApi(BASE_URL);
-export const questionnaireApi: IQuestionnaireApi = USE_MOCK ? new MockQuestionnaireApi() : new RestQuestionnaireApi(BASE_URL);
-
-if (typeof window !== "undefined") {
-  console.info(
-    `%c[HANA API] ${USE_MOCK ? "Using LOCAL MOCK backend" : "Using REST backend at " + BASE_URL}`,
-    "color:#7c3aed;font-weight:bold",
-  );
-}
+export const userApi:      IUserApi     = new RestUserApi(BASE_URL);
+export const sessionApi:   ISessionApi  = new RestSessionApi(BASE_URL);
+export const scheduleApi:  IScheduleApi = new RestScheduleApi(BASE_URL);
+export const consentApi:   IConsentApi  = new RestConsentApi(BASE_URL);
+export const auditApi:     IAuditApi    = new RestAuditApi(BASE_URL);
+export const planApi:      IPlanApi     = new RestPlanApi(BASE_URL);
+export const measurementApi:   IMeasurementApi   = new RestMeasurementApi(BASE_URL);
+export const questionnaireApi: IQuestionnaireApi = new RestQuestionnaireApi(BASE_URL);

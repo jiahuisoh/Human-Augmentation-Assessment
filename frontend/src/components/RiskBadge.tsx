@@ -15,7 +15,7 @@ const STYLES: Record<RiskLevel, { bg: string; text: string }> = {
 export default function RiskBadge({ level, className }: RiskBadgeProps) {
   const s = STYLES[level];
   return (
-    <span className={cls("inline-flex items-center px-3 py-1 rounded-full text-sm font-bold", s.bg, s.text, className)}>
+    <span className={cls("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold", s.bg, s.text, className)}>
       {level.toUpperCase()}
     </span>
   );

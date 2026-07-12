@@ -21,6 +21,15 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
   const clinicians = users.filter(u => u.role === "clinician");
   const clients    = users.filter(u => u.role === "client");
 
+  // See which clinician (by name) an existing client is currently assigned to.
+  const clinicianNamesFor = (clientId: string): string[] =>
+    clinicians.filter(cl => (cl.assignedClientIds ?? []).includes(clientId)).map(cl => cl.name);
+
+  // Active (non-suspended) clients with no clinician yet; surfaced in the Clients header.
+  const unassignedClientCount = clients.filter(
+    c => c.verificationStatus !== "suspended" && clinicianNamesFor(c._id).length === 0,
+  ).length;
+
   const ROLE_GROUPS: ReadonlyArray<{ role: Role; label: string; text: string; bg: string; }> = [
     { role: "client",        label: "Clients",        text: "text-blue-700",   bg: "bg-blue-50"  },
     { role: "staff",         label: "Staff",          text: "text-teal-700",   bg: "bg-teal-50" },
@@ -104,6 +113,14 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
             <div className={cls("flex items-center gap-2 px-4 py-2.5 border-b border-gray-200", bg)}>
               <span className={cls("text-sm font-semibold", text)}>{label}</span>
               <span className="text-xs text-gray-400">· {group.length} Account{group.length !== 1 ? "s" : ""}</span>
+              {role === "client" && (
+                <span className="text-xs">
+                  <span className="text-gray-400">· </span>
+                  {unassignedClientCount > 0
+                    ? <span className="font-semibold text-amber-600">{unassignedClientCount} Unassigned Client{unassignedClientCount !== 1 ? "s" : ""}</span>
+                    : <span className="font-semibold text-green-600">All Clients Assigned</span>}
+                </span>
+              )}
             </div>
             <table className="w-full text-xs table-fixed">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -117,7 +134,10 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                 ))}</tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {group.map(u => (
+                {group.map(u => {
+                  const assignedTo = u.role === "client" ? clinicianNamesFor(u._id) : [];
+                  const isAssigned = assignedTo.length > 0;
+                  return (
                   <tr key={u._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
                     <td className="px-4 py-3 text-gray-500 truncate">{u.email}</td>
@@ -130,10 +150,16 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                     <td className="px-4 py-3">
                       <div className="flex gap-2 items-center">
                         {u.role === "client" && u.verificationStatus !== "suspended" && (
-                          <button type="button" title="Assign to clinician"
+                          <button type="button"
+                            title={isAssigned ? `Assigned to ${assignedTo.join(", ")}` : "Not Assigned to any clinician: click to assign"}
                             onClick={() => setAssigningClient(u)}
-                            className="flex items-center gap-1 px-2 py-1 rounded bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-semibold transition-colors">
-                            <UserCheck size={12} /> Assign
+                            className={cls(
+                              "flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-colors",
+                              isAssigned
+                                ? "bg-green-50 hover:bg-green-100 text-green-700"
+                                : "bg-amber-50 hover:bg-amber-100 text-amber-700",
+                            )}>
+                            {isAssigned ? <><Check size={12} /> Assigned</> : <><UserCheck size={12} /> Assign</>}
                           </button>
                         )}
                         <button type="button" title="Suspend" onClick={() => void suspend(u)}
@@ -147,7 +173,8 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -164,6 +191,13 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                 <p className="text-xs text-gray-500 mt-0.5">
                   Client: <span className="text-gray-900 font-medium">{assigningClient.name}</span>
                 </p>
+                {clinicianNamesFor(assigningClient._id).length > 0 ? (
+                  <p className="text-xs mt-1 font-medium text-green-600 flex items-center gap-1">
+                    <Check size={12} /> Assigned to {clinicianNamesFor(assigningClient._id).join(", ")}
+                  </p>
+                ) : (
+                  <p className="text-xs mt-1 font-medium text-amber-600">Not Assigned</p>
+                )}
               </div>
               <button type="button" onClick={() => setAssigningClient(null)}
                 className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">

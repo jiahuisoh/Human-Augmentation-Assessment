@@ -125,17 +125,22 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
               <span className={cls("text-sm font-semibold", text)}>{label}</span>
               <span className="text-xs text-gray-400">· {group.length} Account{group.length !== 1 ? "s" : ""}</span>
             </div>
-            <table className="w-full text-xs">
+            <table className="w-full text-xs table-fixed">
               <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>{["Name", "Email", "Verification", ""].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                <tr>{([
+                  ["Name", "w-[28%]"],
+                  ["Email", "w-[28%]"],
+                  ["Verification", "w-[28%]"],
+                  ["", "w-[16%]"],
+                ] as const).map(([h, w]) => (
+                  <th key={h} className={cls("text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider", w)}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {group.map(u => (
                   <tr key={u._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{u.email}</td>
+                    <td className="px-4 py-3 text-gray-500 truncate">{u.email}</td>
                     <td className="px-4 py-3">
                       <select value={u.verificationStatus} onChange={e => void setStatus(u, e.target.value as VerificationStatus)}
                         className="bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800">
@@ -144,7 +149,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 items-center">
-                        {u.role === "client" && (
+                        {u.role === "client" && u.verificationStatus !== "suspended" && (
                           <button type="button" title="Assign to clinician"
                             onClick={() => setAssigningClient(u)}
                             className="flex items-center gap-1 px-2 py-1 rounded bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-semibold transition-colors">
@@ -199,7 +204,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                         <div className="text-sm font-medium text-gray-900">{cl.name}</div>
                         <div className="text-xs text-gray-500">{cl.email}</div>
                         <div className="text-xs text-gray-500 mt-0.5">
-                          {(cl.assignedClientIds ?? []).length} client(s) assigned
+                          {(cl.assignedClientIds ?? []).filter(id => clients.some(c => c._id === id)).length} client(s) assigned
                         </div>
                       </div>
                       <button type="button" disabled={busy}

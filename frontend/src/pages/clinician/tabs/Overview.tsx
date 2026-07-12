@@ -120,7 +120,7 @@ export default function Overview({ patients, onOpen }: OverviewProps) {
       <div className="bg-white rounded-2xl border border-gray-200/70 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
           <ClipboardList size={15} className="text-gray-400" />
-          <h3 className="text-sm font-semibold text-gray-900">Recent assessments</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Recent Assessments</h3>
         </div>
         {recent.length === 0 ? (
           <div className="px-5 py-8 text-center text-sm text-gray-400">No assessments recorded yet.</div>

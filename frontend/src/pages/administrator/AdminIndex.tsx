@@ -27,11 +27,11 @@ type TabId =
 
 const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
   { id: "overview",   label: "Overview",        Icon: LayoutDashboard },
-  { id: "users",      label: "User management", Icon: Users           },
-  { id: "records",    label: "Health records",  Icon: Shield          },
-  { id: "audit",      label: "Audit trail",     Icon: Terminal        },
+  { id: "users",      label: "User Management", Icon: Users           },
+  { id: "records",    label: "Health Records",  Icon: Shield          },
+  { id: "audit",      label: "Audit Trail",     Icon: Terminal        },
   { id: "config",     label: "Configuration",   Icon: Settings        },
-  { id: "cv",         label: "CV (authorised)", Icon: Camera          },
+  { id: "cv",         label: "CV (Authorised)", Icon: Camera          },
 ];
 
 interface AdministratorProps {

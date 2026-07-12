@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Users, Activity, FileText, Shield,
 } from "lucide-react";
@@ -12,7 +13,21 @@ interface OverviewProps {
 const byRole = (users: User[], r: Role): number => users.filter(u => u.role === r).length;
 
 export default function Overview({ users }: OverviewProps) {
-  const unverified = users.filter(u => u.role === "client" && u.verificationStatus !== "verified").length;
+  const unverified = users.filter(u => u.role === "client" && u.verificationStatus !== "verified" && u.verificationStatus !== "suspended").length;
+
+  const [health, setHealth] = useState<{ api: string; cv: string }>({ api: "checking…", cv: "checking…" });
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:4502";
+    fetch(`${apiBase}/health`)
+      .then(r => setHealth(h => ({ ...h, api: r.ok ? "Connected" : "Error" })))
+      .catch(() => setHealth(h => ({ ...h, api: "Unreachable" })));
+    const cvBase = (import.meta.env.VITE_CV_WS_URL || "ws://localhost:4501").replace(/^ws/, "http");
+    fetch(`${cvBase}/health`)
+      .then(r => setHealth(h => ({ ...h, cv: r.ok ? "Connected" : "Error" })))
+      .catch(() => setHealth(h => ({ ...h, cv: "Unreachable" })));
+  }, []);
+  const statusCol = (v: string): string =>
+    v === "Connected" ? "text-emerald-600" : v.startsWith("checking") ? "text-gray-400" : "text-red-600";
 
   return (
     <>
@@ -25,15 +40,14 @@ export default function Overview({ users }: OverviewProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <div className="text-sm font-semibold text-gray-900 mb-3">System health</div>
+          <div className="text-sm font-semibold text-gray-900 mb-3">System health <span className="text-xs font-normal text-gray-400">· live</span></div>
           {([
-            ["API uptime",       "99.9%",     "text-emerald-600"],
-            ["CV service",        "WARN",      "text-amber-600"],
-            ["MongoDB",           "Connected", "text-emerald-600"],
-          ] as const).map(([l, v, col]) => (
+            ["Backend API", health.api],
+            ["CV service",  health.cv],
+          ] as const).map(([l, v]) => (
             <div key={l} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
               <span className="text-xs text-gray-500">{l}</span>
-              <span className={cls("text-xs font-mono font-semibold", col)}>{v}</span>
+              <span className={cls("text-xs font-mono font-semibold", statusCol(v))}>{v}</span>
             </div>
           ))}
         </div>

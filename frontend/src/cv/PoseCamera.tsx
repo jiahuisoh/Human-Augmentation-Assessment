@@ -16,7 +16,7 @@ interface PoseCameraProps {
 }
 
 const PoseCamera = forwardRef<PoseCameraHandle, PoseCameraProps>(function PoseCamera(
-  { privacyText = "Camera processed on this device only. No video is uploaded or recorded.", overlayMessage, overlayTone = "info" },
+  { privacyText = "Camera frames stream to the HANA CV service for analysis. No video is stored or recorded.", overlayMessage, overlayTone = "info" },
   ref,
 ) {
   const videoRef  = useRef<HTMLVideoElement>(null);

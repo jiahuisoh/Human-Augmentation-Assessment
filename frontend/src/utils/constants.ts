@@ -85,5 +85,3 @@ export const EXERCISES: readonly ExerciseDefinition[] = [
   { id: 4, name: "Shoulder Rolls",    detail: "2 min each direction",       category: "Flexibility", duration: "4 min",  Icon: RotateCw   },
   { id: 5, name: "Brisk Walk",        detail: "30 minutes at a good pace", category: "Cardio",      duration: "30 min", Icon: Footprints },
 ];
-
-export const LIVENESS_THRESHOLD = 0.70;

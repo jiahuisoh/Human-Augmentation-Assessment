@@ -47,19 +47,19 @@ export default function Records({ user: _user, consents, sessions, onConsentChan
             </div>
           );
         })}
-        <p className="mt-3 text-xs text-gray-400">All consent events are recorded on the blockchain. Raw health data stays off-chain.</p>
+        <p className="mt-3 text-xs text-gray-400">All consent changes are logged and time-stamped. Your raw health data is never shared without your consent.</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-2">My verified records</h3>
-        <p className="text-xs text-gray-400 mb-4">Raw health data is stored securely off-chain. Only hashes and proofs are on the blockchain.</p>
+        <h3 className="text-base font-semibold text-gray-900 mb-2">My records</h3>
+        <p className="text-xs text-gray-400 mb-4">Your assessment results are stored securely. Tamper-evident record proofs are planned but not yet issued.</p>
         {sessions.slice(0, 5).map(s => (
           <div key={s._id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
             <div>
               <div className="text-sm text-gray-800">{labelForTest(s.testId)} — {new Date(s.createdAt).toLocaleDateString("en-SG")}</div>
-              <div className="text-xs font-mono text-gray-400">{s.recordHash ?? "—"}</div>
+              {s.recordHash && <div className="text-xs font-mono text-gray-400">{s.recordHash}</div>}
             </div>
-            <span className="bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full text-xs font-semibold">Verified</span>
+            <span className="bg-gray-50 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full text-xs font-semibold">Recorded</span>
           </div>
         ))}
       </div>

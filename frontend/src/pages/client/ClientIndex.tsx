@@ -74,10 +74,15 @@ export default function Client({ user, onSignOut }: ClientProps) {
   const handleSelfTestComplete = async (outcome: TestOutcomeWire): Promise<void> => {
     if (!activeCv) return;
     try {
-      // Backend gates client-initiated saves on assessment_data consent (PDPA).
-      // Submitting a self-administered test is the affirmative consent action.
-      if (!consents.some(c => c.scope === "assessment_data" && c.granted)) {
+      const hasConsent = consents.some(c => c.scope === "assessment_data" && c.granted);
+      if (!hasConsent) {
+        const agreed = window.confirm(
+          "Save this assessment and share it with your clinician?\n\n" +
+          "This records your consent to store your assessment data. You can withdraw it later under Records.",
+        );
+        if (!agreed) return;
         await consentApi.set(user._id, "assessment_data", true);
+        setConsents(await consentApi.historyFor(user._id));
       }
       const saved = await sessionApi.save({
         clientId: user._id, conductedBy: user._id, testId: activeCv.testId,
@@ -85,13 +90,12 @@ export default function Client({ user, onSignOut }: ClientProps) {
         classification: outcome.classification, riskLevel: outcome.risk_level,
         interpretation: outcome.interpretation,
         normLow: outcome.norm_low, normHigh: outcome.norm_high,
-        terminatedEarly: outcome.terminated_early, livenessScore: outcome.liveness_score,
-        recordHash: "0x" + Math.random().toString(16).slice(2, 18),
+        terminatedEarly: outcome.terminated_early,
       });
       await auditApi.write({
         actorId: user._id, actorRole: "client", category: "CV", level: "INFO",
         message: `Client self-administered ${activeCv.testId} at home`,
-        context: { sessionId: saved._id, liveness: outcome.liveness_score, selfAdministered: true },
+        context: { sessionId: saved._id, selfAdministered: true },
       });
       setSessions(await sessionApi.listForClient(user._id));
     } catch (err) {
@@ -147,7 +151,7 @@ export default function Client({ user, onSignOut }: ClientProps) {
       <div className="flex-1 px-4 py-5 space-y-4 max-w-3xl w-full mx-auto">
         {user.verificationStatus !== "verified" && <VerificationBanner status={user.verificationStatus} />}
 
-        {tab === "home"             && <Home            user={user} sessions={sessions} onStart={() => setTab("self_test")} />}
+        {tab === "home"             && <Home            user={user} sessions={sessions} onStart={() => setTab("self_test")} onNavigate={(t) => setTab(t as TabId)} />}
         {tab === "assessments"      && <Assessments     sessions={sessions} />}
         {tab === "self_test"        && <SelfTest        onStart={testId => setActiveCv({ testId })} />}
         {tab === "questionnaire"    && <Questionnaire   user={user} />}

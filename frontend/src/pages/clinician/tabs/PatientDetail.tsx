@@ -37,8 +37,7 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
                   {TESTS.find(t => t.id === s.testId)?.name ?? s.testId}
                 </div>
                 <div className="text-xs text-gray-400">
-                  {new Date(s.createdAt).toLocaleDateString("en-SG")} ·
-                  liveness {Math.round((s.livenessScore ?? 0) * 100)}%
+                  {new Date(s.createdAt).toLocaleDateString("en-SG")}
                   {s.overrides && s.overrides.length > 0 ? ` · ${s.overrides.length} override(s)` : ""}
                 </div>
               </div>

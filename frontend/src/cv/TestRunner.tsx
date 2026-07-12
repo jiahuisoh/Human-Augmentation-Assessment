@@ -7,7 +7,6 @@ import PoseCamera, { type PoseCameraHandle } from "./PoseCamera";
 import type { Detection, Phase, TestOutcomeWire, UpdateMessage } from "./wireTypes";
 import type { Sex, TestId } from "../types";
 import { TESTS } from "../utils/constants";
-import LivenessDetection from "../components/LivenessDetection";
 
 function calibrationPromptFor(testId: TestId): string {
   return TESTS.find(t => t.id === testId)?.calibrationPrompt
@@ -189,11 +188,6 @@ export default function TestRunner({
               </div>
             </div>
           </div>
-          {update.liveness_rolling !== undefined && (
-            <div className="px-4 py-2 bg-gray-900">
-              <LivenessDetection score={update.liveness_rolling} showDetails />
-            </div>
-          )}
         </>
       )}
 

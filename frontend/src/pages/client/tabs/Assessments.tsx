@@ -13,8 +13,8 @@ export default function Assessments({ sessions }: AssessmentsProps) {
       <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 text-sm text-violet-800 flex items-start gap-2">
         <Eye size={15} className="text-violet-500 flex-shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          All assessment results are conducted and reviewed by a clinician during your
-          clinic visits. Your latest signed-off results appear below.
+          Results you record at home appear here for your reference. Your clinician reviews
+          and confirms assessments during your clinic visits.
         </p>
       </div>
 

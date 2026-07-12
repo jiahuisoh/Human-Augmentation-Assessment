@@ -65,13 +65,12 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
       classification: outcome.classification, riskLevel: outcome.risk_level,
       interpretation: outcome.interpretation,
       normLow: outcome.norm_low, normHigh: outcome.norm_high,
-      terminatedEarly: outcome.terminated_early, livenessScore: outcome.liveness_score,
-      recordHash: "0x" + Math.random().toString(16).slice(2, 18),
+      terminatedEarly: outcome.terminated_early,
     });
     await auditApi.write({
       actorId: user._id, actorRole: "administrator", category: "CV", level: "WARN",
       message: `Administrator conducted CV assessment (${activeCv.testId}) under clinical authorisation`,
-      context: { clientId: activeCv.clientId, liveness: outcome.liveness_score },
+      context: { clientId: activeCv.clientId },
     });
     setActiveCv(null);
   };

@@ -30,7 +30,7 @@ function LiveLaunch({ patients, onLaunchCV }: LiveLaunchProps) {
         <Camera size={15} className="text-violet-600" /> Conduct a live assessment
       </h3>
       <p className="text-xs text-gray-400 mb-3">
-        For in-clinic sessions. Frames stream privately to the HANA CV service; sessions are recorded with timestamp and liveness score.
+        For in-clinic sessions. Frames stream to the HANA CV service for analysis; results are recorded with a timestamp.
       </p>
       <div className="space-y-3">
         {patients.map(p => (

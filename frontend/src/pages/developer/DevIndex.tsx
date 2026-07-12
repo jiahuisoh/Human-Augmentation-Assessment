@@ -39,7 +39,6 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
       context: {
         sandbox: true,
         reps: outcome.reps, measurement: outcome.measurement,
-        liveness: outcome.liveness_score,
       },
     });
     setLogs(await auditApi.list(100));

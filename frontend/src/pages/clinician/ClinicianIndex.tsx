@@ -42,21 +42,31 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
   const [search, setSearch]           = useState("");
   const [activeCv, setActiveCv]       = useState<{ clientId: string; testId: TestId } | null>(null);
 
+  const hour = new Date().getHours();
+  const greetWord = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   useEffect(() => {
     void loadPatients();
   }, []);
 
   async function loadPatients(): Promise<void> {
-    const ids = user.assignedClientIds ?? [];
-    const loaded: PatientView[] = await Promise.all(ids.map(async id => {
-      const [u, s, p] = await Promise.all([
-        userApi.getById(id),
-        sessionApi.listForClient(id),
-        planApi.forClient(id),
-      ]);
-      return { user: u, sessions: s, plan: p };
+    let ids = user.assignedClientIds ?? [];
+    try {
+      ids = (await userApi.getCurrent()).assignedClientIds ?? ids;
+    } catch {}
+    const loaded = await Promise.all(ids.map(async id => {
+      try {
+        const [u, s, p] = await Promise.all([
+          userApi.getById(id),
+          sessionApi.listForClient(id),
+          planApi.forClient(id),
+        ]);
+        return { user: u, sessions: s, plan: p } as PatientView;
+      } catch {
+        return null;
+      }
     }));
-    setPatients(loaded);
+    setPatients(loaded.filter((p): p is PatientView => p !== null));
   }
 
   const handleCvComplete = async (outcome: TestOutcomeWire): Promise<void> => {
@@ -67,13 +77,12 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
       classification: outcome.classification, riskLevel: outcome.risk_level,
       interpretation: outcome.interpretation,
       normLow: outcome.norm_low, normHigh: outcome.norm_high,
-      terminatedEarly: outcome.terminated_early, livenessScore: outcome.liveness_score,
-      recordHash: "0x" + Math.random().toString(16).slice(2, 18),
+      terminatedEarly: outcome.terminated_early,
     });
     await auditApi.write({
       actorId: user._id, actorRole: "clinician", category: "CV", level: "INFO",
       message: `Clinician conducted ${activeCv.testId} for client ${activeCv.clientId}`,
-      context: { sessionId: saved._id, liveness: outcome.liveness_score },
+      context: { sessionId: saved._id },
     });
 
     await loadPatients();
@@ -124,7 +133,7 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
         </div>
       ) : (
         <div>
-          <div className="text-base font-semibold text-gray-900">Good morning, Dr {firstNameOf(user.name)}</div>
+          <div className="text-base font-semibold text-gray-900">{greetWord}, Dr {firstNameOf(user.name)}</div>
           <div className="text-xs text-gray-400">You have {patients.length} assigned patients</div>
         </div>
       )}

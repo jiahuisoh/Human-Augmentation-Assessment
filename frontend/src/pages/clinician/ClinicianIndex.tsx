@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
 import {
-  auditApi, planApi, sessionApi, userApi,
+  planApi, sessionApi, userApi,
 } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
@@ -71,7 +71,7 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
 
   const handleCvComplete = async (outcome: TestOutcomeWire): Promise<void> => {
     if (!activeCv) return;
-    const saved = await sessionApi.save({
+    await sessionApi.save({
       clientId: activeCv.clientId, conductedBy: user._id, testId: activeCv.testId,
       reps: outcome.reps, measurement: outcome.measurement,
       classification: outcome.classification, riskLevel: outcome.risk_level,
@@ -79,28 +79,18 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
       normLow: outcome.norm_low, normHigh: outcome.norm_high,
       terminatedEarly: outcome.terminated_early,
     });
-    await auditApi.write({
-      actorId: user._id, actorRole: "clinician", category: "CV", level: "INFO",
-      message: `Clinician conducted ${activeCv.testId} for client ${activeCv.clientId}`,
-      context: { sessionId: saved._id },
-    });
 
     await loadPatients();
     setActiveCv(null);
   };
 
   const handleOverride = async (sessionId: string, reason: string, original: number, next: number): Promise<void> => {
-    await sessionApi.override(sessionId, user._id, "clinician", reason, original, next);
-    await auditApi.write({
-      actorId: user._id, actorRole: "clinician", category: "ASSESSMENT", level: "WARN",
-      message: `Score override on session ${sessionId} — reason: ${reason}`,
-    });
+    await sessionApi.override(sessionId, reason, original, next);
     await loadPatients();
   };
 
   const handleSavePlan = async (clientId: string, items: InterventionPlanItem[]): Promise<void> => {
     const plan = await planApi.save({ clientId, authoredBy: user._id, items });
-    await auditApi.write({ actorId: user._id, actorRole: "clinician", category: "ASSESSMENT", level: "INFO", message: `Intervention plan saved for client ${clientId}` });
     setPatients(prev => prev.map(p => p.user._id === clientId ? { ...p, plan } : p));
   };
 

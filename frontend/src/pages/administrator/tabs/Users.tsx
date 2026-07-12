@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2, UserX, UserCheck, X, Check } from "lucide-react";
 import { cls } from "../../../utils/helpers";
-import { auditApi, userApi } from "../../../utils/api";
+import { userApi } from "../../../utils/api";
 import type { Role, Sex, User, VerificationStatus } from "../../../types";
 
 interface UsersProps {
@@ -32,29 +32,17 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
 
   const setStatus = async (u: User, status: VerificationStatus): Promise<void> => {
     await userApi.setStatus(u._id, status);
-    await auditApi.write({
-      actorId: actor._id, actorRole: "administrator", category: "ADMIN", level: "INFO",
-      message: `User ${u._id} status set to ${status}`,
-    });
     await onChange();
   };
 
   const suspend = async (u: User): Promise<void> => {
     await userApi.setStatus(u._id, "suspended");
-    await auditApi.write({
-      actorId: actor._id, actorRole: "administrator", category: "ADMIN", level: "WARN",
-      message: `User ${u._id} suspended`,
-    });
     await onChange();
   };
 
   const remove = async (u: User): Promise<void> => {
     if (!confirm("Delete user permanently?")) return;
     await userApi.delete(u._id);
-    await auditApi.write({
-      actorId: actor._id, actorRole: "administrator", category: "ADMIN", level: "ERROR",
-      message: `User ${u._id} deleted`,
-    });
     await onChange();
   };
 
@@ -62,10 +50,6 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
     setBusy(true);
     try {
       await userApi.assignClient(clinician._id, clientId, !currentlyAssigned);
-      await auditApi.write({
-        actorId: actor._id, actorRole: "administrator", category: "ADMIN", level: "INFO",
-        message: `Client ${clientId} ${!currentlyAssigned ? "assigned to" : "unassigned from"} clinician ${clinician._id}`,
-      });
       await onChange();
       // keep modal open but re-sync the client reference from the refreshed users list
       setAssigningClient(prev => prev ? (users.find(u => u._id === prev._id) ?? prev) : null);
@@ -92,10 +76,6 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
         height: form.role === "client" ? (Number(form.height) || 0) : 0,
         weight: form.role === "client" ? (Number(form.weight) || 0) : 0,
       });
-      await auditApi.write({
-        actorId: actor._id, actorRole: "administrator", category: "ADMIN", level: "INFO",
-        message: `Created ${form.role} Account: ${form.email.trim()}`,
-      }).catch(() => undefined);
       await onChange();
       setCreating(false);
       setForm(blankForm);

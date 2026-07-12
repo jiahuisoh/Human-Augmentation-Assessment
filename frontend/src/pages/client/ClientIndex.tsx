@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { cls, firstNameOf, initialsOf } from "../../utils/helpers";
 import {
-  auditApi, consentApi, planApi, sessionApi,
+  consentApi, planApi, sessionApi,
 } from "../../utils/api";
 import VerificationBanner from "../../components/VerificationBanner";
 import TestRunner from "../../cv/TestRunner";
@@ -84,18 +84,13 @@ export default function Client({ user, onSignOut }: ClientProps) {
         await consentApi.set(user._id, "assessment_data", true);
         setConsents(await consentApi.historyFor(user._id));
       }
-      const saved = await sessionApi.save({
+      await sessionApi.save({
         clientId: user._id, conductedBy: user._id, testId: activeCv.testId,
         reps: outcome.reps, measurement: outcome.measurement,
         classification: outcome.classification, riskLevel: outcome.risk_level,
         interpretation: outcome.interpretation,
         normLow: outcome.norm_low, normHigh: outcome.norm_high,
         terminatedEarly: outcome.terminated_early,
-      });
-      await auditApi.write({
-        actorId: user._id, actorRole: "client", category: "CV", level: "INFO",
-        message: `Client self-administered ${activeCv.testId} at home`,
-        context: { sessionId: saved._id, selfAdministered: true },
       });
       setSessions(await sessionApi.listForClient(user._id));
     } catch (err) {

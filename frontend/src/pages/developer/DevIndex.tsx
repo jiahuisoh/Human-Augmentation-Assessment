@@ -6,7 +6,6 @@ import { auditApi } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
 import type { AuditLog, TestId, User } from "../../types";
-import type { TestOutcomeWire } from "../../cv/wireTypes";
 
 import CVSandbox  from "./tabs/CVSandbox";
 import Logs       from "./tabs/Logs";
@@ -32,15 +31,7 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
     void auditApi.list(100).then(setLogs);
   }, []);
 
-  const handleCvComplete = async (outcome: TestOutcomeWire): Promise<void> => {
-    await auditApi.write({
-      actorId: user._id, actorRole: "developer", category: "CV", level: "INFO",
-      message: `Developer CV sandbox run completed (${cvTest})`,
-      context: {
-        sandbox: true,
-        reps: outcome.reps, measurement: outcome.measurement,
-      },
-    });
+  const handleCvComplete = async (): Promise<void> => {
     setLogs(await auditApi.list(100));
     setCvTest(null);
   };

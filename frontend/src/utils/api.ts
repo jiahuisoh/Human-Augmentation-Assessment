@@ -68,7 +68,7 @@ export interface IUserApi {
 export interface ISessionApi {
   save(session: Omit<AssessmentSession, "_id" | "createdAt">): Promise<AssessmentSession>;
   listForClient(clientId: string): Promise<AssessmentSession[]>;
-  override(id: string, byUserId: string, byRole: Role, reason: string, originalScore: number, newScore: number): Promise<AssessmentSession>;
+  override(id: string, reason: string, originalScore: number, newScore: number): Promise<AssessmentSession>;
 }
 
 export interface IScheduleApi {
@@ -83,7 +83,6 @@ export interface IConsentApi {
 
 export interface IAuditApi {
   list(limit?: number): Promise<AuditLog[]>;
-  write(payload: Omit<AuditLog, "_id" | "createdAt">): Promise<AuditLog>;
 }
 
 export interface IPlanApi {
@@ -142,10 +141,10 @@ class RestSessionApi implements ISessionApi {
   listForClient(clientId: string) {
     return apiFetch<AssessmentSession[]>(`${this.base}/api/sessions/client/${clientId}`);
   }
-  override(id: string, byUserId: string, byRole: Role, reason: string, originalScore: number, newScore: number) {
+  override(id: string, reason: string, originalScore: number, newScore: number) {
     return apiFetch<AssessmentSession>(`${this.base}/api/sessions/${id}/override`, {
       method: "PATCH",
-      body: { byUserId, byRole, reason, originalScore, newScore },
+      body: { reason, originalScore, newScore },
     });
   }
 }
@@ -167,7 +166,6 @@ class RestConsentApi implements IConsentApi {
 class RestAuditApi implements IAuditApi {
   constructor(private base: string) {}
   list(limit = 200) { return apiFetch<AuditLog[]>(`${this.base}/api/audit?limit=${limit}`); }
-  write(p: Omit<AuditLog, "_id" | "createdAt">) { return apiFetch<AuditLog>(`${this.base}/api/audit`, { method: "POST", body: p }); }
 }
 
 class RestPlanApi implements IPlanApi {

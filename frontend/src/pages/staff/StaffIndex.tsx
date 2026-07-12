@@ -3,7 +3,7 @@ import {
   Users, Calendar, CheckCircle, ShieldCheck,
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
-import { auditApi, scheduleApi, userApi } from "../../utils/api";
+import { scheduleApi, userApi } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import type { ScheduleEntry, User } from "../../types";
 
@@ -41,10 +41,6 @@ export default function Staff({ user, onSignOut }: StaffProps) {
   const markAttendance = async (id: string, present: boolean): Promise<void> => {
     const updated = await scheduleApi.recordAttendance(id, present);
     setSchedule(prev => prev.map(s => s._id === id ? updated : s));
-    await auditApi.write({
-      actorId: user._id, actorRole: "staff", category: "ASSESSMENT", level: "INFO",
-      message: `Attendance recorded — ${updated.clientName}: ${present ? "present" : "absent"}`,
-    });
   };
 
   const verifyNric = async (clientId: string, last4: string): Promise<void> => {
@@ -54,10 +50,6 @@ export default function Staff({ user, onSignOut }: StaffProps) {
         ? { ...s, nricVerified: true, status: s.status === "pending_nric" ? "scheduled" : s.status }
         : s,
     ));
-    await auditApi.write({
-      actorId: user._id, actorRole: "staff", category: "AUTH", level: "INFO",
-      message: `NRIC verified for client ${clientId} (last 4: ${last4.slice(-4)})`,
-    });
   };
 
   return (

@@ -81,12 +81,16 @@ router.get("/ai/client/:clientId", verifyJWT, requireRole("clinician", "administ
 // POST /api/ai/:id/approve
 router.post("/ai/:id/approve", verifyJWT, requireRole("clinician", "administrator"), async (req, res) => {
   try {
-    const rec = await AIRecommendation.findByIdAndUpdate(req.params.id, {
+    const rec = await AIRecommendation.findById(req.params.id);
+    if (!rec) return res.status(404).json({ error: "Recommendation not found" });
+    if (!canAccessClient(req.user, rec.clientId)) {
+      return res.status(403).json({ error: "You do not have access to this client's data." });
+    }
+    const updated = await AIRecommendation.findByIdAndUpdate(req.params.id, {
       status: "approved", reviewedBy: req.user.id,
     }, { new: true });
-    if (!rec) return res.status(404).json({ error: "Recommendation not found" });
     await writeAudit(req, "AI", `AI recommendation approved`, { recId: rec._id });
-    res.json(rec);
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -97,12 +101,16 @@ router.post("/ai/:id/override", verifyJWT, requireRole("clinician", "administrat
   try {
     const { reason } = req.body;
     if (!reason) return res.status(400).json({ error: "reason required for override" });
-    const rec = await AIRecommendation.findByIdAndUpdate(req.params.id, {
+    const rec = await AIRecommendation.findById(req.params.id);
+    if (!rec) return res.status(404).json({ error: "Recommendation not found" });
+    if (!canAccessClient(req.user, rec.clientId)) {
+      return res.status(403).json({ error: "You do not have access to this client's data." });
+    }
+    const updated = await AIRecommendation.findByIdAndUpdate(req.params.id, {
       status: "overridden", reviewedBy: req.user.id, overrideReason: reason,
     }, { new: true });
-    if (!rec) return res.status(404).json({ error: "Recommendation not found" });
     await writeAudit(req, "AI", `AI recommendation overridden`, { recId: rec._id, reason }, "WARN");
-    res.json(rec);
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

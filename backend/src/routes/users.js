@@ -37,6 +37,10 @@ router.post("/login", async (req, res) => {
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
+    if (user.verificationStatus === "suspended") {
+      await writeAudit({ user: { id: user._id, role: user.role } }, "AUTH", `Suspended account login blocked: ${email}`, { userId: user._id }, "WARN");
+      return res.status(403).json({ error: "Your account has been suspended. Please contact staff or administrator if you believe this is an error." });
+    }
     const token = signToken(user);
     await writeAudit({ user: { id: user._id, role: user.role } }, "AUTH", `User logged in: ${email}`, { userId: user._id });
     res.json({ user, token });
@@ -149,6 +153,12 @@ router.patch("/admin/users/:id/status", verifyJWT, requireRole("administrator"),
     const { verificationStatus } = req.body;
     const user = await User.findByIdAndUpdate(req.params.id, { verificationStatus }, { new: true });
     if (!user) return res.status(404).json({ error: "User not found" });
+    if (verificationStatus === "suspended") {
+      await User.updateMany(
+        { assignedClientIds: req.params.id },
+        { $pull: { assignedClientIds: req.params.id } }
+      );
+    }
     await writeAudit(req, "ADMIN", `User status updated to ${verificationStatus}`, { targetId: req.params.id });
     res.json(user);
   } catch (err) {
@@ -163,6 +173,13 @@ router.patch("/admin/users/:clinicianId/assign-client", verifyJWT, requireRole("
     const { clientId, assign } = req.body;
     if (!clientId || assign === undefined) {
       return res.status(400).json({ error: "clientId and assign (boolean) are required" });
+    }
+    if (assign) {
+      const client = await User.findById(clientId);
+      if (!client) return res.status(404).json({ error: "Client not found" });
+      if (client.verificationStatus === "suspended") {
+        return res.status(409).json({ error: "Cannot assign a suspended client to a clinician." });
+      }
     }
     const update = assign
       ? { $addToSet: { assignedClientIds: clientId } }  // add without duplicates
@@ -184,6 +201,10 @@ router.patch("/admin/users/:clinicianId/assign-client", verifyJWT, requireRole("
 router.delete("/admin/users/:id", verifyJWT, requireRole("administrator"), async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
+    await User.updateMany(
+      { assignedClientIds: req.params.id },
+      { $pull: { assignedClientIds: req.params.id } }
+    );
     await writeAudit(req, "ADMIN", `User deleted`, { targetId: req.params.id }, "WARN");
     res.json({ message: "User deleted" });
   } catch (err) {

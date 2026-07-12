@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, UserX, UserCheck, X, Check } from "lucide-react";
-import RoleBadge from "../../../components/RoleBadge";
+import { cls } from "../../../utils/helpers";
 import { auditApi, userApi } from "../../../utils/api";
 import type { Role, Sex, User, VerificationStatus } from "../../../types";
 
@@ -20,6 +20,15 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
 
   const clinicians = users.filter(u => u.role === "clinician");
   const clients    = users.filter(u => u.role === "client");
+
+  const ROLE_GROUPS: ReadonlyArray<{ role: Role; label: string; text: string; bg: string; }> = [
+    { role: "client",        label: "Clients",        text: "text-blue-700",   bg: "bg-blue-50"  },
+    { role: "staff",         label: "Staff",          text: "text-teal-700",   bg: "bg-teal-50" },
+    { role: "clinician",     label: "Clinicians",     text: "text-violet-700", bg: "bg-violet-50" },
+    { role: "developer",     label: "Developers",     text: "text-amber-700",  bg: "bg-amber-50" },
+    { role: "administrator", label: "Administrators", text: "text-indigo-700", bg: "bg-indigo-50" },
+  ];
+  const managed = users.filter(u => u._id !== actor._id);
 
   const setStatus = async (u: User, status: VerificationStatus): Promise<void> => {
     await userApi.setStatus(u._id, status);
@@ -85,7 +94,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
       });
       await auditApi.write({
         actorId: actor._id, actorRole: "administrator", category: "ADMIN", level: "INFO",
-        message: `Created ${form.role} account: ${form.email.trim()}`,
+        message: `Created ${form.role} Account: ${form.email.trim()}`,
       }).catch(() => undefined);
       await onChange();
       setCreating(false);
@@ -99,58 +108,66 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <span className="text-sm text-gray-500">{users.length} accounts across all roles</span>
+      <div className="flex justify-end items-center">
         <button type="button"
           onClick={() => { setCreateErr(""); setForm(blankForm); setCreating(true); }}
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
-          <Plus size={13} /> New account
+          <Plus size={13} /> New Account
         </button>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-xs">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Name", "Email", "Role", "Verification", ""].map(h => (
-              <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-            ))}</tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {users.map(u => (
-              <tr key={u._id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
-                <td className="px-4 py-3 text-gray-500">{u.email}</td>
-                <td className="px-4 py-3"><RoleBadge role={u.role} /></td>
-                <td className="px-4 py-3">
-                  <select value={u.verificationStatus} onChange={e => void setStatus(u, e.target.value as VerificationStatus)}
-                    className="bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800">
-                    {(["unverified", "pending", "verified", "suspended"] as const).map(s => <option key={s}>{s}</option>)}
-                  </select>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2 items-center">
-                    {u.role === "client" && (
-                      <button type="button" title="Assign to clinician"
-                        onClick={() => setAssigningClient(u)}
-                        className="flex items-center gap-1 px-2 py-1 rounded bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-semibold transition-colors">
-                        <UserCheck size={12} /> Assign
-                      </button>
-                    )}
-                    <button type="button" title="Suspend" onClick={() => void suspend(u)}
-                      className="p-1 rounded hover:bg-amber-50 text-gray-400 hover:text-amber-600 transition-colors">
-                      <UserX size={13} />
-                    </button>
-                    <button type="button" title="Delete" onClick={() => void remove(u)}
-                      className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {ROLE_GROUPS.map(({ role, label, text, bg }) => {
+        const group = managed.filter(u => u.role === role);
+        if (group.length === 0) return null;
+        return (
+          <div key={role} className={cls("bg-white border border-gray-200 border-l-4 rounded-xl overflow-hidden", bg)}>
+            <div className={cls("flex items-center gap-2 px-4 py-2.5 border-b border-gray-200", bg)}>
+              <span className={cls("text-sm font-semibold", text)}>{label}</span>
+              <span className="text-xs text-gray-400">· {group.length} Account{group.length !== 1 ? "s" : ""}</span>
+            </div>
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>{["Name", "Email", "Verification", ""].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {group.map(u => (
+                  <tr key={u._id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
+                    <td className="px-4 py-3 text-gray-500">{u.email}</td>
+                    <td className="px-4 py-3">
+                      <select value={u.verificationStatus} onChange={e => void setStatus(u, e.target.value as VerificationStatus)}
+                        className="bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800">
+                        {(["unverified", "pending", "verified", "suspended"] as const).map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2 items-center">
+                        {u.role === "client" && (
+                          <button type="button" title="Assign to clinician"
+                            onClick={() => setAssigningClient(u)}
+                            className="flex items-center gap-1 px-2 py-1 rounded bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-semibold transition-colors">
+                            <UserCheck size={12} /> Assign
+                          </button>
+                        )}
+                        <button type="button" title="Suspend" onClick={() => void suspend(u)}
+                          className="p-1 rounded hover:bg-amber-50 text-gray-400 hover:text-amber-600 transition-colors">
+                          <UserX size={13} />
+                        </button>
+                        <button type="button" title="Delete" onClick={() => void remove(u)}
+                          className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
 
       {/* Assign modal */}
       {assigningClient && (
@@ -218,7 +235,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-900">New account</h3>
+              <h3 className="text-sm font-semibold text-gray-900">New Account</h3>
               <button type="button" onClick={() => setCreating(false)}
                 className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
                 <X size={16} />
@@ -266,7 +283,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
             <div className="mt-5 flex gap-2">
               <button type="button" disabled={busy} onClick={() => void submitCreate()}
                 className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors">
-                {busy ? "Creating…" : "Create account"}
+                {busy ? "Creating…" : "Create Account"}
               </button>
               <button type="button" onClick={() => setCreating(false)}
                 className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition-colors">

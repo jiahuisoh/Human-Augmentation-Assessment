@@ -7,9 +7,10 @@ import type { User } from "../../types";
 interface LoginProps {
   onLogin: (user: User) => void;
   onCreateAccount: () => void;
+  notice?: string;
 }
 
-export default function Login({ onLogin, onCreateAccount }: LoginProps) {
+export default function Login({ onLogin, onCreateAccount, notice }: LoginProps) {
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [visible,  setVisible]  = useState(false);
@@ -45,6 +46,12 @@ export default function Login({ onLogin, onCreateAccount }: LoginProps) {
           <h1 className="text-2xl font-bold text-gray-900">HANA Platform</h1>
           <p className="text-sm text-gray-500 mt-1">Human Augmentation Neural Analytics</p>
         </div>
+
+        {notice && !error && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm mb-5">
+            {notice}
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-5">

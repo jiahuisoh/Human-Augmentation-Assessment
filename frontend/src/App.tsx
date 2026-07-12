@@ -8,6 +8,7 @@ import Developer from "./pages/developer/DevIndex";
 import Administrator from "./pages/administrator/AdminIndex";
 import { userApi } from "./utils/api";
 import { clearToken, getToken } from "./utils/tokenStore";
+import { onAuthFailure } from "./utils/authEvents";
 import type { User } from "./types";
 
 type Screen = "login" | "signup";
@@ -16,13 +17,19 @@ export default function App() {
   const [user, setUser]     = useState<User | null>(null);
   const [screen, setScreen] = useState<Screen>("login");
   const [restoring, setRestoring] = useState<boolean>(true);
+  const [notice, setNotice] = useState<string>("");
 
-  // Restore the session on load: if a token is saved, re-fetch the current user.
+  useEffect(() => onAuthFailure((message) => {
+    setUser(null);
+    setScreen("login");
+    setNotice(message ?? "You have been signed out.");
+  }), []);
+
   useEffect(() => {
     if (!getToken()) { setRestoring(false); return; }
     void userApi.getCurrent()
       .then(setUser)
-      .catch(() => clearToken())   // token invalid/expired — drop it
+      .catch(() => clearToken())
       .finally(() => setRestoring(false));
   }, []);
 
@@ -30,6 +37,7 @@ export default function App() {
     clearToken();
     setUser(null);
     setScreen("login");
+    setNotice("");
   };
 
   if (restoring) {
@@ -44,7 +52,7 @@ export default function App() {
     if (screen === "signup") {
       return <SignUp onSignedUp={setUser} onBackToLogin={() => setScreen("login")} />;
     }
-    return <Login onLogin={setUser} onCreateAccount={() => setScreen("signup")} />;
+    return <Login onLogin={setUser} onCreateAccount={() => setScreen("signup")} notice={notice} />;
   }
 
   switch (user.role) {

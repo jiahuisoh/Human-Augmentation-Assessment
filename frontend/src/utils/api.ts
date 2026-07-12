@@ -4,7 +4,8 @@ import type {
   QuestionnaireSubmission, Role, ScheduleEntry,
   User,
 } from "../types";
-import { getToken, setToken } from "./tokenStore";
+import { clearToken, getToken, setToken } from "./tokenStore";
+import { emitAuthFailure } from "./authEvents";
 
 
 const BASE_URL: string = import.meta.env.VITE_API_URL || "http://localhost:4502";
@@ -34,7 +35,13 @@ async function apiFetch<T>(url: string, options: ApiFetchOptions = {}): Promise<
   const data: unknown = text ? safeJson(text) : {};
 
   if (!res.ok) {
-    const errMsg = (data as { error?: string }).error || `Request failed (${res.status})`;
+    const d = data as { error?: string; code?: string };
+    const sessionDead = res.status === 401 || (res.status === 403 && d.code === "ACCOUNT_SUSPENDED");
+    if (sessionDead && token) {
+      clearToken();
+      emitAuthFailure(res.status === 403 ? d.error : "Your session has expired. Please sign in again.");
+    }
+    const errMsg = d.error || `Request failed (${res.status})`;
     throw new Error(errMsg);
   }
   return data as T;

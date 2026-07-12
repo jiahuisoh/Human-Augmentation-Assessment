@@ -16,12 +16,12 @@ const verifyJWT = async (req, res, next) => {
   }
 
   try {
-    const user = await User.findById(decoded.id).select("role email verificationStatus");
+    const user = await User.findById(decoded.id).select("role email verificationStatus assignedClientIds");
     if (!user) return res.status(401).json({ error: "This account no longer exists" });
     if (user.verificationStatus === "suspended") {
       return res.status(403).json({ error: "Your account has been suspended. Please contact the administrator if you believe this is an error.", code: "ACCOUNT_SUSPENDED" });
     }
-    req.user = { id: user._id.toString(), role: user.role, email: user.email };
+    req.user = { id: user._id.toString(), role: user.role, email: user.email, assignedClientIds: user.assignedClientIds || [] };
     next();
   } catch {
     return res.status(500).json({ error: "Could not verify account status" });

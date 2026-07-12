@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 
 const OverrideSchema = new mongoose.Schema({
   by:            { type: String, required: true },
@@ -25,6 +26,18 @@ const SessionSchema = new mongoose.Schema({
   recordHash:      { type: String },
   overrides:       [OverrideSchema],
 }, { timestamps: true });
+
+SessionSchema.pre("save", function (next) {
+  if (!this.recordHash) {
+    const payload = JSON.stringify({
+      id: this._id.toString(), clientId: this.clientId, conductedBy: this.conductedBy,
+      testId: this.testId, reps: this.reps ?? null, measurement: this.measurement ?? null,
+      classification: this.classification ?? null, riskLevel: this.riskLevel ?? null,
+    });
+    this.recordHash = "0x" + crypto.createHash("sha256").update(payload).digest("hex");
+  }
+  next();
+});
 
 SessionSchema.methods.toJSON = function () {
   const obj = this.toObject();

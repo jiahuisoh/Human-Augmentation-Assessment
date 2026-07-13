@@ -100,7 +100,7 @@ export default function SidebarLayout({
             </span>
           </div>
         </header>
-        <div className="px-6 py-5 max-w-6xl">{children}</div>
+        <div className="px-6 py-5 w-full">{children}</div>
       </div>
     </div>
   );

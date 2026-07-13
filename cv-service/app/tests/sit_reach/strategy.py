@@ -5,7 +5,7 @@ from typing import Sequence
 from app.cv.hand_detector import HAND_LANDMARK
 from app.cv.landmarks import LANDMARK, all_visible, distance, pick_better_side
 from app.cv.types import Landmark, Sex, TestOutcome
-from app.tests.base import FinalizeContext, TestStateUpdate, TestStrategy
+from app.tests.base import FinalizeContext, TestStateUpdate, TestStrategy, calibration_quality_from_samples
 from app.tests.sit_reach.norms import classify_sit_reach
 LEG_LENGTH_FRACTION_OF_HEIGHT = 0.53
 _MIN_CALIB_SAMPLES = 3
@@ -73,6 +73,9 @@ class SitReachStrategy(TestStrategy):
 
     def get_calibration_sample_count(self) -> int:
         return len(self._leg_samples)
+
+    def get_calibration_quality(self) -> float | None:
+        return calibration_quality_from_samples(self._leg_samples)
 
     def on_calibration_frame(self, landmarks: Sequence[Landmark], hand_landmarks: Sequence[Sequence[Landmark]] | None=None) -> None:
         _ = hand_landmarks

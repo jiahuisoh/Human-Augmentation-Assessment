@@ -156,6 +156,7 @@ class _Session:
     async def _finalize(self, terminated_early: bool) -> None:
         ctx = FinalizeContext(user_age=self.user_age, user_sex=self.user_sex, terminated_early=terminated_early)
         outcome: TestOutcome = self.strategy.finalize(ctx)
+        outcome.calibration_quality = self.strategy.get_calibration_quality()
         self._goto_phase('done')
         await self.ws.send_json(CompleteMessage(outcome=outcome).model_dump())
 

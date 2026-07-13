@@ -5,7 +5,7 @@ from typing import Sequence
 from app.cv.hand_detector import HAND_LANDMARK
 from app.cv.landmarks import LANDMARK, all_visible
 from app.cv.types import Landmark, Sex, TestOutcome
-from app.tests.base import FinalizeContext, TestStateUpdate, TestStrategy
+from app.tests.base import FinalizeContext, TestStateUpdate, TestStrategy, calibration_quality_from_samples
 from app.tests.back_scratch.norms import classify_back_scratch
 SHOULDER_WIDTH_FRACTION_OF_HEIGHT = 0.259
 _MIN_CALIB_SAMPLES = 3
@@ -61,6 +61,9 @@ class BackScratchStrategy(TestStrategy):
 
     def get_calibration_sample_count(self) -> int:
         return len(self._shoulder_samples)
+
+    def get_calibration_quality(self) -> float | None:
+        return calibration_quality_from_samples(self._shoulder_samples)
 
     def on_calibration_frame(self, landmarks: Sequence[Landmark], hand_landmarks: Sequence[Sequence[Landmark]] | None=None) -> None:
         _ = hand_landmarks

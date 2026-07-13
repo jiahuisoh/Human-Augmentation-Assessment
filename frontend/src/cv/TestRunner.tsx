@@ -237,7 +237,7 @@ export default function TestRunner({
               update.calib_quality >= 0.5 ? "text-emerald-400" : "text-amber-400",
             )}>
               Calibration quality: {Math.round(update.calib_quality * 100)}%
-              {update.calib_quality < 0.5 && " — improve lighting or leg visibility"}
+              {update.calib_quality < 0.5 && " - Refrain from moving and improve lighting or body visibility"}
             </p>
           )}
         </div>

@@ -2,7 +2,7 @@ import statistics
 from typing import Sequence
 from app.cv.landmarks import LANDMARK, all_visible, angle_between, pick_better_side
 from app.cv.types import Landmark, TestOutcome
-from app.tests.base import FinalizeContext, TestStateUpdate, TestStrategy
+from app.tests.base import FinalizeContext, TestStateUpdate, TestStrategy, calibration_quality_from_samples
 from app.tests.chair_stand.norms import classify_chair_stand
 _STAND_GAP_DOWN = 35
 _STAND_GAP_UP = 10
@@ -35,6 +35,9 @@ class ChairStandStrategy(TestStrategy):
 
     def get_calibration_sample_count(self) -> int:
         return len(self._samples)
+
+    def get_calibration_quality(self) -> float | None:
+        return calibration_quality_from_samples(self._samples)
 
     def on_calibration_frame(self, landmarks: Sequence[Landmark], hand_landmarks: Sequence[Sequence[Landmark]] | None=None) -> None:
         _ = hand_landmarks

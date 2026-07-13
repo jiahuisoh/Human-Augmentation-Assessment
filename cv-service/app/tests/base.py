@@ -1,7 +1,28 @@
+import statistics
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Sequence
 from app.cv.types import Detection, Landmark, Phase, Posture, Sex, TestId, TestOutcome
+
+# Coefficient of variation mapped to quality 0.0. Clean tracking of a still
+# subject gives CV ≈ 0.01–0.03; heavy jitter/occlusion approaches 0.15.
+_QUALITY_CV_WORST = 0.15
+
+
+def calibration_quality_from_samples(samples: Sequence[float]) -> float | None:
+    """0–1 stability score from calibration samples: 1 − CV/CV_worst, clamped.
+
+    CV (stdev/median) is scale-invariant, so the same formula works whether the
+    samples are normalised lengths (shoulder/leg width) or angles in degrees.
+    """
+    if len(samples) < 2:
+        return None
+    median = statistics.median(samples)
+    if median <= 0:
+        return 0.0
+    cv = statistics.pstdev(samples) / median
+    return round(max(0.0, min(1.0, 1.0 - cv / _QUALITY_CV_WORST)), 2)
+
 
 @dataclass
 class TestStateUpdate:

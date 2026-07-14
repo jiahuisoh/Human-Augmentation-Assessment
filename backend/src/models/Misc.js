@@ -8,7 +8,7 @@ const MeasurementSchema = new mongoose.Schema({
   bmi:      { type: Number, required: true },
 }, { timestamps: true });
 
-// find({clientId}).sort({createdAt:-1}) — supersedes a standalone clientId index.
+// find({clientId}).sort({createdAt:-1}) - supersedes a standalone clientId index.
 MeasurementSchema.index({ clientId: 1, createdAt: -1 });
 
 MeasurementSchema.methods.toJSON = function () {

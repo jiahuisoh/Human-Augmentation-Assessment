@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Heart, ClipboardList, Shield, Activity, TrendingUp,
   LogOut, User as UserIcon, HelpCircle,
-  ListChecks, Camera,
+  ListChecks, Camera, Lock,
   type LucideIcon,
 } from "lucide-react";
 import { cls, firstNameOf, initialsOf } from "../../utils/helpers";
@@ -47,10 +47,19 @@ const TABS: ReadonlyArray<{ id: TabId; label: string; Icon: LucideIcon }> = [
 interface ClientProps {
   user: User;
   onSignOut: () => void;
+  onUserUpdate: (user: User) => void;
 }
 
-export default function Client({ user, onSignOut }: ClientProps) {
+// Until identity verification completes (staff NRIC check + admin approval),
+// clients can only see Home, Account and Help. Mirrors the backend gate
+// (requireVerifiedClient) — this is UX, the server enforces it regardless.
+const OPEN_TABS: ReadonlySet<TabId> = new Set(["home", "account", "help"]);
+
+export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
   const [tab, setTab]               = useState<TabId>("home");
+  const isVerified = user.verificationStatus === "verified";
+  const isLocked = (id: TabId): boolean => !isVerified && !OPEN_TABS.has(id);
+  const goTab = (id: TabId): void => { if (!isLocked(id)) setTab(id); };
   const [sessions, setSessions]     = useState<AssessmentSession[]>([]);
   const [consents, setConsents]     = useState<ConsentEvent[]>([]);
   const [plan,     setPlan]         = useState<InterventionPlan | null>(null);
@@ -129,31 +138,38 @@ export default function Client({ user, onSignOut }: ClientProps) {
 
       <div className="bg-white border-b border-gray-200 px-4">
         <div className="flex gap-1">
-          {TABS.map(({ id, label, Icon }) => (
-            <button key={id} type="button" onClick={() => setTab(id)}
-              className={cls(
-                "flex flex-1 min-w-0 items-center justify-center gap-1.5 px-2 py-3.5 text-sm font-medium border-b-2 transition-colors",
-                tab === id
-                  ? "border-violet-600 text-violet-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700",
-              )}>
-              <Icon size={14} className="flex-shrink-0" /> <span className="truncate">{label}</span>
-            </button>
-          ))}
+          {TABS.map(({ id, label, Icon }) => {
+            const locked = isLocked(id);
+            return (
+              <button key={id} type="button" onClick={() => goTab(id)}
+                disabled={locked}
+                title={locked ? "Available after your identity is verified" : undefined}
+                className={cls(
+                  "flex flex-1 min-w-0 items-center justify-center gap-1.5 px-2 py-3.5 text-sm font-medium border-b-2 transition-colors",
+                  tab === id
+                    ? "border-violet-600 text-violet-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700",
+                  locked && "opacity-40 cursor-not-allowed hover:text-gray-500",
+                )}>
+                {locked ? <Lock size={14} className="flex-shrink-0" /> : <Icon size={14} className="flex-shrink-0" />}
+                {" "}<span className="truncate">{label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="flex-1 px-4 py-5 space-y-4 max-w-3xl w-full mx-auto">
         {user.verificationStatus !== "verified" && <VerificationBanner status={user.verificationStatus} />}
 
-        {tab === "home"             && <Home            user={user} sessions={sessions} onStart={() => setTab("self_test")} onNavigate={(t) => setTab(t as TabId)} />}
+        {tab === "home"             && <Home            user={user} sessions={sessions} onStart={() => goTab("self_test")} onNavigate={(t) => goTab(t as TabId)} />}
         {tab === "assessments"      && <Assessments     sessions={sessions} />}
         {tab === "self_test"        && <SelfTest        onStart={testId => setActiveCv({ testId })} />}
         {tab === "questionnaire"    && <Questionnaire   user={user} />}
         {tab === "plan"             && <Plan            plan={plan} />}
         {tab === "activity"         && <Activity_ />}
         {tab === "records"          && <Records         user={user} consents={consents} sessions={sessions} onConsentChange={handleConsentChange} />}
-        {tab === "account"          && <Account         user={user} />}
+        {tab === "account"          && <Account         user={user} onUserUpdate={onUserUpdate} />}
         {tab === "help"             && <Help />}
       </div>
 

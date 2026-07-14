@@ -56,7 +56,7 @@ export default function App() {
   }
 
   switch (user.role) {
-    case "client":         return <Client        user={user} onSignOut={handleSignOut} />;
+    case "client":         return <Client        user={user} onSignOut={handleSignOut} onUserUpdate={setUser} />;
     case "staff":          return <Staff         user={user} onSignOut={handleSignOut} />;
     case "clinician":      return <Clinician     user={user} onSignOut={handleSignOut} />;
     case "developer":      return <Developer     user={user} onSignOut={handleSignOut} />;

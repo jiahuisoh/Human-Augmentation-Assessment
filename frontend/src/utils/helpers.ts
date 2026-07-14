@@ -31,3 +31,27 @@ export function firstNameOf(name?: string): string {
   if (!name) return "there";
   return name.split(/\s+/)[0] ?? name;
 }
+
+/**
+ * Singapore NRIC/FIN validation: format plus the official checksum
+ * (weighted digit sum, series offset, series-specific letter table).
+ * Mirrors the backend check in backend/src/utils/validators.js.
+ */
+const NRIC_WEIGHTS = [2, 7, 6, 5, 4, 3, 2] as const;
+const NRIC_TABLES: Record<string, string> = {
+  S: "JZIHGFEDCBA", T: "JZIHGFEDCBA",
+  F: "XWUTRQPNMLK", G: "XWUTRQPNMLK",
+  M: "KLJNPQRTUWX",
+};
+export function isValidNric(value: string): boolean {
+  const nric = value.trim().toUpperCase();
+  if (!/^[STFGM]\d{7}[A-Z]$/.test(nric)) return false;
+  const series = nric[0];
+  let sum = 0;
+  for (let i = 0; i < 7; i++) sum += Number(nric[i + 1]) * NRIC_WEIGHTS[i];
+  if (series === "T" || series === "G") sum += 4;
+  if (series === "M") sum += 3;
+  const r = sum % 11;
+  const expected = series === "M" ? NRIC_TABLES.M[10 - r] : NRIC_TABLES[series][r];
+  return nric[8] === expected;
+}

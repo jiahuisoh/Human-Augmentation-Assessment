@@ -15,6 +15,13 @@ export interface EmergencyContact {
 
 
 
+/** Outcome of the in-person staff NRIC check, awaiting admin approval. */
+export interface StaffVerification {
+  recommended: boolean;
+  by: string;
+  at: string;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -25,6 +32,9 @@ export interface User {
   height?: number;
   weight?: number;
   verificationStatus: VerificationStatus;
+  staffVerification?: StaffVerification;
+  /** Last 4 characters of the NRIC, for masked display (e.g. •••••567D). */
+  nricLastFour?: string;
   emergencyContact?: EmergencyContact;
   programmeIds?: string[];
   assignedClientIds?: string[];
@@ -35,10 +45,12 @@ export interface NewUserPayload {
   email: string;
   password: string;
   name: string;
-  dateOfBirth: string;
-  gender: Sex;
-  height: number;
-  weight: number;
+  dateOfBirth?: string;
+  gender?: Sex;
+  height?: number;
+  weight?: number;
+  /** Full Singapore NRIC/FIN. Stored server-side as a bcrypt hash only. */
+  nric?: string;
 }
 
 export interface Measurement {
@@ -138,6 +150,21 @@ export interface InterventionPlan {
   items: InterventionPlanItem[];
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A client awaiting the in-person NRIC check, as seen by staff.
+ * Intentionally minimal — staff are not entitled to client PII.
+ */
+export interface PendingVerificationClient {
+  _id: string;
+  name: string;
+  verificationStatus: VerificationStatus;
+  /** true once staff have run the check and it is with the admin. */
+  checked: boolean;
+  /** Outcome of the staff check: true = matched, false = did not match, null = not yet checked. */
+  recommended: boolean | null;
+  createdAt: string;
 }
 
 export type AttendanceStatus = "scheduled" | "present" | "absent" | "in_progress" | "completed" | "pending_nric";

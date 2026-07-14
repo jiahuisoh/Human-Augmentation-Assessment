@@ -9,6 +9,9 @@ const AuditSchema = new mongoose.Schema({
   context:   { type: mongoose.Schema.Types.Mixed },
 }, { timestamps: true });
 
+// GET /api/audit reads the newest entries (find().sort({createdAt:-1}).limit(n))
+AuditSchema.index({ createdAt: -1 });
+
 AuditSchema.methods.toJSON = function () {
   const obj = this.toObject();
   obj._id = obj._id.toString();

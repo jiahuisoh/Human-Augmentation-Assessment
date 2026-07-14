@@ -20,6 +20,7 @@ const verifyJWT = async (req, res, next) => {
     // fields — skip mongoose document hydration.
     const user = await User.findById(decoded.id).select("role email verificationStatus assignedClientIds +passwordChangedAt").lean();
     if (!user) return res.status(401).json({ error: "This account no longer exists" });
+
     if (user.verificationStatus === "suspended") {
       return res.status(403).json({ error: "Your account has been suspended. Please contact the administrator if you believe this is an error.", code: "ACCOUNT_SUSPENDED" });
     }
@@ -28,6 +29,7 @@ const verifyJWT = async (req, res, next) => {
     if (decoded.role && decoded.role !== user.role) {
       return res.status(401).json({ error: "Your account role has changed. Please log in again." });
     }
+    
     const tokenPwdAt = decoded.pwdAt ?? null;
     const dbPwdAt = user.passwordChangedAt ? user.passwordChangedAt.getTime() : null;
     if (tokenPwdAt !== dbPwdAt) {

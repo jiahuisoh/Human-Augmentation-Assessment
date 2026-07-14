@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "dataset_id": "chair-stand-validation-template-v1",
+  "cases": [
+    {
+      "case_id": "cs-real-template-001",
+      "video_path": "../../local_validation_videos/replace-with-real-video.mp4",
+      "video_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "source_type": "real",
+      "expected": {
+        "validity": "valid_movement",
+        "repetitions": 5,
+        "minimum_calibration_quality": 0.5
+      },
+      "subject": {
+        "age": 70,
+        "sex": "other",
+        "height_cm": 170.0
+      },
+      "timing": {
+        "calibration_start_s": 0.0,
+        "calibration_end_s": 3.0,
+        "test_start_s": 6.5,
+        "test_end_s": 36.5
+      },
+      "view": {
+        "camera_angle": "side",
+        "distance": "full_body",
+        "lighting": "replace-with-observed-lighting",
+        "occlusion": "replace-with-observed-occlusion"
+      },
+      "generation": null,
+      "notes": "Template only: no private video or participant data is included. The portable video_path is relative to this manifest. Replace the path, video SHA-256, annotations, subject placeholders, timing, and view labels before execution."
+    },
+    {
+      "case_id": "cs-synthda-template-001",
+      "video_path": "../../local_validation_videos/replace-with-synthda-video.mp4",
+      "video_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "source_type": "synthda",
+      "expected": {
+        "validity": "invalid_movement",
+        "repetitions": 0,
+        "minimum_calibration_quality": 0.5
+      },
+      "subject": {
+        "age": 70,
+        "sex": "other",
+        "height_cm": 170.0
+      },
+      "timing": {
+        "calibration_start_s": 0.0,
+        "calibration_end_s": 3.0,
+        "test_start_s": 6.5,
+        "test_end_s": 20.0
+      },
+      "view": {
+        "camera_angle": "side",
+        "distance": "full_body",
+        "lighting": "replace-with-generated-lighting",
+        "occlusion": "replace-with-generated-occlusion"
+      },
+      "generation": {
+        "tool": "SynthDA",
+        "version": "replace-with-actual-version",
+        "run_id": "replace-with-actual-external-run-id",
+        "seed": "replace-with-actual-seed",
+        "config_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "notes": "Template only: replace every placeholder, including video and configuration hashes, with actual external-run provenance before execution. Provenance records reproducibility metadata only and does not establish authenticity or clinical validity."
+    }
+  ]
+}

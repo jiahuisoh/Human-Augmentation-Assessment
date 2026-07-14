@@ -5,7 +5,7 @@ import {
 import { firstNameOf } from "../../utils/helpers";
 import { scheduleApi, userApi } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
-import type { ScheduleEntry, User } from "../../types";
+import type { PendingVerificationClient, ScheduleEntry, User } from "../../types";
 
 import Schedule    from "./tabs/Schedule";
 import ClientList  from "./tabs/ClientList";
@@ -29,27 +29,33 @@ interface StaffProps {
 export default function Staff({ user, onSignOut }: StaffProps) {
   const [tab, setTab]             = useState<TabId>("schedule");
   const [schedule, setSchedule]   = useState<ScheduleEntry[]>([]);
+  const [pending, setPending]     = useState<PendingVerificationClient[]>([]);
   const [search, setSearch]       = useState("");
 
   useEffect(() => {
     void scheduleApi.listToday().then(setSchedule);
+    void userApi.listPendingVerification().then(setPending);
   }, []);
 
-  const completed   = schedule.filter(s => s.status === "completed" || s.status === "present").length;
-  const pendingNric = schedule.filter(s => !s.nricVerified).length;
+  const completed = schedule.filter(s => s.status === "completed" || s.status === "present").length;
+  // Clients still needing a staff NRIC check — sourced from registered clients,
+  // not today's schedule: a new sign-up has no appointment yet.
+  const awaitingCheck = pending.filter(c => c.verificationStatus === "unverified").length;
 
   const markAttendance = async (id: string, present: boolean): Promise<void> => {
     const updated = await scheduleApi.recordAttendance(id, present);
     setSchedule(prev => prev.map(s => s._id === id ? updated : s));
   };
 
-  const verifyNric = async (clientId: string, last4: string): Promise<void> => {
-    await userApi.verifyNric(clientId, last4);
+  const verifyNric = async (clientId: string, nric: string): Promise<boolean> => {
+    const { match } = await userApi.verifyNric(clientId, nric);
+    // The check is complete either way; the admin makes the final decision.
+    // Re-fetch so the client moves into the "with administrator" group.
+    setPending(await userApi.listPendingVerification());
     setSchedule(prev => prev.map(s =>
-      s.clientId === clientId
-        ? { ...s, nricVerified: true, status: s.status === "pending_nric" ? "scheduled" : s.status }
-        : s,
+      s.clientId === clientId ? { ...s, nricVerified: true, status: s.status === "pending_nric" ? "scheduled" : s.status } : s,
     ));
+    return match;
   };
 
   return (
@@ -60,7 +66,7 @@ export default function Staff({ user, onSignOut }: StaffProps) {
         <div>
           <div className="text-base font-semibold text-gray-900">Good morning, {firstNameOf(user.name)}</div>
           <div className="text-xs text-gray-400">
-            {completed} completed · {pendingNric} awaiting NRIC verification
+            {completed} completed · {awaitingCheck} awaiting NRIC verification
           </div>
         </div>
       }
@@ -68,7 +74,7 @@ export default function Staff({ user, onSignOut }: StaffProps) {
       {tab === "schedule"   && <Schedule    schedule={schedule} />}
       {tab === "patients"   && <ClientList  schedule={schedule} search={search} onSearch={setSearch} />}
       {tab === "attendance" && <Attendance  schedule={schedule} onMark={markAttendance} />}
-      {tab === "nric"       && <Nric        schedule={schedule} onVerify={verifyNric} />}
+      {tab === "nric"       && <Nric        clients={pending} onVerify={verifyNric} />}
     </SidebarLayout>
   );
 }

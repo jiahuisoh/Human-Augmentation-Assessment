@@ -1,8 +1,8 @@
 import type {
   AssessmentSession, AuditLog, AuthResponse, ConsentEvent,
   EmergencyContact, InterventionPlan, Measurement, NewUserPayload,
-  QuestionnaireSubmission, Role, ScheduleEntry,
-  User,
+  PendingVerificationClient, QuestionnaireSubmission, Role, ScheduleEntry,
+  User, VerificationStatus,
 } from "../types";
 import { clearToken, getToken, setToken } from "./tokenStore";
 import { emitAuthFailure } from "./authEvents";
@@ -61,7 +61,9 @@ export interface IUserApi {
   setStatus(id: string, verificationStatus: User["verificationStatus"]): Promise<User>;
   delete(id: string): Promise<void>;
   saveEmergencyContact(id: string, contact: EmergencyContact): Promise<void>;
-  verifyNric(id: string, nricLast4: string): Promise<User>;
+  verifyNric(id: string, nric: string): Promise<{ match: boolean; verificationStatus: VerificationStatus }>;
+  updateNric(id: string, nric: string): Promise<User>;
+  listPendingVerification(): Promise<PendingVerificationClient[]>;
   assignClient(clinicianId: string, clientId: string, assign: boolean): Promise<User>;
 }
 
@@ -128,8 +130,14 @@ class RestUserApi implements IUserApi {
   async saveEmergencyContact(id: string, contact: EmergencyContact) {
     await apiFetch<void>(`${this.base}/api/users/${id}/emergency`, { method: "PATCH", body: contact });
   }
-  verifyNric(id: string, nricLast4: string) {
-    return apiFetch<User>(`${this.base}/api/staff/users/${id}/verify-nric`, { method: "POST", body: { nricLast4 } });
+  verifyNric(id: string, nric: string) {
+    return apiFetch<{ match: boolean; verificationStatus: VerificationStatus }>(`${this.base}/api/staff/users/${id}/verify-nric`, { method: "POST", body: { nric } });
+  }
+  updateNric(id: string, nric: string) {
+    return apiFetch<User>(`${this.base}/api/users/${id}/nric`, { method: "PATCH", body: { nric } });
+  }
+  listPendingVerification() {
+    return apiFetch<PendingVerificationClient[]>(`${this.base}/api/staff/clients/pending-verification`);
   }
 }
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Plus, Trash2, UserX, UserCheck, X, Check } from "lucide-react";
-import { cls } from "../../../utils/helpers";
+import { Plus, Trash2, UserX, UserCheck, X, Check, ShieldCheck, ShieldAlert } from "lucide-react";
+import { cls, isValidNric } from "../../../utils/helpers";
 import { userApi } from "../../../utils/api";
 import type { Role, Sex, User, VerificationStatus } from "../../../types";
 
@@ -15,7 +15,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState("");
-  const blankForm = { name: "", email: "", password: "", role: "clinician" as Role, dateOfBirth: "", gender: "other" as Sex, height: "", weight: "" };
+  const blankForm = { name: "", email: "", password: "", role: "clinician" as Role, dateOfBirth: "", gender: "other" as Sex, height: "", weight: "", nric: "" };
   const [form, setForm] = useState(blankForm);
 
   const clinicians = users.filter(u => u.role === "clinician");
@@ -25,9 +25,10 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
   const clinicianNamesFor = (clientId: string): string[] =>
     clinicians.filter(cl => (cl.assignedClientIds ?? []).includes(clientId)).map(cl => cl.name);
 
-  // Active (non-suspended) clients with no clinician yet; surfaced in the Clients header.
+  // Verified clients with no clinician yet; surfaced in the Clients header.
+  // Unverified/pending clients cannot be assigned, so they are not counted.
   const unassignedClientCount = clients.filter(
-    c => c.verificationStatus !== "suspended" && clinicianNamesFor(c._id).length === 0,
+    c => c.verificationStatus === "verified" && clinicianNamesFor(c._id).length === 0,
   ).length;
 
   const ROLE_GROUPS: ReadonlyArray<{ role: Role; label: string; text: string; bg: string; }> = [
@@ -72,18 +73,26 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
       setCreateErr("Name, email and password are required.");
       return;
     }
+    if (form.role === "client" && form.nric.trim() && !isValidNric(form.nric)) {
+      setCreateErr("Please enter a valid Singapore NRIC or FIN, or leave it blank.");
+      return;
+    }
     setBusy(true);
     setCreateErr("");
     try {
+      const isClient = form.role === "client";
+      // Optional fields are omitted (not sent as 0 / "") so backend validation
+      // only applies to values that were actually provided.
       await userApi.create({
         email: form.email.trim(),
         password: form.password,
         name: form.name.trim(),
         role: form.role,
-        dateOfBirth: form.role === "client" ? form.dateOfBirth : "",
-        gender: form.role === "client" ? form.gender : "other",
-        height: form.role === "client" ? (Number(form.height) || 0) : 0,
-        weight: form.role === "client" ? (Number(form.weight) || 0) : 0,
+        dateOfBirth: isClient && form.dateOfBirth ? form.dateOfBirth : undefined,
+        gender: isClient ? form.gender : undefined,
+        height: isClient && form.height ? Number(form.height) : undefined,
+        weight: isClient && form.weight ? Number(form.weight) : undefined,
+        nric: isClient && form.nric.trim() ? form.nric.trim().toUpperCase() : undefined,
       });
       await onChange();
       setCreating(false);
@@ -146,10 +155,31 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                         className="bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800">
                         {(["unverified", "pending", "verified", "suspended"] as const).map(s => <option key={s}>{s}</option>)}
                       </select>
+                      {u.verificationStatus === "pending" && u.staffVerification && (
+                        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                          {u.staffVerification.recommended ? (
+                            <span className="flex items-center gap-1 text-xs font-semibold text-green-700">
+                              <ShieldCheck size={12} /> Staff: NRIC matched
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-xs font-semibold text-red-700">
+                              <ShieldAlert size={12} /> Staff: NRIC did NOT match
+                            </span>
+                          )}
+                          <button type="button" onClick={() => void setStatus(u, "verified")}
+                            className="px-2 py-0.5 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors">
+                            Approve
+                          </button>
+                          <button type="button" onClick={() => void setStatus(u, "unverified")}
+                            className="px-2 py-0.5 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold transition-colors">
+                            Reject
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 items-center">
-                        {u.role === "client" && u.verificationStatus !== "suspended" && (
+                        {u.role === "client" && u.verificationStatus === "verified" && (
                           <button type="button"
                             title={isAssigned ? `Assigned to ${assignedTo.join(", ")}` : "Not Assigned to any clinician: click to assign"}
                             onClick={() => setAssigningClient(u)}
@@ -293,6 +323,9 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                   <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
                     placeholder="Weight (kg)" type="number"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+                  <input value={form.nric} onChange={e => setForm(f => ({ ...f, nric: e.target.value.toUpperCase().slice(0, 9) }))}
+                    placeholder="NRIC (optional, for verification)" maxLength={9}
+                    className="col-span-2 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono uppercase focus:border-indigo-500 focus:outline-none" />
                 </div>
               )}
             </div>

@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import { Save } from "lucide-react";
-import { cls, calculateAge, formatDOB } from "../../../utils/helpers";
+import { Save, Pencil } from "lucide-react";
+import { cls, calculateAge, formatDOB, isValidNric } from "../../../utils/helpers";
 import { measurementApi, userApi } from "../../../utils/api";
 import { BMICard, BMIChart, BMI_ZONES, calcBmi } from "../components/BMICard";
 import type { EmergencyContact, Measurement, User } from "../../../types";
 
 interface AccountProps {
   user: User;
+  onUserUpdate: (user: User) => void;
 }
 
-export default function Account({ user }: AccountProps) {
+export default function Account({ user, onUserUpdate }: AccountProps) {
   const [height, setHeight]               = useState<string>(user.height?.toString() ?? "");
   const [weight, setWeight]               = useState<string>(user.weight?.toString() ?? "");
   const [measurements, setMeasurements]   = useState<Measurement[]>([]);
@@ -17,6 +18,9 @@ export default function Account({ user }: AccountProps) {
   const [savingMeas, setSavingMeas]       = useState(false);
   const [savingContact, setSavingContact] = useState(false);
   const [toast, setToast]                 = useState<{ msg: string; ok: boolean } | null>(null);
+  const [editingNric, setEditingNric]     = useState(false);
+  const [newNric, setNewNric]             = useState("");
+  const [savingNric, setSavingNric]       = useState(false);
 
   useEffect(() => { void measurementApi.listForClient(user._id).then(setMeasurements); }, [user._id]);
 
@@ -31,18 +35,41 @@ export default function Account({ user }: AccountProps) {
   const saveMeas = async (): Promise<void> => {
     const h = Number(height), w = Number(weight);
     if (h < 100 || h > 250 || w < 20 || w > 300) {
-      showToast("Enter a valid height (100–250 cm) and weight (20–300 kg).", false);
+      showToast("Enter a valid height (100 to 250 cm) and weight (20 to 300 kg).", false);
       return;
     }
     setSavingMeas(true);
     try {
       const m = await measurementApi.save(user._id, h, w);
       setMeasurements(prev => [...prev, m]);
-      showToast(`Saved — BMI ${m.bmi}`);
+      showToast(`Saved. BMI ${m.bmi}`);
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Failed to save", false);
     } finally {
       setSavingMeas(false);
+    }
+  };
+
+  const saveNric = async (): Promise<void> => {
+    if (!isValidNric(newNric)) {
+      showToast("Please enter a valid Singapore NRIC or FIN.", false);
+      return;
+    }
+    if (!window.confirm(
+      "Changing your NRIC will reset your verification.\n\n" +
+      "Your features will be locked until staff re-check your NRIC at the clinic and an administrator approves it. Continue?",
+    )) return;
+    setSavingNric(true);
+    try {
+      const updated = await userApi.updateNric(user._id, newNric.trim().toUpperCase());
+      onUserUpdate(updated);
+      setEditingNric(false);
+      setNewNric("");
+      showToast("NRIC updated. Please visit the clinic to verify again");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Failed to update NRIC", false);
+    } finally {
+      setSavingNric(false);
     }
   };
 
@@ -80,6 +107,43 @@ export default function Account({ user }: AccountProps) {
         <Row label="Date of birth" value={user.dateOfBirth ? `${formatDOB(user.dateOfBirth)} · age ${age ?? "—"}` : "—"} />
         <Row label="Gender"        value={user.gender ?? "—"} />
         <Row label="Verification"  value={user.verificationStatus} />
+
+        <div className="flex items-center justify-between py-2">
+          <span className="text-sm text-gray-500">NRIC</span>
+          {!editingNric ? (
+            <span className="flex items-center gap-2">
+              <span className="text-sm text-gray-900 font-medium font-mono tracking-widest">
+                {user.nricLastFour ? `•••••${user.nricLastFour}` : "—"}
+              </span>
+              <button type="button" onClick={() => { setEditingNric(true); setNewNric(""); }}
+                title="Update NRIC"
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-violet-600 transition-colors">
+                <Pencil size={14} />
+              </button>
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <input value={newNric}
+                onChange={e => setNewNric(e.target.value.toUpperCase().slice(0, 9))}
+                placeholder="e.g. S1234567D" maxLength={9} autoComplete="off"
+                className="w-40 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono uppercase focus:border-violet-500 focus:outline-none" />
+              <button type="button" onClick={() => void saveNric()} disabled={savingNric || !isValidNric(newNric)}
+                className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors">
+                {savingNric ? "…" : "Save"}
+              </button>
+              <button type="button" onClick={() => { setEditingNric(false); setNewNric(""); }}
+                className="px-2 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold transition-colors">
+                Cancel
+              </button>
+            </span>
+          )}
+        </div>
+        {editingNric && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Changing your NRIC resets your verification. Your features will be locked until it is
+            re-checked at the clinic and approved by an administrator.
+          </p>
+        )}
       </div>
 
       <BMICard bmi={bmi} />

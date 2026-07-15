@@ -31,3 +31,25 @@ export function firstNameOf(name?: string): string {
   if (!name) return "there";
   return name.split(/\s+/)[0] ?? name;
 }
+
+/**
+ * Singapore NRIC/FIN validation, per the "NRIC Checksum to Suffix" table:
+ * checksum = weighted digit sum mod 11, suffix = series row[checksum].
+ * Each row already encodes its series offset; M row is the same scheme
+ * for FINs issued from 2022. Mirrors backend/src/utils/validators.js.
+ */
+const NRIC_WEIGHTS = [9, 4, 5, 6, 7, 8, 9] as const;
+const NRIC_TABLES: Record<string, string> = {
+  S: "JABCDEFGHIZ",
+  T: "GHIZJABCDEF",
+  F: "XKLMNPQRTUW",
+  G: "RTUWXKLMNPQ",
+  M: "TUWXKLJNPQR",
+};
+export function isValidNric(value: string): boolean {
+  const nric = value.trim().toUpperCase();
+  if (!/^[STFGM]\d{7}[A-Z]$/.test(nric)) return false;
+  let checksum = 0;
+  for (let i = 0; i < 7; i++) checksum += Number(nric[i + 1]) * NRIC_WEIGHTS[i];
+  return nric[8] === NRIC_TABLES[nric[0]][checksum % 11];
+}

@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 import { Heart, Eye, EyeOff } from "lucide-react";
 import { FormField, inputCls } from "../../components/FormField";
-import { cls, calculateAge, formatDOB } from "../../utils/helpers";
+import { cls, calculateAge, formatDOB, isValidNric } from "../../utils/helpers";
 import { userApi } from "../../utils/api";
 import type { NewUserPayload, Sex, User } from "../../types";
 
@@ -82,7 +82,7 @@ function PasswordInput({ id, value, onChange, placeholder, error, showStrength =
 export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
   const [form, setForm] = useState<FormState>({
     name: "", dateOfBirth: "", email: "", height: "", weight: "", gender: "male",
-    password: "", confirmPassword: "",
+    nric: "", password: "", confirmPassword: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -104,6 +104,9 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
       else if (age > 120)            e.dateOfBirth = "Please enter a valid date of birth.";
     }
     if (!form.email || !form.email.includes("@")) e.email = "Please enter a valid email address.";
+    if (!isValidNric(form.nric ?? "")) {
+      e.nric = "Please enter a valid Singapore NRIC or FIN, e.g. S1234567D.";
+    }
     const heightN = Number(form.height);
     const weightN = Number(form.weight);
     if (!form.height || heightN < 100 || heightN > 250) e.height = "Please enter your height in cm.";
@@ -125,6 +128,7 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
       const user = await userApi.register({
         name: form.name, email: form.email, dateOfBirth: form.dateOfBirth,
         gender: form.gender, height: Number(form.height), weight: Number(form.weight),
+        nric: (form.nric ?? "").trim().toUpperCase(),
         password: form.password,
       });
       onSignedUp(user);
@@ -162,6 +166,14 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
               Age: {previewAge} years old <span className="text-gray-400 font-normal text-sm">({formatDOB(form.dateOfBirth)})</span>
             </p>
           )}
+        </FormField>
+
+        <FormField label="NRIC / FIN" id="nric" error={errors.nric}>
+          <input id="nric" type="text" value={form.nric ?? ""}
+            maxLength={9} autoComplete="off" inputMode="text"
+            onChange={e => set("nric", e.target.value.toUpperCase())}
+            placeholder="e.g. S1234567D"
+            className={cls(inputCls, "uppercase tracking-widest", errors.nric && "border-red-400")} />
         </FormField>
 
         <FormField label="Email Address" id="email" error={errors.email}>

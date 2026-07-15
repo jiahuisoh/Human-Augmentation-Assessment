@@ -11,7 +11,7 @@ const OverrideSchema = new mongoose.Schema({
 }, { _id: false });
 
 const SessionSchema = new mongoose.Schema({
-  clientId:        { type: String, required: true, index: true },
+  clientId:        { type: String, required: true },
   conductedBy:     { type: String, required: true },
   testId:          { type: String, enum: ["chair_stand","back_scratch","sit_reach"], required: true },
   reps:            { type: Number },
@@ -26,6 +26,10 @@ const SessionSchema = new mongoose.Schema({
   recordHash:      { type: String },
   overrides:       [OverrideSchema],
 }, { timestamps: true });
+
+// Every read is a client's history newest-first: find({clientId}).sort({createdAt:-1}).
+// Supersedes the standalone clientId index (clientId is the prefix).
+SessionSchema.index({ clientId: 1, createdAt: -1 });
 
 SessionSchema.pre("save", function (next) {
   if (!this.recordHash) {

@@ -17,15 +17,33 @@ const UserSchema = new mongoose.Schema({
   height:             { type: Number },
   weight:             { type: Number },
   verificationStatus: { type: String, enum: ["unverified","pending","verified","suspended"], default: "unverified" },
+  passwordChangedAt:  { type: Date, select: false },
+  nricHash:           { type: String, select: false },
+  nricLastFour:       { type: String },
+  staffVerification:  {
+    type: new mongoose.Schema({
+      recommended: { type: Boolean, required: true },
+      by:          { type: String,  required: true },
+      at:          { type: String,  required: true },
+    }, { _id: false }),
+  },
   emergencyContact:   { type: EmergencyContactSchema },
   programmeIds:       [{ type: String }],
   assignedClientIds:  [{ type: String }],
 }, { timestamps: true });
 
-// Hash password before saving
+
+UserSchema.index({ role: 1, verificationStatus: 1 });
+
+UserSchema.index({ assignedClientIds: 1 });
+
+UserSchema.index({ createdAt: -1 });
+
+
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
+  this.passwordChangedAt = new Date();
   next();
 });
 
@@ -34,10 +52,12 @@ UserSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-// Strip password and format fields for frontend
+// Strip credential material and format fields for frontend.
 UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.passwordChangedAt;
+  delete obj.nricHash;
   obj._id = obj._id.toString();
   if (obj.createdAt) obj.createdAt = obj.createdAt.toISOString();
   return obj;

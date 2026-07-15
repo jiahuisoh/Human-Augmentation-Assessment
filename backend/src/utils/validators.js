@@ -30,20 +30,25 @@ const finiteInRange = (v, min, max) => {
 const isObjectIdString = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
 
 
-const NRIC_WEIGHTS = [2, 7, 6, 5, 4, 3, 2];
-const NRIC_TABLES = { S: "JZIHGFEDCBA", T: "GFEDCBAJZIH", F: "XWUTRQPNMLK", G: "RQPNMLKXUT", M: "KLJNPQRTUWX" };
+// NRIC/FIN "Checksum to Suffix" scheme: checksum = weighted digit sum mod 11,
+// suffix = the series row indexed by that checksum. Each row already encodes
+// its series offset. M row is the same scheme for FINs issued from 2022.
+const NRIC_WEIGHTS = [9, 4, 5, 6, 7, 8, 9];
+const NRIC_TABLES = {
+  S: "JABCDEFGHIZ",
+  T: "GHIZJABCDEF",
+  F: "XKLMNPQRTUW",
+  G: "RTUWXKLMNPQ",
+  M: "TUWXKLJNPQR",
+};
 const isValidNric = (v) => {
   if (typeof v !== "string") return false;
   const nric = v.trim().toUpperCase();
   if (!/^[STFGM]\d{7}[A-Z]$/.test(nric)) return false;
-  const series = nric[0];
-  let sum = 0;
-  for (let i = 0; i < 7; i++) sum += Number(nric[i + 1]) * NRIC_WEIGHTS[i];
-  if (series === "T" || series === "G") sum += 4;
-  if (series === "M") sum += 3;
-  const r = sum % 11;
-  const expected = series === "M" ? NRIC_TABLES.M[10 - r] : NRIC_TABLES[series][r];
-  return nric[8] === expected;
+  let checksum = 0;
+  for (let i = 0; i < 7; i++) 
+    checksum += Number(nric[i + 1]) * NRIC_WEIGHTS[i];
+  return nric[8] === NRIC_TABLES[nric[0]][checksum % 11];
 };
 
 // ── Rule engine ───────────────────────────────────────────────────────────────

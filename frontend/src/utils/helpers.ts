@@ -33,25 +33,23 @@ export function firstNameOf(name?: string): string {
 }
 
 /**
- * Singapore NRIC/FIN validation: format plus the official checksum
- * (weighted digit sum, series offset, series-specific letter table).
- * Mirrors the backend check in backend/src/utils/validators.js.
+ * Singapore NRIC/FIN validation, per the "NRIC Checksum to Suffix" table:
+ * checksum = weighted digit sum mod 11, suffix = series row[checksum].
+ * Each row already encodes its series offset; M row is the same scheme
+ * for FINs issued from 2022. Mirrors backend/src/utils/validators.js.
  */
-const NRIC_WEIGHTS = [2, 7, 6, 5, 4, 3, 2] as const;
+const NRIC_WEIGHTS = [9, 4, 5, 6, 7, 8, 9] as const;
 const NRIC_TABLES: Record<string, string> = {
-  S: "JZIHGFEDCBA", T: "JZIHGFEDCBA",
-  F: "XWUTRQPNMLK", G: "XWUTRQPNMLK",
-  M: "KLJNPQRTUWX",
+  S: "JABCDEFGHIZ",
+  T: "GHIZJABCDEF",
+  F: "XKLMNPQRTUW",
+  G: "RTUWXKLMNPQ",
+  M: "TUWXKLJNPQR",
 };
 export function isValidNric(value: string): boolean {
   const nric = value.trim().toUpperCase();
   if (!/^[STFGM]\d{7}[A-Z]$/.test(nric)) return false;
-  const series = nric[0];
-  let sum = 0;
-  for (let i = 0; i < 7; i++) sum += Number(nric[i + 1]) * NRIC_WEIGHTS[i];
-  if (series === "T" || series === "G") sum += 4;
-  if (series === "M") sum += 3;
-  const r = sum % 11;
-  const expected = series === "M" ? NRIC_TABLES.M[10 - r] : NRIC_TABLES[series][r];
-  return nric[8] === expected;
+  let checksum = 0;
+  for (let i = 0; i < 7; i++) checksum += Number(nric[i + 1]) * NRIC_WEIGHTS[i];
+  return nric[8] === NRIC_TABLES[nric[0]][checksum % 11];
 }

@@ -15,11 +15,13 @@ export default function PatientList({ patients, search, onSearch, onOpen }: Pati
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input value={search} onChange={e => onSearch(e.target.value)}
-          placeholder="Search assigned patients…"
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-violet-500 focus:outline-none" />
+      <div>
+        <label htmlFor="patient-search" className="block text-xs font-medium text-gray-500 mb-1">Search Patients</label>
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input id="patient-search" value={search} onChange={e => onSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-violet-500 focus:outline-none" />
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

@@ -4,7 +4,7 @@ const { ROLES, VERIFICATION_STATUSES } = require("../utils/constants");
 
 const EmergencyContactSchema = new mongoose.Schema({
   name:         { type: String, required: true },
-  phone:        { type: String, required: true },
+  phone:        { type: String, required: true, match: /^\+65[689]\d{7}$/ },
   relationship: { type: String, required: true },
 }, { _id: false });
 

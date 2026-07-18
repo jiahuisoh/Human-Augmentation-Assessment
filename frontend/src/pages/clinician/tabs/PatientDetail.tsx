@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Edit3 } from "lucide-react";
+import { ClientProfile } from "../../../components/ClientProfile";
 import { TESTS } from "../../../utils/constants";
 import { adherenceOf, riskFromSessions, type PatientView } from "../ClinicianShared";
 import type { AssessmentSession } from "../../../types";
@@ -44,6 +45,11 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h4 className="text-sm font-semibold text-gray-900 mb-3">Client profile</h4>
+        <ClientProfile user={patient.user} />
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="grid grid-cols-2 gap-4 mb-4">
           {([
             ["Adherence",     `${adherenceOf(patient.plan)}%`],
@@ -84,10 +90,11 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
 
             {overriding === s._id ? (
               <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <input value={newScore} onChange={e => setNewScore(e.target.value)} placeholder="New score" type="number"
+                <label htmlFor="ov-score" className="block text-xs font-medium text-gray-600 mb-1">New Score</label>
+                <input id="ov-score" value={newScore} onChange={e => setNewScore(e.target.value)} type="number"
                   className="w-full mb-2 px-3 py-1.5 border border-gray-200 rounded text-sm focus:border-violet-500 focus:outline-none" />
-                <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2}
-                  placeholder="Reason for override (required for audit)…"
+                <label htmlFor="ov-reason" className="block text-xs font-medium text-gray-600 mb-1">Override Reason (required for audit)</label>
+                <textarea id="ov-reason" value={reason} onChange={e => setReason(e.target.value)} rows={2}
                   className="w-full mb-2 px-3 py-1.5 border border-gray-200 rounded text-xs focus:border-violet-500 focus:outline-none resize-none" />
                 {overrideErr && <p className="mb-2 text-xs font-medium text-red-600">{overrideErr}</p>}
                 <div className="flex gap-2">

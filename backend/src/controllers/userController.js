@@ -1,6 +1,6 @@
 const asyncHandler = require("../utils/asyncHandler");
 const { validEmail, validate, validationFailed } = require("../utils/validators");
-const { canAccessClient } = require("../middleware/access");
+const { canViewClientProfile } = require("../middleware/access");
 const userService = require("../services/userService");
 
 // POST /api/users
@@ -39,28 +39,38 @@ const getMe = asyncHandler(async (req, res) => {
   res.json(user);
 });
 
-// GET /api/users/:id — self, an assigned client (clinician), or anyone (admin)
+// GET /api/users/:id — self, an assigned client (clinician), any client
+// profile (staff, for in-person operations), or anyone (admin).
 const getUser = asyncHandler(async (req, res) => {
-  if (!canAccessClient(req.user, req.params.id)) {
+  if (!canViewClientProfile(req.user, req.params.id)) {
     return res.status(403).json({ error: "Access denied" });
   }
   const user = await userService.getById(req.params.id);
+  // Staff profile access is scoped to clients only — never other staff,
+  // clinicians or administrators (their own record passes the self check).
+  if (req.user.role === "staff" && req.user.id !== req.params.id && user.role !== "client") {
+    return res.status(403).json({ error: "Access denied" });
+  }
   res.json(user);
 });
 
-// PATCH /api/users/:id/emergency
+// PATCH /api/users/:id/emergency — self, staff assisting a client in person,
+// or admin. Staff targets are re-checked in the service (clients only).
 const updateEmergencyContact = asyncHandler(async (req, res) => {
-  if (req.user.role !== "administrator" && req.user.id !== req.params.id) {
+  const allowed = req.user.id === req.params.id
+    || req.user.role === "administrator"
+    || req.user.role === "staff";
+  if (!allowed) {
     return res.status(403).json({ error: "Access denied" });
   }
   const { ok, fields, values } = validate(req.body, {
     name:         { type: "string", required: true, max: 120, label: "Contact name" },
-    phone:        { type: "string", required: true, pattern: /^[0-9+\-\s()]{3,32}$/, label: "Contact phone", message: "A valid contact phone is required" },
+    phone:        { type: "sgPhone", required: true, label: "Contact phone" },
     relationship: { type: "string", required: true, max: 60, label: "Relationship" },
   });
   if (!ok) return validationFailed(res, fields);
 
-  const user = await userService.updateEmergencyContact(req.params.id, values);
+  const user = await userService.updateEmergencyContact(req.user, req.params.id, values);
   res.json(user);
 });
 

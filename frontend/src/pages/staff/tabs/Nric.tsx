@@ -102,7 +102,7 @@ function NricRow({ client, onVerify }: NricRowProps) {
         <div className="flex items-center gap-2 flex-shrink-0">
           <input value={nric}
             onChange={e => setNric(e.target.value.toUpperCase().slice(0, 9))}
-            placeholder="Full NRIC e.g. S1234567D"
+            aria-label="Full NRIC"
             className="w-48 px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-mono uppercase focus:border-teal-500 focus:outline-none" />
           <button type="button"
             disabled={!valid || submitting}

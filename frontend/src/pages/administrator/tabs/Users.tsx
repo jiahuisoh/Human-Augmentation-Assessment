@@ -309,40 +309,66 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
             </div>
 
             <div className="space-y-3">
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Full name"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
-              <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                placeholder="Email" type="email"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
-              <input value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                placeholder="Password" type="password"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
-              <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-indigo-500 focus:outline-none">
-                {(["client", "staff", "clinician", "developer", "administrator"] as const).map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+              <div>
+                <label htmlFor="na-name" className="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+                <input id="na-name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label htmlFor="na-email" className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                <input id="na-email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  type="email"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label htmlFor="na-password" className="block text-xs font-medium text-gray-500 mb-1">Password</label>
+                <input id="na-password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  type="password"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+              </div>
+              <div>
+                <label htmlFor="na-role" className="block text-xs font-medium text-gray-500 mb-1">Role</label>
+                <select id="na-role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-indigo-500 focus:outline-none">
+                  {(["client", "staff", "clinician", "developer", "administrator"] as const).map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
 
               {form.role === "client" && (
                 <div className="grid grid-cols-2 gap-3">
-                  <input value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
-                    type="date" title="Date of birth"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
-                  <select value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value as Sex }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-indigo-500 focus:outline-none">
-                    {(["male", "female", "other"] as const).map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                  <input value={form.height} onChange={e => setForm(f => ({ ...f, height: e.target.value }))}
-                    placeholder="Height (cm)" type="number"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
-                  <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
-                    placeholder="Weight (kg)" type="number"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
-                  <input value={form.nric} onChange={e => setForm(f => ({ ...f, nric: e.target.value.toUpperCase().slice(0, 9) }))}
-                    placeholder="NRIC (optional, for verification)" maxLength={9}
-                    className="col-span-2 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono uppercase focus:border-indigo-500 focus:outline-none" />
+                  <div>
+                    <label htmlFor="na-dob" className="block text-xs font-medium text-gray-500 mb-1">Date of Birth</label>
+                    <input id="na-dob" value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label htmlFor="na-gender" className="block text-xs font-medium text-gray-500 mb-1">Gender</label>
+                    <select id="na-gender" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value as Sex }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-indigo-500 focus:outline-none">
+                      {(["male", "female", "other"] as const).map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="na-height" className="block text-xs font-medium text-gray-500 mb-1">Height (cm)</label>
+                    <input id="na-height" value={form.height} onChange={e => setForm(f => ({ ...f, height: e.target.value }))}
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label htmlFor="na-weight" className="block text-xs font-medium text-gray-500 mb-1">Weight (kg)</label>
+                    <input id="na-weight" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
+                      type="number"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
+                  </div>
+                  <div className="col-span-2">
+                    <label htmlFor="na-nric" className="block text-xs font-medium text-gray-500 mb-1">NRIC (optional, for verification)</label>
+                    <input id="na-nric" value={form.nric} onChange={e => setForm(f => ({ ...f, nric: e.target.value.toUpperCase().slice(0, 9) }))}
+                      maxLength={9}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono uppercase focus:border-indigo-500 focus:outline-none" />
+                  </div>
                 </div>
               )}
             </div>

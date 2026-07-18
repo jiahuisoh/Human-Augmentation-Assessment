@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Save, Pencil } from "lucide-react";
 import { cls, calculateAge, formatDOB, isValidNric } from "../../../utils/helpers";
 import { measurementApi, userApi } from "../../../utils/api";
+import { EmergencyContactSection } from "../../../components/EmergencyContact";
 import { BMICard, BMIChart, BMI_ZONES, calcBmi } from "../components/BMICard";
 import type { EmergencyContact, Measurement, User } from "../../../types";
 
@@ -14,9 +15,7 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
   const [height, setHeight]               = useState<string>(user.height?.toString() ?? "");
   const [weight, setWeight]               = useState<string>(user.weight?.toString() ?? "");
   const [measurements, setMeasurements]   = useState<Measurement[]>([]);
-  const [contact, setContact]             = useState<EmergencyContact>(user.emergencyContact ?? { name: "", phone: "", relationship: "" });
   const [savingMeas, setSavingMeas]       = useState(false);
-  const [savingContact, setSavingContact] = useState(false);
   const [toast, setToast]                 = useState<{ msg: string; ok: boolean } | null>(null);
   const [editingNric, setEditingNric]     = useState(false);
   const [newNric, setNewNric]             = useState("");
@@ -73,20 +72,14 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
     }
   };
 
-  const saveContact = async (): Promise<void> => {
-    if (!contact.name.trim() || !contact.phone.trim() || !contact.relationship.trim()) {
-      showToast("Please fill in name, phone, and relationship.", false);
-      return;
-    }
-    setSavingContact(true);
-    try {
-      await userApi.saveEmergencyContact(user._id, contact);
-      showToast("Emergency contact saved");
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : "Failed to save", false);
-    } finally {
-      setSavingContact(false);
-    }
+  // Sync the parent user with the server response so the card always shows
+  // the persisted contact — an invalid or failed change can never appear
+  // saved. Validation, confirmation and error display live in the shared
+  // EmergencyContactSection.
+  const handleSaveContact = async (contactValue: EmergencyContact): Promise<void> => {
+    const updated = await userApi.saveEmergencyContact(user._id, contactValue);
+    onUserUpdate(updated);
+    showToast("Emergency contact saved");
   };
 
   return (
@@ -125,7 +118,7 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
             <span className="flex items-center gap-2">
               <input value={newNric}
                 onChange={e => setNewNric(e.target.value.toUpperCase().slice(0, 9))}
-                placeholder="e.g. S1234567D" maxLength={9} autoComplete="off"
+ maxLength={9} autoComplete="off"
                 className="w-40 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono uppercase focus:border-violet-500 focus:outline-none" />
               <button type="button" onClick={() => void saveNric()} disabled={savingNric || !isValidNric(newNric)}
                 className="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors">
@@ -154,13 +147,13 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
           <div>
             <label htmlFor="acct-h" className="block text-xs font-medium text-gray-500 mb-1">Height (cm)</label>
             <input id="acct-h" type="number" value={height} onChange={e => setHeight(e.target.value)}
-              min={100} max={200} placeholder="162"
+              min={100} max={200}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
           </div>
           <div>
             <label htmlFor="acct-w" className="block text-xs font-medium text-gray-500 mb-1">Weight (kg)</label>
             <input id="acct-w" type="number" value={weight} onChange={e => setWeight(e.target.value)}
-              min={20} max={200} placeholder="65"
+              min={20} max={200}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
           </div>
         </div>
@@ -191,36 +184,9 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-1">Emergency contact</h3>
-        <p className="text-xs text-gray-400 mb-3">Notified if you report discomfort during a session.</p>
-        <div className="space-y-2 mb-3">
-          <div>
-            <label htmlFor="ec-name" className="block text-xs font-medium text-gray-500 mb-1">Name</label>
-            <input id="ec-name" value={contact.name} onChange={e => setContact(p => ({ ...p, name: e.target.value }))}
-              placeholder="e.g. Tan Mei Ling"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
-          </div>
-          <div>
-            <label htmlFor="ec-phone" className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
-            <input id="ec-phone" type="tel" value={contact.phone} onChange={e => setContact(p => ({ ...p, phone: e.target.value }))}
-              placeholder="+65 9123 4567"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
-          </div>
-          <div>
-            <label htmlFor="ec-rel" className="block text-xs font-medium text-gray-500 mb-1">Relationship</label>
-            <select id="ec-rel" value={contact.relationship} onChange={e => setContact(p => ({ ...p, relationship: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-violet-500 focus:outline-none">
-              <option value="">Select…</option>
-              {["Spouse / Partner", "Son", "Daughter", "Sibling", "Friend", "Carer", "Other"].map(r => (
-                <option key={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <button type="button" onClick={() => void saveContact()} disabled={savingContact}
-          className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
-          <Save size={14} /> {savingContact ? "Saving…" : "Save emergency contact"}
-        </button>
+        <EmergencyContactSection contact={user.emergencyContact}
+          onSave={handleSaveContact}
+          note="Provide a contact person who can be reached in case of an emergency." />
       </div>
     </div>
   );

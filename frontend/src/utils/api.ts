@@ -70,7 +70,9 @@ export interface IUserApi {
 export interface ISessionApi {
   save(session: Omit<AssessmentSession, "_id" | "createdAt">): Promise<AssessmentSession>;
   listForClient(clientId: string): Promise<AssessmentSession[]>;
-  override(id: string, reason: string, originalScore: number, newScore: number): Promise<AssessmentSession>;
+  // The "before" score is derived server-side from the stored session (latest
+  // override, else base result) so the audit trail can't be spoofed.
+  override(id: string, reason: string, newScore: number): Promise<AssessmentSession>;
 }
 
 export interface IScheduleApi {
@@ -149,10 +151,10 @@ class RestSessionApi implements ISessionApi {
   listForClient(clientId: string) {
     return apiFetch<AssessmentSession[]>(`${this.base}/api/sessions/client/${clientId}`);
   }
-  override(id: string, reason: string, originalScore: number, newScore: number) {
+  override(id: string, reason: string, newScore: number) {
     return apiFetch<AssessmentSession>(`${this.base}/api/sessions/${id}/override`, {
       method: "PATCH",
-      body: { reason, originalScore, newScore },
+      body: { reason, newScore },
     });
   }
 }

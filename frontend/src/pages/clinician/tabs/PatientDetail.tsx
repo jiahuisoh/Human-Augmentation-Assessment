@@ -2,16 +2,44 @@ import { useState } from "react";
 import { Edit3 } from "lucide-react";
 import { TESTS } from "../../../utils/constants";
 import { adherenceOf, riskFromSessions, type PatientView } from "../ClinicianShared";
+import type { AssessmentSession } from "../../../types";
 
 interface PatientDetailProps {
   patient: PatientView;
-  onOverride: (sessionId: string, reason: string, originalScore: number, newScore: number) => Promise<void>;
+  onOverride: (sessionId: string, reason: string, newScore: number) => Promise<void>;
 }
 
+// The score a clinician acts on — and the one the backend records as the
+// override's "before" value: the latest override if any, else the base result.
+const effectiveScore = (s: AssessmentSession): number | null => {
+  const last = s.overrides?.[s.overrides.length - 1];
+  if (last) return last.newScore;
+  return s.reps ?? s.measurement ?? null;
+};
+
 export default function PatientDetail({ patient, onOverride }: PatientDetailProps) {
-  const [overriding, setOverriding] = useState<string | null>(null);
-  const [reason, setReason]         = useState("");
-  const [newScore, setNewScore]     = useState("");
+  const [overriding, setOverriding]   = useState<string | null>(null);
+  const [reason, setReason]           = useState("");
+  const [newScore, setNewScore]       = useState("");
+  const [overrideErr, setOverrideErr] = useState("");
+  const [busy, setBusy]               = useState(false);
+
+  const startOverride = (sessionId: string): void => {
+    setOverriding(sessionId); setReason(""); setNewScore(""); setOverrideErr("");
+  };
+
+  const confirmOverride = async (sessionId: string): Promise<void> => {
+    setBusy(true);
+    setOverrideErr("");
+    try {
+      await onOverride(sessionId, reason, Number(newScore));
+      setOverriding(null); setReason(""); setNewScore("");
+    } catch (e) {
+      setOverrideErr(e instanceof Error ? e.message : "Failed to save the override.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -29,7 +57,11 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
         </div>
 
         <h4 className="text-sm font-semibold text-gray-900 mb-3">Assessment sessions (full clinical data)</h4>
-        {patient.sessions.map(s => (
+        {patient.sessions.map(s => {
+          const overridden = (s.overrides?.length ?? 0) > 0;
+          const score = effectiveScore(s);
+          const unit = s.testId === "chair_stand" ? "reps" : "cm";
+          return (
           <div key={s._id} className="py-3 border-b border-gray-50 last:border-0">
             <div className="flex items-center justify-between">
               <div>
@@ -38,14 +70,13 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
                 </div>
                 <div className="text-xs text-gray-400">
                   {new Date(s.createdAt).toLocaleDateString("en-SG")}
-                  {s.overrides && s.overrides.length > 0 ? ` · ${s.overrides.length} override(s)` : ""}
+                  {overridden ? ` · ${s.overrides!.length} override(s)` : ""}
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold text-gray-900">
-                  {s.reps != null ? `${s.reps} reps`
-                    : s.measurement != null ? `${s.measurement} cm`
-                    : "—"}
+                  {score != null ? `${score} ${unit}` : "—"}
+                  {overridden && <span className="ml-1 text-xs font-semibold text-amber-600">(overridden)</span>}
                 </div>
                 <div className="text-xs text-gray-400">{s.classification ?? ""}</div>
               </div>
@@ -58,16 +89,13 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
                 <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2}
                   placeholder="Reason for override (required for audit)…"
                   className="w-full mb-2 px-3 py-1.5 border border-gray-200 rounded text-xs focus:border-violet-500 focus:outline-none resize-none" />
+                {overrideErr && <p className="mb-2 text-xs font-medium text-red-600">{overrideErr}</p>}
                 <div className="flex gap-2">
                   <button type="button"
-                    disabled={!reason.trim() || !newScore}
-                    onClick={async () => {
-                      const original = s.reps ?? s.measurement ?? 0;
-                      await onOverride(s._id, reason, original, Number(newScore));
-                      setOverriding(null); setReason(""); setNewScore("");
-                    }}
+                    disabled={busy || !reason.trim() || !newScore}
+                    onClick={() => void confirmOverride(s._id)}
                     className="px-3 py-1.5 bg-amber-600 disabled:opacity-50 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg">
-                    Confirm override
+                    {busy ? "Saving…" : "Confirm override"}
                   </button>
                   <button type="button" onClick={() => setOverriding(null)}
                     className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50">
@@ -76,13 +104,14 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
                 </div>
               </div>
             ) : (
-              <button type="button" onClick={() => setOverriding(s._id)}
+              <button type="button" onClick={() => startOverride(s._id)}
                 className="mt-2 inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-800 font-medium">
                 <Edit3 size={11} /> Override score (audit trail)
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

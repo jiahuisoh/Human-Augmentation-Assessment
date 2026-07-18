@@ -13,7 +13,7 @@ import VerificationBanner from "../../components/VerificationBanner";
 import TestRunner from "../../cv/TestRunner";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
-  AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
+  AssessmentSession, ConsentEvent, InterventionPlan,
   TestId, User,
 } from "../../types";
 import { calcAge, greeting } from "./ClientShared";
@@ -75,11 +75,6 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
     });
   }, [user._id]);
 
-  const handleConsentChange = async (scope: ConsentScope, granted: boolean): Promise<void> => {
-    await consentApi.set(user._id, scope, granted);
-    setConsents(await consentApi.historyFor(user._id));
-  };
-
   const handleSelfTestComplete = async (outcome: TestOutcomeWire): Promise<void> => {
     if (!activeCv) return;
     try {
@@ -87,7 +82,7 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
       if (!hasConsent) {
         const agreed = window.confirm(
           "Save this assessment and share it with your clinician?\n\n" +
-          "This records your consent to store your assessment data. You can withdraw it later under Records.",
+          "This records your consent to store your assessment data. You can withdraw it later through your clinic.",
         );
         if (!agreed) return;
         await consentApi.set(user._id, "assessment_data", true);
@@ -168,7 +163,7 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
         {tab === "questionnaire"    && <Questionnaire   user={user} />}
         {tab === "plan"             && <Plan            plan={plan} />}
         {tab === "activity"         && <Activity_ />}
-        {tab === "records"          && <Records         user={user} consents={consents} sessions={sessions} onConsentChange={handleConsentChange} />}
+        {tab === "records"          && <Records         sessions={sessions} />}
         {tab === "account"          && <Account         user={user} onUserUpdate={onUserUpdate} />}
         {tab === "help"             && <Help />}
       </div>

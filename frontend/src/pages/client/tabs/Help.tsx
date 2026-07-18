@@ -13,7 +13,7 @@ export default function Help() {
           <div>
             <h3 className="text-sm font-bold text-red-700">Your health comes first</h3>
             <p className="text-xs text-red-700 mt-1 leading-relaxed">
-              If you feel dizzy, short of breath, or experience pain — stop the test immediately and tap
+              If you feel dizzy, short of breath, or experience pain, stop the test immediately and tap
               <strong> Stop Early</strong>. Your safety matters more than the score.
             </p>
           </div>
@@ -81,10 +81,10 @@ export default function Help() {
       <div className="bg-gray-100 rounded-2xl p-4 flex items-start gap-3">
         <Shield size={16} className="text-gray-500 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-gray-600 leading-relaxed">
-          <strong>Data protection:</strong> HANA complies with Singapore's
+          <strong>Data protection:</strong> HANA is designed around Singapore's
           <strong> Personal Data Protection Act (PDPA)</strong>.
-          Raw health data is stored off-chain on Singapore-based servers, never sold, never shared with third parties.
-          Consent events and record hashes are written to the blockchain for verifiability — but the underlying clinical data stays private.
+          Your health data is never sold or shared with third parties. Access is restricted by role,
+          and sensitive actions on your records are logged.
           You may request deletion of your account at any time through HANA Administrator.
         </p>
       </div>

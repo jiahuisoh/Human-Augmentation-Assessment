@@ -15,6 +15,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState("");
+  const [actionErr, setActionErr] = useState("");
   const blankForm = { name: "", email: "", password: "", role: "clinician" as Role, dateOfBirth: "", gender: "other" as Sex, height: "", weight: "", nric: "" };
   const [form, setForm] = useState(blankForm);
 
@@ -40,27 +41,33 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
   ];
   const managed = users.filter(u => u._id !== actor._id);
 
-  const setStatus = async (u: User, status: VerificationStatus): Promise<void> => {
-    await userApi.setStatus(u._id, status);
-    await onChange();
+  const runAction = async (action: () => Promise<unknown>): Promise<void> => {
+    setActionErr("");
+    try {
+      await action();
+    } catch (e) {
+      setActionErr(e instanceof Error ? e.message : "The action could not be completed.");
+    } finally {
+      await onChange().catch(() =>
+        setActionErr("The list could not be refreshed. Please reload the page."));
+    }
   };
 
-  const suspend = async (u: User): Promise<void> => {
-    await userApi.setStatus(u._id, "suspended");
-    await onChange();
-  };
+  const setStatus = (u: User, status: VerificationStatus): Promise<void> =>
+    runAction(() => userApi.setStatus(u._id, status));
+
+  const suspend = (u: User): Promise<void> =>
+    runAction(() => userApi.setStatus(u._id, "suspended"));
 
   const remove = async (u: User): Promise<void> => {
     if (!confirm("Delete user permanently?")) return;
-    await userApi.delete(u._id);
-    await onChange();
+    await runAction(() => userApi.delete(u._id));
   };
 
   const toggleAssignment = async (clinician: User, clientId: string, currentlyAssigned: boolean): Promise<void> => {
     setBusy(true);
     try {
-      await userApi.assignClient(clinician._id, clientId, !currentlyAssigned);
-      await onChange();
+      await runAction(() => userApi.assignClient(clinician._id, clientId, !currentlyAssigned));
       // keep modal open but re-sync the client reference from the refreshed users list
       setAssigningClient(prev => prev ? (users.find(u => u._id === prev._id) ?? prev) : null);
     } finally {
@@ -113,6 +120,16 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
           <Plus size={13} /> New Account
         </button>
       </div>
+
+      {actionErr && (
+        <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
+          <p className="text-xs font-medium text-red-700">{actionErr}</p>
+          <button type="button" onClick={() => setActionErr("")}
+            className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-700 transition-colors">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {ROLE_GROUPS.map(({ role, label, text, bg }) => {
         const group = managed.filter(u => u.role === role);

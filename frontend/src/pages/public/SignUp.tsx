@@ -109,8 +109,8 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
     }
     const heightN = Number(form.height);
     const weightN = Number(form.weight);
-    if (!form.height || heightN < 100 || heightN > 250) e.height = "Please enter your height in cm.";
-    if (!form.weight || weightN < 20 || weightN > 300)  e.weight = "Please enter your weight in kg.";
+    if (!form.height || heightN < 100 || heightN > 200) e.height = "Please enter your height in cm.";
+    if (!form.weight || weightN < 20 || weightN > 200)  e.weight = "Please enter your weight in kg.";
     if (!form.gender)                                   e.gender = "Please select your gender.";
     if (!form.password || form.password.length < 8)     e.password = "Password must be at least 8 characters.";
     if (form.password !== form.confirmPassword)         e.confirmPassword = "Passwords do not match.";
@@ -184,12 +184,12 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Height (cm)" id="height" error={errors.height}>
-            <input id="height" type="number" value={form.height} min={100} max={250}
+            <input id="height" type="number" value={form.height} min={100} max={200}
               onChange={e => set("height", e.target.value)} placeholder="e.g. 162"
               className={cls(inputCls, errors.height && "border-red-400")} />
           </FormField>
           <FormField label="Weight (kg)" id="weight" error={errors.weight}>
-            <input id="weight" type="number" value={form.weight} min={20} max={300}
+            <input id="weight" type="number" value={form.weight} min={20} max={200}
               onChange={e => set("weight", e.target.value)} placeholder="e.g. 65"
               className={cls(inputCls, errors.weight && "border-red-400")} />
           </FormField>

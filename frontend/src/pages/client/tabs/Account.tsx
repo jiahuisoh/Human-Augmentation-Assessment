@@ -34,8 +34,8 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
 
   const saveMeas = async (): Promise<void> => {
     const h = Number(height), w = Number(weight);
-    if (h < 100 || h > 250 || w < 20 || w > 300) {
-      showToast("Enter a valid height (100 to 250 cm) and weight (20 to 300 kg).", false);
+    if (h < 100 || h > 200 || w < 20 || w > 200) {
+      showToast("Enter a valid height (100 to 200 cm) and weight (20 to 200 kg).", false);
       return;
     }
     setSavingMeas(true);
@@ -154,13 +154,13 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
           <div>
             <label htmlFor="acct-h" className="block text-xs font-medium text-gray-500 mb-1">Height (cm)</label>
             <input id="acct-h" type="number" value={height} onChange={e => setHeight(e.target.value)}
-              min={100} max={250} placeholder="162"
+              min={100} max={200} placeholder="162"
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
           </div>
           <div>
             <label htmlFor="acct-w" className="block text-xs font-medium text-gray-500 mb-1">Weight (kg)</label>
             <input id="acct-w" type="number" value={weight} onChange={e => setWeight(e.target.value)}
-              min={20} max={300} placeholder="65"
+              min={20} max={200} placeholder="65"
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
           </div>
         </div>

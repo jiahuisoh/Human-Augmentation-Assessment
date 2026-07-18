@@ -62,11 +62,17 @@ function PlanEditor({ patient, onSave }: PlanEditorProps) {
         ))}
       </div>
 
-      <div className="flex gap-2">
-        <input value={activity} onChange={e => setActivity(e.target.value)} placeholder="Activity"
-          className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-xs" />
-        <input value={frequency} onChange={e => setFrequency(e.target.value)} placeholder="Frequency"
-          className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-xs" />
+      <div className="flex gap-2 items-end">
+        <div className="flex-1">
+          <label htmlFor="plan-activity" className="block text-xs font-medium text-gray-500 mb-1">Activity</label>
+          <input id="plan-activity" value={activity} onChange={e => setActivity(e.target.value)}
+            className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+        </div>
+        <div className="flex-1">
+          <label htmlFor="plan-frequency" className="block text-xs font-medium text-gray-500 mb-1">Frequency</label>
+          <input id="plan-frequency" value={frequency} onChange={e => setFrequency(e.target.value)}
+            className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+        </div>
         <button type="button" onClick={add}
           className="flex items-center gap-1 px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs rounded">
           <Plus size={12} /> Add

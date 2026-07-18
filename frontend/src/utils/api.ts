@@ -60,7 +60,7 @@ export interface IUserApi {
   create(payload: NewUserPayload & { role: Role }): Promise<User>;
   setStatus(id: string, verificationStatus: User["verificationStatus"]): Promise<User>;
   delete(id: string): Promise<void>;
-  saveEmergencyContact(id: string, contact: EmergencyContact): Promise<void>;
+  saveEmergencyContact(id: string, contact: EmergencyContact): Promise<User>;
   verifyNric(id: string, nric: string): Promise<{ match: boolean; verificationStatus: VerificationStatus }>;
   updateNric(id: string, nric: string): Promise<User>;
   listPendingVerification(): Promise<PendingVerificationClient[]>;
@@ -70,7 +70,9 @@ export interface IUserApi {
 export interface ISessionApi {
   save(session: Omit<AssessmentSession, "_id" | "createdAt">): Promise<AssessmentSession>;
   listForClient(clientId: string): Promise<AssessmentSession[]>;
-  override(id: string, reason: string, originalScore: number, newScore: number): Promise<AssessmentSession>;
+  // The "before" score is derived server-side from the stored session (latest
+  // override, else base result) so the audit trail can't be spoofed.
+  override(id: string, reason: string, newScore: number): Promise<AssessmentSession>;
 }
 
 export interface IScheduleApi {
@@ -127,8 +129,8 @@ class RestUserApi implements IUserApi {
   assignClient(clinicianId: string, clientId: string, assign: boolean) {
     return apiFetch<User>(`${this.base}/api/admin/users/${clinicianId}/assign-client`, { method: "PATCH", body: { clientId, assign } });
   }
-  async saveEmergencyContact(id: string, contact: EmergencyContact) {
-    await apiFetch<void>(`${this.base}/api/users/${id}/emergency`, { method: "PATCH", body: contact });
+  saveEmergencyContact(id: string, contact: EmergencyContact) {
+    return apiFetch<User>(`${this.base}/api/users/${id}/emergency`, { method: "PATCH", body: contact });
   }
   verifyNric(id: string, nric: string) {
     return apiFetch<{ match: boolean; verificationStatus: VerificationStatus }>(`${this.base}/api/staff/users/${id}/verify-nric`, { method: "POST", body: { nric } });
@@ -149,10 +151,10 @@ class RestSessionApi implements ISessionApi {
   listForClient(clientId: string) {
     return apiFetch<AssessmentSession[]>(`${this.base}/api/sessions/client/${clientId}`);
   }
-  override(id: string, reason: string, originalScore: number, newScore: number) {
+  override(id: string, reason: string, newScore: number) {
     return apiFetch<AssessmentSession>(`${this.base}/api/sessions/${id}/override`, {
       method: "PATCH",
-      body: { reason, originalScore, newScore },
+      body: { reason, newScore },
     });
   }
 }

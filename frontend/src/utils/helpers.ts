@@ -33,6 +33,18 @@ export function firstNameOf(name?: string): string {
 }
 
 /**
+ * Singapore phone number: 8 digits starting with 6, 8 or 9 after stripping
+ * whitespace; an optional +65 prefix is accepted so stored values round-trip.
+ * Returns the normalized "+65XXXXXXXX" form, or null when invalid.
+ * Mirrors backend/src/utils/validators.js.
+ */
+export function normalizeSgPhone(phone: string): string | null {
+  const p = phone.replace(/\s+/g, "");
+  const m = /^(?:\+65)?([689]\d{7})$/.exec(p);
+  return m ? `+65${m[1]}` : null;
+}
+
+/**
  * Singapore NRIC/FIN validation, per the "NRIC Checksum to Suffix" table:
  * checksum = weighted digit sum mod 11, suffix = series row[checksum].
  * Each row already encodes its series offset; M row is the same scheme

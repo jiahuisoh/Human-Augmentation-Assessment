@@ -28,17 +28,17 @@ export const FAQ_SECTIONS: ReadonlyArray<FAQSection> = [
     faqs: [
       { q: "Why isn't my camera turning on?",                a: "Look for a small camera icon or padlock at the very top of your screen, near the website address. Click it, then select \"Allow Camera\". If still stuck, ask a HANA Staff member at your clinic for help." },
       { q: "The system isn't counting my repetitions correctly.", a: "Make sure your full body is visible from hips to ankles. A side-on view gives the most accurate count. The screen also tells you if you need to step back or move into frame." },
-      { q: "The screen looks frozen during my test.",         a: "This usually means a slow connection. Close other browser tabs or apps. If it continues, tap \"Stop Early\" — your session can be restarted by a clinician." },
-      { q: "Is my camera video recorded?",                     a: "No. Camera frames stream to the HANA CV service for analysis only — they are never recorded or saved. Only the final result (e.g. \"14 reps\") is stored." },
+      { q: "The screen looks frozen during my test.",         a: "This usually means a slow connection. Close other browser tabs or apps. If it continues, tap \"Stop Early\". Your session can be restarted by a clinician." },
+      { q: "Is my camera video recorded?",                     a: "No. Camera frames stream to the HANA CV service for analysis only and are never recorded or saved. Only the final result (e.g. \"14 reps\") is stored." },
     ],
   },
   {
     id: "privacy", heading: "Privacy & Data", Icon: Lock,
     faqs: [
-      { q: "Where is my health data stored?",         a: "Raw health data stays in a secure off-chain database. Only consent events, record hashes, and verification proofs are written to the blockchain — never raw clinical data." },
-      { q: "Who can see my health records?",          a: "Only your assigned clinician and authorised HANA Administrator (for governance / audit). All access is logged with a timestamp. HANA Staff see operational data only — they cannot see clinical scores." },
-      { q: "Can I revoke consent for data sharing?", a: "Yes. Go to \"My Records\" and toggle any consent off. The revocation is recorded on the blockchain and applied immediately." },
-      { q: "Is HANA PDPA-compliant?",                  a: "Yes. HANA complies with Singapore's Personal Data Protection Act. Data lives on Singapore-based servers and is never sold or shared with third parties." },
+      { q: "Where is my health data stored?",         a: "Your health data is kept in a secure database. Access is restricted by role, and consent changes are recorded with a timestamp and who made them." },
+      { q: "Who can see my health records?",          a: "Only your assigned clinician and authorised HANA Administrator (for governance / audit). Sensitive actions on your records are logged. HANA Staff see operational data only and cannot see clinical scores." },
+      { q: "Can I revoke consent for data sharing?", a: "Yes. Ask at your clinic: a clinician or administrator can record your consent withdrawal, and it applies immediately. Every consent change is logged with a timestamp." },
+      { q: "Is HANA PDPA-compliant?",                  a: "HANA is designed around Singapore's Personal Data Protection Act. Your data is used only for your care and is never sold or shared with third parties." },
     ],
   },
 ];

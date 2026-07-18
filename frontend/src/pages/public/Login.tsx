@@ -66,7 +66,7 @@ export default function Login({ onLogin, onCreateAccount, notice }: LoginProps) 
               id="email" type="email" value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={onEnter}
-              placeholder="you@example.com" className={inputCls} autoFocus
+ className={inputCls} autoFocus
             />
           </div>
           <div>
@@ -76,7 +76,7 @@ export default function Login({ onLogin, onCreateAccount, notice }: LoginProps) 
                 id="password" type={visible ? "text" : "password"} value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={onEnter}
-                placeholder="Enter your password"
+
                 className={cls(inputCls, "pr-12")}
               />
               <button

@@ -127,7 +127,7 @@ function Minutes({ id, value, onChange }: MinutesProps) {
   return (
     <input id={id} type="number" min={0} max={600} value={value ?? ""}
       onChange={e => onChange(Number(e.target.value))}
-      placeholder="e.g. 25"
+
       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
   );
 }

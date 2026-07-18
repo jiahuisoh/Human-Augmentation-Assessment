@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, Users, Shield, Terminal,
+  LayoutDashboard, Users, Terminal,
   Settings, Camera,
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
@@ -16,19 +16,17 @@ import type {
 
 import Overview  from "./tabs/Overview";
 import Users_    from "./tabs/Users";
-import Records   from "./tabs/Records";
 import Audit     from "./tabs/Audit";
 import Config    from "./tabs/Config";
 import Cv        from "./tabs/Cv";
 
 type TabId =
   | "overview" | "users"
-  | "records"  | "audit" | "config" | "cv";
+  | "audit" | "config" | "cv";
 
 const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
   { id: "overview",   label: "Overview",        Icon: LayoutDashboard },
   { id: "users",      label: "User Management", Icon: Users           },
-  { id: "records",    label: "Health Records",  Icon: Shield          },
   { id: "audit",      label: "Audit Trail",     Icon: Terminal        },
   { id: "config",     label: "Configuration",   Icon: Settings        },
   { id: "cv",         label: "CV (Authorised)", Icon: Camera          },
@@ -100,7 +98,6 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
       <div className="space-y-5">
         {tab === "overview"  && <Overview  users={users} />}
         {tab === "users"     && <Users_    users={users} actor={user} onChange={refresh} />}
-        {tab === "records"   && <Records />}
         {tab === "audit"     && <Audit     logs={logs} />}
         {tab === "config"    && <Config />}
         {tab === "cv"        && <Cv        schedule={schedule} authorised={cvAuthorised} onAuthorise={setCvAuthorised} onLaunch={(clientId, testId) => setActiveCv({ clientId, testId })} />}

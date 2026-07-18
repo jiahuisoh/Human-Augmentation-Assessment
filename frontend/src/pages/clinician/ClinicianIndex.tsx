@@ -66,7 +66,11 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
         return null;
       }
     }));
-    setPatients(loaded.filter((p): p is PatientView => p !== null));
+    const fresh = loaded.filter((p): p is PatientView => p !== null);
+    setPatients(fresh);
+    // The open detail view holds its own PatientView reference; re-point it at
+    // the refreshed data or it keeps showing pre-reload sessions and plans.
+    setSelected(prev => prev ? (fresh.find(p => p.user._id === prev.user._id) ?? null) : null);
   }
 
   const handleCvComplete = async (outcome: TestOutcomeWire): Promise<void> => {
@@ -84,8 +88,8 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
     setActiveCv(null);
   };
 
-  const handleOverride = async (sessionId: string, reason: string, original: number, next: number): Promise<void> => {
-    await sessionApi.override(sessionId, reason, original, next);
+  const handleOverride = async (sessionId: string, reason: string, next: number): Promise<void> => {
+    await sessionApi.override(sessionId, reason, next);
     await loadPatients();
   };
 

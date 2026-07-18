@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { ROLES, VERIFICATION_STATUSES } = require("../utils/constants");
 
 const EmergencyContactSchema = new mongoose.Schema({
   name:         { type: String, required: true },
-  phone:        { type: String, required: true },
+  phone:        { type: String, required: true, match: /^\+65[689]\d{7}$/ },
   relationship: { type: String, required: true },
 }, { _id: false });
 
@@ -11,12 +12,12 @@ const UserSchema = new mongoose.Schema({
   email:              { type: String, required: true, unique: true, lowercase: true, trim: true },
   password:           { type: String, required: true, select: false },
   name:               { type: String, required: true, trim: true },
-  role:               { type: String, enum: ["client","staff","clinician","developer","administrator"], default: "client" },
+  role:               { type: String, enum: ROLES, default: "client" },
   dateOfBirth:        { type: String },
   gender:             { type: String, enum: ["male","female","other"] },
   height:             { type: Number },
   weight:             { type: Number },
-  verificationStatus: { type: String, enum: ["unverified","pending","verified","suspended"], default: "unverified" },
+  verificationStatus: { type: String, enum: VERIFICATION_STATUSES, default: "unverified" },
   passwordChangedAt:  { type: Date, select: false },
   nricHash:           { type: String, select: false },
   nricLastFour:       { type: String },

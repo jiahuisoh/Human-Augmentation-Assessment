@@ -1,26 +1,32 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
+const { TEST_IDS, RISK_LEVELS } = require("../utils/constants");
 
+// Bounds mirror the route validator (routes/sessions.js) — defense in depth:
+// the route rejects bad input with a clean 400, and the schema guarantees the
+// same limits hold for any other write path that may be added later.
 const OverrideSchema = new mongoose.Schema({
   by:            { type: String, required: true },
-  byRole:        { type: String, required: true },
-  reason:        { type: String, required: true },
-  originalScore: { type: Number, required: true },
-  newScore:      { type: Number, required: true },
+  byRole:        { type: String, enum: ["clinician", "administrator"], required: true },
+  reason:        { type: String, required: true, maxlength: 1000 },
+  // Overridable values all live within [-100, 100]: reps 0-50, measurement
+  // ±100 — so an override score outside that range can only be a mistake.
+  originalScore: { type: Number, required: true, min: -100, max: 100 },
+  newScore:      { type: Number, required: true, min: -100, max: 100 },
   at:            { type: String, default: () => new Date().toISOString() },
 }, { _id: false });
 
 const SessionSchema = new mongoose.Schema({
   clientId:        { type: String, required: true },
   conductedBy:     { type: String, required: true },
-  testId:          { type: String, enum: ["chair_stand","back_scratch","sit_reach"], required: true },
-  reps:            { type: Number },
-  measurement:     { type: Number },
-  classification:  { type: String },
-  riskLevel:       { type: String, enum: ["low","moderate","high"] },
-  interpretation:  { type: String },
-  normLow:         { type: Number },
-  normHigh:        { type: Number },
+  testId:          { type: String, enum: TEST_IDS, required: true },
+  reps:            { type: Number, min: 0, max: 50 },
+  measurement:     { type: Number, min: -100, max: 100 },
+  classification:  { type: String, maxlength: 200 },
+  riskLevel:       { type: String, enum: RISK_LEVELS },
+  interpretation:  { type: String, maxlength: 1500 },
+  normLow:         { type: Number, min: -100, max: 100 },
+  normHigh:        { type: Number, min: -100, max: 100 },
   terminatedEarly: { type: Boolean, default: false },
   livenessScore:   { type: Number },
   recordHash:      { type: String },

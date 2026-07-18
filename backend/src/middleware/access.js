@@ -13,6 +13,14 @@ const canAccessClient = (user, clientId) => {
   return false; // staff, developer, and anyone else: no access to identifiable client data
 };
 
+// Staff run the in-person operations (NRIC checks, attendance, emergencies)
+// and may additionally view a client's PROFILE — demographics and emergency
+// contact. Clinical data (sessions, plans, measurements) stays behind
+// canAccessClient. The caller must still confirm the target is a client,
+// which requires the fetched document (see userController.getUser).
+const canViewClientProfile = (user, clientId) =>
+  canAccessClient(user, clientId) || (!!user && user.role === "staff");
+
 const requireClientAccess = (param = "clientId") => (req, res, next) => {
   // Rewrite the param to its canonical form so downstream queries
   // (find({clientId: req.params...})) match what the database stores.
@@ -38,4 +46,4 @@ const requireVerifiedClient = (req, res, next) => {
   next();
 };
 
-module.exports = { canAccessClient, requireClientAccess, requireVerifiedClient };
+module.exports = { canAccessClient, canViewClientProfile, requireClientAccess, requireVerifiedClient };

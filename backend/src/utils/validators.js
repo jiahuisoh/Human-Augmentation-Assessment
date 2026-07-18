@@ -26,6 +26,15 @@ const finiteInRange = (v, min, max) => {
   return Number.isFinite(n) && n >= min && n <= max ? n : null;
 };
 
+// Singapore phone number: 8 digits starting with 6, 8 or 9 after stripping
+// whitespace; an optional +65 prefix is accepted so stored values round-trip.
+// Normalized to "+65XXXXXXXX" on the way in.
+const validPhone = (v) => {
+  if (typeof v !== "string") return null;
+  const m = /^(?:\+65)?([689]\d{7})$/.exec(v.replace(/\s+/g, ""));
+  return m ? `+65${m[1]}` : null;
+};
+
 // Ids are compared and stored as hex strings throughout the app. The stored
 // canonical form is lowercase (ObjectId.toString()), and Mongo string queries
 // and JS === are case-sensitive — so ids must be normalized to lowercase the
@@ -89,6 +98,8 @@ const CHECKS = {
   objectId: (v) => (isObjectIdString(v) ? v.toLowerCase() : null),
   array:    (v, r) => (Array.isArray(v) && v.length > 0 && (!r.max || v.length <= r.max) ? v : null),
   nric:     (v) => (isValidNric(v) ? v.trim().toUpperCase() : null),
+  sgPhone:  (v) => validPhone(v),
+  validPhone:  (v) => validPhone(v),
   // Flat map of id → scalar answer (e.g. questionnaire submissions). Stored as
   // Mixed, so shape and size are enforced here: a plain object, 1..max entries,
   // bounded key length, and scalar values only (strings capped at 500 chars).
@@ -120,6 +131,7 @@ const defaultMessage = (key, rule) => {
     case "objectId": return `A valid ${label} is required`;
     case "array":    return `${label} must be a non-empty list${rule.max ? ` (max ${rule.max} entries)` : ""}`;
     case "nric":     return "Please enter a valid Singapore NRIC or FIN";
+    case "sgPhone":  return "Please enter a valid Singapore phone number";
     case "scalarMap": return `${label} must be a map of ids to scalar values${rule.max ? ` (max ${rule.max} entries)` : ""}`;
     default:         return `${label} is invalid`;
   }

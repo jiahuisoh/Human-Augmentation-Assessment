@@ -60,7 +60,7 @@ export interface IUserApi {
   create(payload: NewUserPayload & { role: Role }): Promise<User>;
   setStatus(id: string, verificationStatus: User["verificationStatus"]): Promise<User>;
   delete(id: string): Promise<void>;
-  saveEmergencyContact(id: string, contact: EmergencyContact): Promise<void>;
+  saveEmergencyContact(id: string, contact: EmergencyContact): Promise<User>;
   verifyNric(id: string, nric: string): Promise<{ match: boolean; verificationStatus: VerificationStatus }>;
   updateNric(id: string, nric: string): Promise<User>;
   listPendingVerification(): Promise<PendingVerificationClient[]>;
@@ -129,8 +129,8 @@ class RestUserApi implements IUserApi {
   assignClient(clinicianId: string, clientId: string, assign: boolean) {
     return apiFetch<User>(`${this.base}/api/admin/users/${clinicianId}/assign-client`, { method: "PATCH", body: { clientId, assign } });
   }
-  async saveEmergencyContact(id: string, contact: EmergencyContact) {
-    await apiFetch<void>(`${this.base}/api/users/${id}/emergency`, { method: "PATCH", body: contact });
+  saveEmergencyContact(id: string, contact: EmergencyContact) {
+    return apiFetch<User>(`${this.base}/api/users/${id}/emergency`, { method: "PATCH", body: contact });
   }
   verifyNric(id: string, nric: string) {
     return apiFetch<{ match: boolean; verificationStatus: VerificationStatus }>(`${this.base}/api/staff/users/${id}/verify-nric`, { method: "POST", body: { nric } });

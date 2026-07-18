@@ -11,7 +11,7 @@ const SECTIONS: ReadonlyArray<ConfigSection> = [
       ["Role-based access control",  "5 roles active"],
       ["Human-in-the-loop AI",       "Clinician approval required"],
       ["Auditability",                "Sensitive actions logged"],
-      ["Data minimisation",           "Staff see minimal PII"],
+      ["Data minimisation",           "Staff see profiles, never clinical data"],
     ],
   },
 ];

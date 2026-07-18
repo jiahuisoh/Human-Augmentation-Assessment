@@ -53,7 +53,14 @@ const getById = async (id) => {
   return user;
 };
 
-const updateEmergencyContact = async (id, contact) => {
+const updateEmergencyContact = async (actor, id, contact) => {
+  // Staff may edit on behalf of clients they assist in person — but only
+  // client accounts, never staff/clinician/admin ones.
+  if (actor.role === "staff" && actor.id !== id) {
+    const target = await User.findById(id).select("role");
+    if (!target) throw httpError(404, "User not found");
+    if (target.role !== "client") throw httpError(403, "Access denied");
+  }
   // Only the validated keys — never the raw body — reach the document.
   const user = await User.findByIdAndUpdate(
     id,
@@ -61,6 +68,9 @@ const updateEmergencyContact = async (id, contact) => {
     { new: true, runValidators: true },
   );
   if (!user) throw httpError(404, "User not found");
+  await writeAudit(actor, "PROFILE",
+    actor.id === id ? "Emergency contact updated" : `Emergency contact updated by ${actor.role}`,
+    { clientId: id });
   return user;
 };
 

@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const verifyJWT = require("../middleware/verifyJWT");
 const { requireClientAccess } = require("../middleware/access");
-const { loginLimiter, registerLimiter } = require("../middleware/rateLimiters");
+const { loginLimiter, registerLimiter, passwordChangeLimiter } = require("../middleware/rateLimiters");
 const userController = require("../controllers/userController");
 
 // Mounted at /api/users.
@@ -21,7 +21,9 @@ router.post("/login", loginLimiter, userController.login);
 // ── Authenticated ─────────────────────────────────────────────────────────────
 // /me must stay above /:id or Express would match it as an id.
 router.get("/me", verifyJWT, userController.getMe);
+router.patch("/me/password", verifyJWT, passwordChangeLimiter, userController.changePassword);
 router.get("/:id", verifyJWT, userController.getUser);
+router.patch("/:id/profile", verifyJWT, userController.updateProfile);
 router.patch("/:id/emergency", verifyJWT, userController.updateEmergencyContact);
 router.patch("/:id/nric", verifyJWT, userController.updateNric);
 

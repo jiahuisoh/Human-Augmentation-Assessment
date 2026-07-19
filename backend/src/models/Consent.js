@@ -8,10 +8,6 @@ const ConsentSchema = new mongoose.Schema({
   clientId: { type: String, required: true },
   scope:    { type: String, enum: CONSENT_SCOPES, required: true },
   granted:  { type: Boolean, required: true },
-  // Who recorded the event — the client themselves or a clinician/admin on
-  // their behalf. Lives on the document so the consent trail stands on its
-  // own even if audit logs are pruned. (Events created before this field
-  // existed simply lack it; the log is append-only, so they are never re-saved.)
   recordedBy:     { type: String, required: true },
   recordedByRole: { type: String, enum: ROLES, required: true },
   reason:   { type: String },

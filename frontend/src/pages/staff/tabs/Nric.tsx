@@ -9,7 +9,7 @@ interface NricProps {
 }
 
 export default function Nric({ clients, onVerify }: NricProps) {
-  // Not yet checked (or sent back by an admin) — these need staff action now.
+  // Not yet checked (or sent back by an admin) - these need staff action now.
   const toCheck = clients.filter(c => c.verificationStatus === "unverified");
   // Checked and sitting with the admin for approval.
   const awaitingAdmin = clients.filter(c => c.verificationStatus === "pending");

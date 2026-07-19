@@ -2,7 +2,7 @@ const AuditLog = require("../models/Audit");
 
 /**
  * writeAudit(actor, category, message, context, level)
- * `actor` is the authenticated principal performing the sensitive action —
+ * `actor` is the authenticated principal performing the sensitive action -
  * pass req.user, or a plain { id, role } when no request context exists yet
  * (e.g. during login). Failures never break the main request flow.
  */

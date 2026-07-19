@@ -1,6 +1,6 @@
 const asyncHandler = require("../utils/asyncHandler");
 const { validate, validationFailed } = require("../utils/validators");
-const { ROLES, VERIFICATION_STATUSES } = require("../utils/constants");
+const { ROLES, VERIFICATION_STATUSES, nameMax, weightLimits, heightLimits } = require("../utils/constants");
 const adminService = require("../services/adminService");
 
 // GET /api/admin/users
@@ -14,13 +14,13 @@ const createUser = asyncHandler(async (req, res) => {
   const { ok, fields, values } = validate(req.body, {
     email:       { type: "email", required: true },
     password:    { type: "password", required: true },
-    name:        { type: "string", required: true, max: 120, label: "Name" },
+    name:        { type: "string", required: true, max: nameMax, label: "Name" },
     role:        { type: "enum", required: true, values: ROLES, label: "Role" },
     dateOfBirth: { type: "birthDate", label: "Date of birth" },
     gender:      { type: "enum", values: ["male", "female", "other"], label: "Gender" },
     nric:        { type: "nric" },
-    height:      { type: "number", min: 100, max: 200, label: "Height" },
-    weight:      { type: "number", min: 20, max: 200, label: "Weight" },
+    height:      { type: "number", ...heightLimits, label: "Height" },
+    weight:      { type: "number", ...weightLimits, label: "Weight" },
   });
   if (!ok) return validationFailed(res, fields);
 

@@ -37,7 +37,7 @@ export default function PatientList({ patients, search, onSearch, onOpen }: Pati
               return (
                 <tr key={p.user._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onOpen(p)}>
                   <td className="px-4 py-3 font-medium text-gray-900">{p.user.name}</td>
-                  <td className="px-4 py-3 text-gray-500">{p.user.dateOfBirth ? calcAge(p.user.dateOfBirth) : "—"}</td>
+                  <td className="px-4 py-3 text-gray-500">{p.user.dateOfBirth ? calcAge(p.user.dateOfBirth) : "-"}</td>
                   <td className="px-4 py-3"><RiskBadge level={riskFromSessions(p.sessions)} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

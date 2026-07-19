@@ -52,7 +52,7 @@ interface ClientProps {
 
 // Until identity verification completes (staff NRIC check + admin approval),
 // clients can only see Home, Account and Help. Mirrors the backend gate
-// (requireVerifiedClient) — this is UX, the server enforces it regardless.
+// (requireVerifiedClient) - this is UX, the server enforces it regardless.
 const OPEN_TABS: ReadonlySet<TabId> = new Set(["home", "account", "help"]);
 
 export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {

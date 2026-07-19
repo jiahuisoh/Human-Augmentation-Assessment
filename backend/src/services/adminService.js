@@ -7,7 +7,7 @@ const { writeAudit } = require("./auditService");
 // ── Last-administrator invariant ──────────────────────────────────────────────
 // "Suspended" is the only status that blocks auth (login and verifyJWT), so
 // suspending an administrator locks them out as surely as deleting them. The
-// invariant — at least one non-suspended administrator always remains — spans
+// invariant - at least one non-suspended administrator always remains - spans
 // multiple documents, so a pre-write count alone is racy: two admins acting on
 // each other concurrently both pass their own check (write-skew) and lock
 // everyone out. Lockout-capable mutations are therefore serialized through
@@ -75,29 +75,40 @@ const setUserStatus = async (actor, targetId, verificationStatus) => {
   return user;
 };
 
-const setClientAssignment = async (actor, clinicianId, clientId, assign) => {
-  if (assign) {
-    const client = await User.findById(clientId);
-    if (!client) throw httpError(404, "Client not found");
-    if (client.verificationStatus === "suspended") {
-      throw httpError(409, "Cannot assign a suspended client to a clinician.");
+// Serialized through the admin lock: the one-clinician-per-client check and
+// the write must be atomic, or two concurrent assigns to different clinicians
+// would both pass the check (write-skew) and double-assign the client.
+const setClientAssignment = (actor, clinicianId, clientId, assign) =>
+  withAdminLock(async () => {
+    if (assign) {
+      const client = await User.findById(clientId);
+      if (!client) throw httpError(404, "Client not found");
+      if (client.verificationStatus === "suspended") {
+        throw httpError(409, "Cannot assign a suspended client to a clinician.");
+      }
+      if (client.verificationStatus !== "verified") {
+        throw httpError(409, "Only verified clients can be assigned to a clinician.");
+      }
+      // A client belongs to at most one clinician. No silent reassignment:
+      // the admin must unassign from the current clinician first.
+      const holder = (await User.find({ assignedClientIds: clientId }).select("name").lean())
+        .find(u => u._id.toString() !== clinicianId);
+      if (holder) {
+        throw httpError(409, `This client is already assigned to ${holder.name}. Unassign them there first.`);
+      }
     }
-    if (client.verificationStatus !== "verified") {
-      throw httpError(409, "Only verified clients can be assigned to a clinician.");
-    }
-  }
-  const update = assign
-    ? { $addToSet: { assignedClientIds: clientId } }
-    : { $pull: { assignedClientIds: clientId } };
+    const update = assign
+      ? { $addToSet: { assignedClientIds: clientId } }
+      : { $pull: { assignedClientIds: clientId } };
 
-  const clinician = await User.findByIdAndUpdate(clinicianId, update, { new: true });
-  if (!clinician) throw httpError(404, "Clinician not found");
+    const clinician = await User.findByIdAndUpdate(clinicianId, update, { new: true });
+    if (!clinician) throw httpError(404, "Clinician not found");
 
-  await writeAudit(actor, "ADMIN", `Client ${assign ? "assigned to" : "removed from"} clinician`, {
-    clinicianId, clientId,
+    await writeAudit(actor, "ADMIN", `Client ${assign ? "assigned to" : "removed from"} clinician`, {
+      clinicianId, clientId,
+    });
+    return clinician;
   });
-  return clinician;
-};
 
 const deleteUser = async (actor, targetId) => {
   // Existence check, last-admin check and the delete form one critical

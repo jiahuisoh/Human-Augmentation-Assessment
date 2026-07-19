@@ -38,16 +38,16 @@ export interface UpdateMessage {
   // Countdown phase
   countdown?: number;
 
-  // Test phase — chair stand
+  // Test phase - chair stand
   reps?:    number;
   posture?: Posture;
   angle?:   number;
 
-  // Test phase — distance-based
+  // Test phase - distance-based
   measurement?:      number;
   best_measurement?: number;
 
-  // Test phase — generic
+  // Test phase - generic
   time_remaining?:  number;
   liveness_rolling?: number;
 }

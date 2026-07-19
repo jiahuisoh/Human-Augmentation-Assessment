@@ -37,7 +37,7 @@ const validPhone = (v) => {
 
 // Ids are compared and stored as hex strings throughout the app. The stored
 // canonical form is lowercase (ObjectId.toString()), and Mongo string queries
-// and JS === are case-sensitive — so ids must be normalized to lowercase the
+// and JS === are case-sensitive - so ids must be normalized to lowercase the
 // moment they enter, or an uppercase hex digit slips past every comparison.
 const isObjectIdString = (v) => typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
 

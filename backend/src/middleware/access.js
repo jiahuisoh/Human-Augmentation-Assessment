@@ -1,5 +1,5 @@
 // Central client-data authorization. Relies on req.user (set by verifyJWT),
-// which carries role and assignedClientIds — so no extra DB query here.
+// which carries role and assignedClientIds - so no extra DB query here.
 // Ids are compared as strings, and the stored canonical form is lowercase hex
 // (ObjectId.toString()), but Mongoose *casts* hex case-insensitively, so an
 // uppercase id in a URL would reach the same document while skipping every
@@ -14,7 +14,7 @@ const canAccessClient = (user, clientId) => {
 };
 
 // Staff run the in-person operations (NRIC checks, attendance, emergencies)
-// and may additionally view a client's PROFILE — demographics and emergency
+// and may additionally view a client's PROFILE - demographics and emergency
 // contact. Clinical data (sessions, plans, measurements) stays behind
 // canAccessClient. The caller must still confirm the target is a client,
 // which requires the fetched document (see userController.getUser).
@@ -34,7 +34,7 @@ const requireClientAccess = (param = "clientId") => (req, res, next) => {
 };
 
 // Clients must complete identity verification (staff NRIC check + admin
-// approval) before submitting assessment data. Applies to client actors only —
+// approval) before submitting assessment data. Applies to client actors only -
 // clinicians/admins acting on a client's behalf are gated by access rules above.
 const requireVerifiedClient = (req, res, next) => {
   if (req.user?.role === "client" && req.user.verificationStatus !== "verified") {

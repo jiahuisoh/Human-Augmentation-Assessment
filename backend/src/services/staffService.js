@@ -6,11 +6,7 @@ const { writeAudit } = require("./auditService");
 
 // Clients awaiting the in-person identity check (never verified, or sent back
 // by an admin, or re-opened by an NRIC change). Staff are not entitled to
-// client PII (see middleware/access.js), so this projects the bare minimum
-// needed to run the check: who to call up, and where they are in the workflow.
-// Deliberately EXCLUDES email/dateOfBirth/height/weight/emergencyContact — and
-// nricLastFour, which would let staff shortcut the very check they are
-// performing.
+// client PII (see middleware/access.js).
 const listPendingVerification = async () => {
   const clients = await User.find(
     {
@@ -36,7 +32,7 @@ const listPendingVerification = async () => {
 // In-person identity check: staff enter the full NRIC sighted on the client's
 // physical card. It is compared (timing-safe) against the hash captured at
 // registration, and the outcome is recorded as a recommendation flag with the
-// account moved to "pending" — the final verified/unverified decision belongs
+// account moved to "pending" - the final verified/unverified decision belongs
 // to an administrator. Staff can never set "verified" directly.
 const verifyNric = async (actor, targetId, nric) => {
   const user = await User.findById(targetId).select("role verificationStatus +nricHash");
@@ -74,7 +70,7 @@ const verifyNric = async (actor, targetId, nric) => {
     match ? "INFO" : "WARN",
   );
 
-  // Staff are not entitled to client PII (see middleware/access.js) — return
+  // Staff are not entitled to client PII (see middleware/access.js) - return
   // the check outcome only, never the user document.
   return { match, verificationStatus: "pending" };
 };

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
-import { Heart, Eye, EyeOff, Circle, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Heart } from "lucide-react";
 import { FormField, inputCls } from "../../components/FormField";
+import { PasswordInput, PasswordFeedback } from "../../components/PasswordFields";
 import { cls, calculateAge, formatDOB, isValidNric } from "../../utils/helpers";
-import {
-  passwordReqs, meetsPasswordReqs, strengthLevel, checkHIBP, type StrengthLevel,
-} from "../../utils/passwordStrength";
+import { meetsPasswordReqs } from "../../utils/passwordStrength";
 import { userApi } from "../../utils/api";
 import type { NewUserPayload, Sex, User } from "../../types";
 
@@ -23,94 +22,6 @@ const today  = new Date();
 const MAX_DOB = today.toISOString().split("T")[0];
 const MIN_DOB = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()).toISOString().split("T")[0];
 
-interface PasswordInputProps {
-  id: string;
-  value: string;
-  onChange: (v: string) => void;
-  error?: string;
-}
-
-function PasswordInput({ id, value, onChange, error }: PasswordInputProps) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="relative">
-      <input
-        id={id} type={visible ? "text" : "password"} value={value}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-        className={cls(inputCls, "pr-14", error && "border-red-400")}
-      />
-      <button type="button" onClick={() => setVisible(v => !v)}
-        aria-label={visible ? "Hide password" : "Show password"}
-        className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 min-h-[48px] min-w-[48px] flex items-center justify-center">
-        {visible ? <EyeOff size={22} /> : <Eye size={22} />}
-      </button>
-    </div>
-  );
-}
-
-// Breach banner, requirements checklist and strength meter for the main
-// password field, rendered full-width below the password/confirm row.
-function PasswordFeedback({ value, userInputs }: { value: string; userInputs: string[] }) {
-  const [level, setLevel] = useState<StrengthLevel | null>(null);
-  const [breached, setBreached] = useState(false);
-
-  useEffect(() => {
-    setBreached(false); // check runs silently; only a positive hit is shown
-    if (!value) { setLevel(null); return; }
-    let cancelled = false;
-    void strengthLevel(value, userInputs).then(l => { if (!cancelled) setLevel(l); });
-    // The HIBP query is debounced so it fires once the user pauses typing.
-    const t = window.setTimeout(() => {
-      void checkHIBP(value).then(b => { if (!cancelled) setBreached(b); });
-    }, 500);
-    return () => { cancelled = true; window.clearTimeout(t); };
-  }, [value, userInputs]);
-
-  const reqs = passwordReqs(value);
-  const reqRows: ReadonlyArray<readonly [string, boolean]> = [
-    ["At least 8 characters", reqs.length],
-    ["At least 1 letter",     reqs.letter],
-    ["At least 1 digit",      reqs.digit],
-  ];
-
-  return (
-    <div className="mb-4">
-      {breached && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5 mb-3">
-          <AlertTriangle size={16} className="text-amber-600 flex-shrink-0" />
-          <p className="text-sm text-amber-800">
-            Password appeared in a data breach. Consider choosing a different password.
-          </p>
-        </div>
-      )}
-      <p className="text-sm font-semibold text-gray-900 mb-1.5">Password Requirements</p>
-      <ul className="space-y-1">
-        {reqRows.map(([label, pass]) => (
-          <li key={label} className={cls(
-            "flex items-center gap-2 text-sm",
-            !value ? "text-gray-400" : pass ? "text-green-600" : "text-red-500",
-          )}>
-            {!value ? <Circle size={14} /> : pass ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-            {label}
-          </li>
-        ))}
-      </ul>
-      {value && level && (
-        <div className="mt-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-gray-500">Strength</span>
-            <span className={cls("text-sm font-semibold", level.textCls)}>{level.text}</span>
-          </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className={cls("h-full rounded-full transition-all duration-300", level.bar)}
-              style={{ width: `${level.pct}%` }} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
   const [form, setForm] = useState<FormState>({
     name: "", dateOfBirth: "", email: "", height: "", weight: "", gender: "male",
@@ -118,7 +29,6 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [checkingPw, setCheckingPw] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
   // Context words for the strength meter: a password built from the user's
@@ -159,15 +69,7 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
     setErrors(e);
     if (Object.keys(e).length) return;
 
-    setCheckingPw(true);
     setSubmitError("");
-    const breached = await checkHIBP(form.password);
-    setCheckingPw(false);
-    if (breached) {
-      setErrors({ password: "This password has appeared in a data breach. Please choose a different one." });
-      return;
-    }
-
     setSubmitting(true);
     try {
       const user = await userApi.register({
@@ -282,9 +184,9 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
           </div>
         )}
 
-        <button type="button" onClick={handleSubmit} disabled={submitting || checkingPw}
+        <button type="button" onClick={handleSubmit} disabled={submitting}
           className="w-full bg-violet-600 hover:bg-violet-700 active:scale-95 disabled:opacity-60 text-white text-xl font-bold py-4 rounded-2xl min-h-[60px] transition-all shadow-lg shadow-violet-200">
-          {checkingPw ? "Checking password…" : submitting ? "Creating your profile…" : "Create Profile & Continue"}
+          {submitting ? "Creating your profile…" : "Create Profile & Continue"}
         </button>
       </div>
 

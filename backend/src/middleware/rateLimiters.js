@@ -44,4 +44,15 @@ const registerLimiter = rateLimit({
   handler: (req, res) => res.status(429).json({ error: "Too many registration attempts, please try again later." }),
 });
 
-module.exports = { globalLimiter, loginLimiter, registerLimiter };
+
+const passwordChangeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}|${req.user?.id || ""}`,
+  handler: (req, res) => res.status(429).json({ error: "Too many password attempts, please try again later." }),
+});
+
+module.exports = { globalLimiter, loginLimiter, registerLimiter, passwordChangeLimiter };

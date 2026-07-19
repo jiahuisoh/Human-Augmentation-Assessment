@@ -14,7 +14,7 @@ interface HomeProps {
 
 export default function Home({ user, sessions, onStart, onNavigate }: HomeProps) {
   const latest = sessions[0];
-  const latestValue = latest?.riskLevel ? latest.riskLevel.toUpperCase() : "—";
+  const latestValue = latest?.riskLevel ? latest.riskLevel.toUpperCase() : "-";
   const latestSub = latest
     ? (latest.classification ?? new Date(latest.createdAt).toLocaleDateString("en-SG"))
     : "no assessments yet";

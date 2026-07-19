@@ -6,7 +6,7 @@ const QuestionnaireSubmissionSchema = new mongoose.Schema({
   submittedAt: { type: String, default: () => new Date().toISOString() },
 }, { timestamps: true });
 
-// find({clientId}).sort({submittedAt:-1}) — supersedes a standalone clientId index.
+// find({clientId}).sort({submittedAt:-1}) - supersedes a standalone clientId index.
 QuestionnaireSubmissionSchema.index({ clientId: 1, submittedAt: -1 });
 
 QuestionnaireSubmissionSchema.methods.toJSON = function () {

@@ -1,9 +1,9 @@
 require("dotenv").config();
 const connectDB = require("./config/db");
 
-// Tokens signed with an empty secret would be forgeable — refuse to boot.
+// Tokens signed with an empty secret would be forgeable - refuse to boot.
 if (!process.env.JWT_SECRET) {
-  console.error("FATAL: JWT_SECRET is not set — refusing to start.");
+  console.error("FATAL: JWT_SECRET is not set - refusing to start.");
   process.exit(1);
 }
 

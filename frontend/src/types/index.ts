@@ -154,7 +154,7 @@ export interface InterventionPlan {
 
 /**
  * A client awaiting the in-person NRIC check, as seen by staff.
- * Intentionally minimal — staff are not entitled to client PII.
+ * Intentionally minimal - staff are not entitled to client PII.
  */
 export interface PendingVerificationClient {
   _id: string;
@@ -183,4 +183,13 @@ export interface ScheduleEntry {
 export interface AuthResponse {
   user: User;
   token: string;
+}
+
+
+export interface ProfileUpdate {
+  name?: string;
+  dateOfBirth?: string;
+  gender?: Sex;
+  height?: number;
+  weight?: number;
 }

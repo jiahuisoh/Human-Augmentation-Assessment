@@ -14,4 +14,11 @@ const RISK_LEVELS = ["low", "moderate", "high"];
 
 const CONSENT_SCOPES = ["research", "clinician_share", "third_party", "institutional", "assessment_data"];
 
-module.exports = { ROLES, VERIFICATION_STATUSES, TEST_IDS, RISK_LEVELS, CONSENT_SCOPES };
+
+const heightLimits = { min: 100, max: 200 }; // cm
+
+const weightLimits = { min: 20, max: 200 };  // kg
+
+const nameMax = 120; // person names, incl. emergency contact
+
+module.exports = { ROLES, VERIFICATION_STATUSES, TEST_IDS, RISK_LEVELS, CONSENT_SCOPES, heightLimits, weightLimits, nameMax };

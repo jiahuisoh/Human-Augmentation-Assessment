@@ -141,7 +141,7 @@ export function BMICard({ bmi }: BMICardProps) {
         <h3 className="text-base font-semibold text-gray-900">Your BMI</h3>
         {cat && (
           <span className={cls("px-2.5 py-0.5 rounded-full text-xs font-bold border", cat.bg, cat.text, cat.border)}>
-            {cat.label} — {cat.risk}
+            {cat.label} - {cat.risk}
           </span>
         )}
       </div>

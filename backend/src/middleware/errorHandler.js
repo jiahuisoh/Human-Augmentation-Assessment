@@ -33,7 +33,7 @@ const errorHandler = (err, req, res, next) => {
   }
 
   const requestId = crypto.randomUUID();
-  if (status >= 500) console.error(`[${requestId}] ${req.method} ${req.originalUrl} —`, err);
+  if (status >= 500) console.error(`[${requestId}] ${req.method} ${req.originalUrl} -`, err);
 
   res.status(status).json({
     error: expose ? message : "Internal server error",

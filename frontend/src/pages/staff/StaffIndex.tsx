@@ -38,7 +38,7 @@ export default function Staff({ user, onSignOut }: StaffProps) {
   }, []);
 
   const completed = schedule.filter(s => s.status === "completed" || s.status === "present").length;
-  // Clients still needing a staff NRIC check — sourced from registered clients,
+  // Clients still needing a staff NRIC check - sourced from registered clients,
   // not today's schedule: a new sign-up has no appointment yet.
   const awaitingCheck = pending.filter(c => c.verificationStatus === "unverified").length;
 

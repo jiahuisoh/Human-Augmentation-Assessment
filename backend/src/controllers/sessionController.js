@@ -3,7 +3,7 @@ const { validate, validationFailed } = require("../utils/validators");
 const { TEST_IDS, RISK_LEVELS } = require("../utils/constants");
 const sessionService = require("../services/sessionService");
 
-// POST /api/sessions — CV result lands here after a test completes
+// POST /api/sessions - CV result lands here after a test completes
 const createSession = asyncHandler(async (req, res) => {
   // Whitelist + bound every field before it can reach Session.create: enums for
   // testId/riskLevel, ranges on the numbers (measurements in cm), length

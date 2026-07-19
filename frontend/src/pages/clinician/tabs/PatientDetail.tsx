@@ -10,7 +10,7 @@ interface PatientDetailProps {
   onOverride: (sessionId: string, reason: string, newScore: number) => Promise<void>;
 }
 
-// The score a clinician acts on — and the one the backend records as the
+// The score a clinician acts on - and the one the backend records as the
 // override's "before" value: the latest override if any, else the base result.
 const effectiveScore = (s: AssessmentSession): number | null => {
   const last = s.overrides?.[s.overrides.length - 1];
@@ -81,7 +81,7 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold text-gray-900">
-                  {score != null ? `${score} ${unit}` : "—"}
+                  {score != null ? `${score} ${unit}` : "-"}
                   {overridden && <span className="ml-1 text-xs font-semibold text-amber-600">(overridden)</span>}
                 </div>
                 <div className="text-xs text-gray-400">{s.classification ?? ""}</div>

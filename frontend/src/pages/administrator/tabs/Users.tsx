@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Plus, Trash2, UserX, UserCheck, X, Check, ShieldCheck, ShieldAlert } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Trash2, UserX, UserCheck, X, Check, ShieldCheck, ShieldAlert, Eye } from "lucide-react";
 import { cls, isValidNric } from "../../../utils/helpers";
 import { userApi } from "../../../utils/api";
-import type { Role, Sex, User, VerificationStatus } from "../../../types";
+import { ClientProfile } from "../../../components/ClientProfile";
+import type { EmergencyContact, ProfileUpdate, Role, Sex, User, VerificationStatus } from "../../../types";
 
 interface UsersProps {
   users: User[];
@@ -10,8 +11,16 @@ interface UsersProps {
   onChange: () => Promise<void>;
 }
 
+// Calendar bounds for the date-of-birth picker: nothing after today, nothing
+// implausibly old. The backend birthDate rule enforces the same window.
+const today   = new Date();
+const MAX_DOB = today.toISOString().split("T")[0];
+const MIN_DOB = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()).toISOString().split("T")[0];
+
 export default function Users_({ users, actor, onChange }: UsersProps) {
   const [assigningClient, setAssigningClient] = useState<User | null>(null);
+  const [profileUser, setProfileUser] = useState<User | null>(null);
+  const profileFlag = useRef(false);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState("");
@@ -72,6 +81,29 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
       setAssigningClient(prev => prev ? (users.find(u => u._id === prev._id) ?? prev) : null);
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Full client-profile editing from the admin view. Each save keeps the open
+  // modal in sync from the server response; the table refresh is deferred to
+  // closeProfile so one modal session costs at most one list refetch.
+  const saveProfileFor = async (fields: ProfileUpdate): Promise<void> => {
+    if (!profileUser) return;
+    setProfileUser(await userApi.updateProfile(profileUser._id, fields));
+    profileFlag.current = true;
+  };
+
+  const saveContactFor = async (contact: EmergencyContact): Promise<void> => {
+    if (!profileUser) return;
+    setProfileUser(await userApi.saveEmergencyContact(profileUser._id, contact));
+    profileFlag.current = true;
+  };
+
+  const closeProfile = (): void => {
+    setProfileUser(null);
+    if (profileFlag.current) {
+      profileFlag.current = false;
+      void onChange();
     }
   };
 
@@ -196,6 +228,12 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 items-center">
+                        {u.role === "client" && (
+                          <button type="button" title="View & Edit Profile" onClick={() => setProfileUser(u)}
+                            className="p-1 rounded hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors">
+                            <Eye size={13} />
+                          </button>
+                        )}
                         {u.role === "client" && u.verificationStatus === "verified" && (
                           <button type="button"
                             title={isAssigned ? `Assigned to ${assignedTo.join(", ")}` : "Not Assigned to any clinician: click to assign"}
@@ -228,6 +266,26 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
         );
       })}
 
+      {/* Client profile modal - full view & edit (profile basics, body
+          metrics, emergency contact). NRIC changes stay with the client's own
+          account page and the staff verification flow. */}
+      {profileUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">{profileUser.name}</h3>
+              <button type="button" onClick={closeProfile} aria-label="Close profile"
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <ClientProfile user={profileUser}
+              onSaveProfile={saveProfileFor}
+              onSaveEmergencyContact={saveContactFor} />
+          </div>
+        </div>
+      )}
+
       {/* Assign modal */}
       {assigningClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -258,6 +316,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
               <div className="space-y-2">
                 {clinicians.map(cl => {
                   const assigned = (cl.assignedClientIds ?? []).includes(assigningClient._id);
+                  const heldElsewhere = !assigned && clinicianNamesFor(assigningClient._id).length > 0;
                   return (
                     <div key={cl._id}
                       className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
@@ -268,9 +327,10 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                           {(cl.assignedClientIds ?? []).filter(id => clients.some(c => c._id === id)).length} client(s) assigned
                         </div>
                       </div>
-                      <button type="button" disabled={busy}
+                      <button type="button" disabled={busy || heldElsewhere}
+                        title={heldElsewhere ? `Unassign from ${clinicianNamesFor(assigningClient._id).join(", ")} first` : undefined}
                         onClick={() => void toggleAssignment(cl, assigningClient._id, assigned)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           assigned
                             ? "bg-green-100 hover:bg-red-100 text-green-700 hover:text-red-700"
                             : "bg-gray-100 hover:bg-violet-100 text-gray-700 hover:text-violet-700"
@@ -285,8 +345,8 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
 
             <div className="mt-4 pt-4 border-t border-gray-200">
               <p className="text-xs text-gray-500">
-                Assigned clinicians will see this client in their patient list.
-                All assignments are audit-logged.
+                A client can be assigned to only one clinician, who will see them
+                in their patient list. All assignments are audit-logged.
               </p>
               <button type="button" onClick={() => setAssigningClient(null)}
                 className="mt-3 w-full py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition-colors">
@@ -341,7 +401,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
                   <div>
                     <label htmlFor="na-dob" className="block text-xs font-medium text-gray-500 mb-1">Date of Birth</label>
                     <input id="na-dob" value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))}
-                      type="date"
+                      type="date" min={MIN_DOB} max={MAX_DOB}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none" />
                   </div>
                   <div>

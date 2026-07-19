@@ -9,7 +9,7 @@ interface CvProps {
 }
 
 // Per HANA doc: admin can conduct functional assessments
-// "Yes, if clinically authorised" — every session writes a WARN-level audit.
+// "Yes, if clinically authorised" - every session writes a WARN-level audit.
 export default function Cv({ schedule, authorised, onAuthorise, onLaunch }: CvProps) {
   return (
     <div className="space-y-4">

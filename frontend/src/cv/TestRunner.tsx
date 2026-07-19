@@ -144,7 +144,7 @@ export default function TestRunner({
     <div className="min-h-screen bg-gray-900 relative flex flex-col">
       {sandbox && (
         <div className="bg-amber-950/60 border-b border-amber-800 text-amber-300 text-xs px-4 py-2 text-center">
-          SANDBOX MODE — synthetic user data, no live patient records
+          SANDBOX MODE - synthetic user data, no live patient records
         </div>
       )}
 
@@ -293,7 +293,7 @@ export default function TestRunner({
 }
 
 function formatCm(cm: number | undefined): string {
-  if (cm === undefined || cm === null) return "—";
+  if (cm === undefined || cm === null) return "-";
   return (cm >= 0 ? "+" : "") + cm.toFixed(1) + " cm";
 }
 

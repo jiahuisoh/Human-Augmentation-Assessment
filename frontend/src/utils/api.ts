@@ -1,8 +1,8 @@
 import type {
   AssessmentSession, AuditLog, AuthResponse, ConsentEvent,
   EmergencyContact, InterventionPlan, Measurement, NewUserPayload,
-  PendingVerificationClient, QuestionnaireSubmission, Role, ScheduleEntry,
-  User, VerificationStatus,
+  PendingVerificationClient, ProfileUpdate, QuestionnaireSubmission, Role,
+  ScheduleEntry, User, VerificationStatus,
 } from "../types";
 import { clearToken, getToken, setToken } from "./tokenStore";
 import { emitAuthFailure } from "./authEvents";
@@ -60,6 +60,8 @@ export interface IUserApi {
   create(payload: NewUserPayload & { role: Role }): Promise<User>;
   setStatus(id: string, verificationStatus: User["verificationStatus"]): Promise<User>;
   delete(id: string): Promise<void>;
+  changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Promise<User>;
+  updateProfile(id: string, fields: ProfileUpdate): Promise<User>;
   saveEmergencyContact(id: string, contact: EmergencyContact): Promise<User>;
   verifyNric(id: string, nric: string): Promise<{ match: boolean; verificationStatus: VerificationStatus }>;
   updateNric(id: string, nric: string): Promise<User>;
@@ -128,6 +130,16 @@ class RestUserApi implements IUserApi {
   async delete(id: string) { await apiFetch<void>(`${this.base}/api/admin/users/${id}`, { method: "DELETE" }); }
   assignClient(clinicianId: string, clientId: string, assign: boolean) {
     return apiFetch<User>(`${this.base}/api/admin/users/${clinicianId}/assign-client`, { method: "PATCH", body: { clientId, assign } });
+  }
+  async changePassword(currentPassword: string, newPassword: string, confirmNewPassword: string): Promise<User> {
+    const r = await apiFetch<AuthResponse>(`${this.base}/api/users/me/password`, {
+      method: "PATCH", body: { currentPassword, newPassword, confirmNewPassword },
+    });
+    setToken(r.token);
+    return r.user;
+  }
+  updateProfile(id: string, fields: ProfileUpdate) {
+    return apiFetch<User>(`${this.base}/api/users/${id}/profile`, { method: "PATCH", body: fields });
   }
   saveEmergencyContact(id: string, contact: EmergencyContact) {
     return apiFetch<User>(`${this.base}/api/users/${id}/emergency`, { method: "PATCH", body: contact });

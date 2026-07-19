@@ -137,7 +137,7 @@ export default function Overview({ patients, onOpen }: OverviewProps) {
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold text-gray-900">
-                  {s.reps != null ? `${s.reps} reps` : s.measurement != null ? `${s.measurement} cm` : "—"}
+                  {s.reps != null ? `${s.reps} reps` : s.measurement != null ? `${s.measurement} cm` : "-"}
                 </div>
                 {s.classification && <div className="text-xs text-gray-400">{s.classification}</div>}
               </div>

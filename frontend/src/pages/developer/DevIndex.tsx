@@ -56,7 +56,7 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
       headerLeft={
         <div>
           <div className="text-base font-semibold text-gray-900">Developer Console</div>
-          <div className="text-xs text-gray-400">Sandbox environment — no live patient data</div>
+          <div className="text-xs text-gray-400">Sandbox environment - no live patient data</div>
         </div>
       }
       headerRight={

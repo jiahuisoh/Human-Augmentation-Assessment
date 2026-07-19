@@ -2,7 +2,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const { validate, validationFailed } = require("../utils/validators");
 const aiService = require("../services/aiService");
 
-// GET /api/ai/pending/:clinicianId — a clinician's own pending recommendations
+// GET /api/ai/pending/:clinicianId - a clinician's own pending recommendations
 const listPending = asyncHandler(async (req, res) => {
   if (req.user.role === "clinician" && req.user.id !== req.params.clinicianId) {
     return res.status(403).json({ error: "Access denied" });

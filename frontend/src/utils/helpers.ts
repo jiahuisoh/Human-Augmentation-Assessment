@@ -1,4 +1,4 @@
-/** Conditional class-name builder — returns space-separated truthy strings. */
+/** Conditional class-name builder - returns space-separated truthy strings. */
 export function cls(...args: Array<string | false | null | undefined>): string {
   return args.filter(Boolean).join(" ");
 }

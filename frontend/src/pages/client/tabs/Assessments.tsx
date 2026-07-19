@@ -20,7 +20,7 @@ export default function Assessments({ sessions }: AssessmentsProps) {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-900 mb-1">Past results</h3>
-        <p className="text-xs text-gray-400 mb-4">Approved assessments your clinician has signed off on. Simplified view — full clinical data is managed by your clinician.</p>
+        <p className="text-xs text-gray-400 mb-4">Approved assessments your clinician has signed off on. Simplified view - full clinical data is managed by your clinician.</p>
         {sessions.length === 0 ? (
           <p className="text-sm text-gray-400">No assessments yet. Your clinician will record results during your clinic visits.</p>
         ) : sessions.slice(0, 8).map(s => (

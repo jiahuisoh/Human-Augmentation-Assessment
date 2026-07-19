@@ -2,15 +2,13 @@ const mongoose = require("mongoose");
 const crypto = require("crypto");
 const { TEST_IDS, RISK_LEVELS } = require("../utils/constants");
 
-// Bounds mirror the route validator (routes/sessions.js) — defense in depth:
+// Bounds mirror the route validator (routes/sessions.js) - defense in depth:
 // the route rejects bad input with a clean 400, and the schema guarantees the
 // same limits hold for any other write path that may be added later.
 const OverrideSchema = new mongoose.Schema({
   by:            { type: String, required: true },
   byRole:        { type: String, enum: ["clinician", "administrator"], required: true },
   reason:        { type: String, required: true, maxlength: 1000 },
-  // Overridable values all live within [-100, 100]: reps 0-50, measurement
-  // ±100 — so an override score outside that range can only be a mistake.
   originalScore: { type: Number, required: true, min: -100, max: 100 },
   newScore:      { type: Number, required: true, min: -100, max: 100 },
   at:            { type: String, default: () => new Date().toISOString() },

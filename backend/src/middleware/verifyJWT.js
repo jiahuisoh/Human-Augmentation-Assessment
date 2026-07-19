@@ -17,7 +17,7 @@ const verifyJWT = async (req, res, next) => {
 
   try {
     // .lean(): this runs on every authenticated request and only reads plain
-    // fields — skip mongoose document hydration.
+    // fields - skip mongoose document hydration.
     const user = await User.findById(decoded.id).select("role email verificationStatus assignedClientIds +passwordChangedAt").lean();
     if (!user) return res.status(401).json({ error: "This account no longer exists" });
 

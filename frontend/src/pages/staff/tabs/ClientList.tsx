@@ -3,7 +3,7 @@ import { Search, X } from "lucide-react";
 import { cls } from "../../../utils/helpers";
 import { userApi } from "../../../utils/api";
 import { ClientProfile } from "../../../components/ClientProfile";
-import type { EmergencyContact, ScheduleEntry, User } from "../../../types";
+import type { EmergencyContact, ProfileUpdate, ScheduleEntry, User } from "../../../types";
 
 interface ClientListProps {
   schedule: ScheduleEntry[];
@@ -23,6 +23,12 @@ export default function ClientList({ schedule, search, onSearch }: ClientListPro
   const saveContactFor = async (contactValue: EmergencyContact): Promise<void> => {
     if (!viewing) return;
     setViewing(await userApi.saveEmergencyContact(viewing._id, contactValue));
+  };
+
+ 
+  const saveProfileFor = async (fields: ProfileUpdate): Promise<void> => {
+    if (!viewing) return;
+    setViewing(await userApi.updateProfile(viewing._id, fields));
   };
 
   const openProfile = async (clientId: string): Promise<void> => {
@@ -97,7 +103,8 @@ export default function ClientList({ schedule, search, onSearch }: ClientListPro
                 <X size={16} />
               </button>
             </div>
-            <ClientProfile user={viewing} accent="teal" onSaveEmergencyContact={saveContactFor} />
+            <ClientProfile user={viewing} accent="teal"
+              onSaveEmergencyContact={saveContactFor} onSaveProfile={saveProfileFor} />
           </div>
         </div>
       )}

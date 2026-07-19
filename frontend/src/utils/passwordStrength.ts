@@ -20,15 +20,15 @@ export const meetsPasswordReqs = (pw: string): boolean => {
 export interface StrengthLevel { pct: number; bar: string; text: string; textCls: string }
 
 const LEVELS: readonly StrengthLevel[] = [
-  { pct: 5,   bar: "bg-red-600",     text: "Too weak",    textCls: "text-red-600" },
+  { pct: 5,   bar: "bg-red-600",     text: "Too Weak",    textCls: "text-red-600" },
   { pct: 25,  bar: "bg-red-600",     text: "Weak",        textCls: "text-red-600" },
   { pct: 50,  bar: "bg-amber-600",   text: "Fair",        textCls: "text-amber-600" },
   { pct: 80,  bar: "bg-emerald-600", text: "Strong",      textCls: "text-emerald-600" },
-  { pct: 100, bar: "bg-emerald-600", text: "Very strong", textCls: "text-emerald-600" },
+  { pct: 100, bar: "bg-emerald-600", text: "Very Strong", textCls: "text-emerald-600" },
 ];
 
 // Passed to zxcvbn as context so app words and the user's own details score
-// as guessable — "hana2026" or their own name cannot rate well.
+// as guessable - "hana2026" or their own name cannot rate well.
 const APP_WORDS = ["hana", "health", "assessment", "singapore"];
 
 // zxcvbn is a ~400 KB dictionary bundle, so it loads on demand at first use;
@@ -69,7 +69,10 @@ export async function checkHIBP(pw: string): Promise<boolean> {
     if (!res.ok) return false;
 
     const text = await res.text();
-    return text.split("\n").some(line => line.split(":")[0].trim() === suffix);
+    return text.split("\n").some(line => {
+      const [hash, count] = line.split(":");
+      return hash.trim() === suffix && parseInt(count, 10) > 0;
+    });
   } catch {
     return false;
   }

@@ -6,7 +6,7 @@ const ScheduleEntrySchema = new mongoose.Schema({
   clientId:     { type: String, required: true },
   clientName:   { type: String, required: true },
   testId:       { type: String, enum: TEST_IDS, required: true },
-  time:         { type: String }, // e.g. "09:00" — matches frontend ScheduleEntry.time
+  time:         { type: String }, // e.g. "09:00" - matches frontend ScheduleEntry.time
   status:       { type: String, enum: ["scheduled","present","absent","in_progress","completed","pending_nric"], default: "scheduled" },
   nricVerified: { type: Boolean, default: false },
   date:         { type: String, required: true }, // YYYY-MM-DD for today filtering

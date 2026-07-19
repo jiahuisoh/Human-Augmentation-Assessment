@@ -51,7 +51,7 @@ const overrideScore = async (actor, sessionId, { reason, newScore }) => {
   }
 
   // Integrity: the "before" value is read from the stored session, never taken
-  // from the caller — the current score is the latest override if one exists,
+  // from the caller - the current score is the latest override if one exists,
   // otherwise the base result (reps preferred for chair stand, measurement
   // otherwise, falling back to whichever field holds a value). Only a session
   // with no override history AND no recorded score at all is un-overridable.

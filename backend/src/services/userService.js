@@ -53,6 +53,44 @@ const getById = async (id) => {
   return user;
 };
 
+
+const changePassword = async (actor, currentPassword, newPassword) => {
+  const user = await User.findById(actor.id).select("+password +passwordChangedAt");
+  if (!user) throw httpError(404, "User not found");
+
+  if (!(await user.comparePassword(currentPassword))) {
+    await writeAudit(actor, "AUTH", "Password Change Rejected: Current Password Incorrect", { userId: actor.id }, "WARN");
+    throw httpError(400, "Current Password is Incorrect");
+  }
+  if (newPassword === currentPassword) {
+    throw httpError(400, "New password must be different from your current password");
+  }
+
+  user.password = newPassword;
+  await user.save();
+  await writeAudit(actor, "AUTH", "Password changed; other sessions invalidated", { userId: actor.id });
+  return { user, token: signToken(user) };
+};
+
+
+const updateProfile = async (actor, id, values) => {
+  if (actor.role === "staff" && actor.id !== id) {
+    const target = await User.findById(id).select("role");
+    if (!target) throw httpError(404, "User not found");
+    if (target.role !== "client") throw httpError(403, "Access denied");
+  }
+  const user = await User.findByIdAndUpdate(
+    id,
+    { $set: values },
+    { new: true, runValidators: true },
+  );
+  if (!user) throw httpError(404, "User not found");
+  await writeAudit(actor, "PROFILE",
+    actor.id === id ? "Profile updated" : `Profile updated by ${actor.role}`,
+    { clientId: id, fields: Object.keys(values) });
+  return user;
+};
+
 const updateEmergencyContact = async (actor, id, contact) => {
   // Staff may edit on behalf of clients they assist in person — but only
   // client accounts, never staff/clinician/admin ones.
@@ -130,6 +168,8 @@ module.exports = {
   register,
   login,
   getById,
+  changePassword,
+  updateProfile,
   updateEmergencyContact,
   updateNric,
   listMeasurements,

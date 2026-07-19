@@ -8,10 +8,19 @@ import io
 import json
 from copy import deepcopy
 from pathlib import Path
+from typing import Literal, get_args
 
 import pytest
 
+import app.cv.types as production_types
+from validation.chair_stand.production_mapping import (
+    map_subject_to_production,
+    production_chair_stand_durations,
+    production_sex_values,
+)
 from validation.chair_stand.schema import (
+    MAX_SUBJECT_HEIGHT_CM,
+    MIN_SUBJECT_HEIGHT_CM,
     CaseResult,
     DetectedOutcome,
     ExpectedOutcome,
@@ -136,6 +145,112 @@ def test_actual_template_loads() -> None:
     ]
     assert manifest.cases[0].generation is None
     assert manifest.cases[1].generation is not None
+
+
+def test_template_processable_cases_use_production_durations_and_explicit_floors() -> None:
+    manifest = load_manifest(TEMPLATE_PATH)
+    durations = production_chair_stand_durations()
+    raw_cases = json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))["cases"]
+
+    for case, raw_case in zip(manifest.cases, raw_cases, strict=True):
+        assert MIN_SUBJECT_HEIGHT_CM <= case.subject.height_cm <= MAX_SUBJECT_HEIGHT_CM
+        assert (
+            case.timing.calibration_end_s - case.timing.calibration_start_s
+            == durations.calibration_s
+        )
+        assert (
+            case.timing.test_end_s - case.timing.test_start_s
+            == durations.active_duration_s
+        )
+        assert "minimum_calibration_quality" in raw_case["expected"]
+        assert "assessment-time snapshot" in raw_case["notes"]
+        assert "offline regression floor" in raw_case["notes"]
+        assert "production durations" in raw_case["notes"]
+
+    synthda_timing = manifest.cases[1].timing
+    assert synthda_timing.test_end_s - synthda_timing.test_start_s == 30.0
+
+
+def test_duration_adapter_reads_current_production_strategy_values() -> None:
+    from app.tests.chair_stand.strategy import ChairStandStrategy
+
+    strategy = ChairStandStrategy()
+    durations = production_chair_stand_durations()
+
+    assert durations.calibration_s == strategy.calibration_s
+    assert durations.countdown_s == strategy.countdown_s
+    assert durations.active_duration_s == strategy.active_duration_s
+
+
+def test_validation_sexes_remain_in_parity_with_production_literal() -> None:
+    assert {sex.value for sex in Sex} == set(get_args(production_types.Sex))
+    assert production_sex_values() == frozenset(get_args(production_types.Sex))
+
+
+def test_subject_mapping_fails_closed_when_production_rejects_validation_value(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subject = SubjectAnnotation(70, Sex.FEMALE, 160.0)
+    monkeypatch.setattr(production_types, "Sex", Literal["male", "other"])
+
+    with pytest.raises(ValueError, match="not accepted by production"):
+        map_subject_to_production(subject)
+
+
+@pytest.mark.parametrize("height_cm", [100.0, 200.0])
+def test_subject_mapping_preserves_compatible_values(height_cm: float) -> None:
+    subject = SubjectAnnotation(0, Sex.OTHER, height_cm)
+
+    mapped = map_subject_to_production(subject)
+
+    assert (mapped.age, mapped.sex, mapped.height_cm) == (0, "other", height_cm)
+
+
+@pytest.mark.parametrize("height_cm", [100, 100.0, 200, 200.0])
+def test_subject_height_inclusive_boundaries_are_accepted(height_cm: float) -> None:
+    assert SubjectAnnotation(70, Sex.FEMALE, height_cm).height_cm == height_cm
+
+
+@pytest.mark.parametrize("height_cm", [99.999, 200.001, 250.0])
+def test_subject_height_outside_supported_range_is_rejected(height_cm: float) -> None:
+    with pytest.raises(ValueError, match="between 100 and 200 centimetres inclusive"):
+        SubjectAnnotation(70, Sex.FEMALE, height_cm)
+
+
+@pytest.mark.parametrize("height_cm", [99.0, 200.001])
+def test_subject_height_is_rechecked_at_production_mapping(height_cm: float) -> None:
+    subject = SubjectAnnotation(70, Sex.FEMALE, 160.0)
+    object.__setattr__(subject, "height_cm", height_cm)
+
+    with pytest.raises(ValueError, match="before production strategy initialization"):
+        map_subject_to_production(subject)
+
+
+@pytest.mark.parametrize("age", [-1, 70.0, True])
+def test_subject_age_must_be_a_non_negative_integer(age: object) -> None:
+    with pytest.raises(ValueError, match="subject.age must be a non-negative integer"):
+        SubjectAnnotation(age, Sex.FEMALE, 160.0)  # type: ignore[arg-type]
+
+
+def test_subject_serialization_uses_assessment_age_without_dob() -> None:
+    manifest = manifest_from_payload(_valid_payload())
+    serialized = manifest.to_dict()
+    encoded = json.dumps(serialized)
+
+    assert serialized["cases"][0]["subject"]["age"] == 70
+    assert not any(field in encoded for field in ("dob", "date_of_birth", "birth_date"))
+    assert not {"dob", "date_of_birth", "birth_date"} & (
+        manifest.cases[0].to_csv_row().keys()
+    )
+
+
+def test_omitted_calibration_quality_floor_normalizes_to_schema_v1_default() -> None:
+    payload = _valid_payload()
+    del payload["cases"][0]["expected"]["minimum_calibration_quality"]
+
+    case = manifest_from_payload(payload).cases[0]
+
+    assert case.expected.minimum_calibration_quality == 0.5
 
 
 def test_loads_valid_manifest_and_normalises_video_hash(tmp_path: Path) -> None:

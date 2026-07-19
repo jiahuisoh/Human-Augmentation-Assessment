@@ -22,6 +22,10 @@ from app.cv.pose_detector import PoseDetector
 from app.cv.types import Landmark
 from app.tests.base import FinalizeContext, TestStrategy
 from app.tests.strategies import strategy_for
+from validation.chair_stand.production_mapping import (
+    map_subject_to_production,
+    production_chair_stand_durations,
+)
 from validation.chair_stand.schema import (
     CaseResult,
     DetectedOutcome,
@@ -40,7 +44,6 @@ MAX_VIDEO_WIDTH = 1920
 MAX_VIDEO_HEIGHT = 1080
 MAX_VIDEO_DURATION_S = 60.0
 MAX_VIDEO_FRAMES = 3600
-REQUIRED_ACTIVE_WINDOW_S = 30.0
 DEFAULT_OUTPUT_BASE = Path(__file__).resolve().parents[2] / "validation_results" / "chair_stand"
 
 _SCHEME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
@@ -290,21 +293,34 @@ def validate_video_metadata(capture: Capture) -> VideoMetadata:
 
 
 def timing_for_case(case: ValidationCase, fps: float) -> ReplayTiming:
-    """Validate and return the exact annotated boundaries used for replay."""
+    """Validate annotations against the production-owned duration profile."""
     tolerance_s = max(0.05, 1.0 / fps)
-    active_duration_s = case.timing.test_end_s - case.timing.test_start_s
-    if (
-        case.expected.validity is not ExpectedValidity.INVALID_INPUT
-        and _exceeds_tolerance(
-            abs(active_duration_s - REQUIRED_ACTIVE_WINDOW_S),
+    if case.expected.validity is not ExpectedValidity.INVALID_INPUT:
+        durations = production_chair_stand_durations()
+        calibration_duration_s = (
+            case.timing.calibration_end_s - case.timing.calibration_start_s
+        )
+        active_duration_s = case.timing.test_end_s - case.timing.test_start_s
+        if _exceeds_tolerance(
+            abs(calibration_duration_s - durations.calibration_s),
             tolerance_s,
-        )
-    ):
-        raise ReplayValidationError(
-            "Processable chair-stand cases require a 30-second active test window; "
-            f"got {active_duration_s:.6f}s with tolerance {tolerance_s:.6f}s",
-            FailureCategory.RUNTIME_ERROR,
-        )
+        ):
+            raise ReplayValidationError(
+                "Processable chair-stand cases require a "
+                f"{durations.calibration_s:g}-second production calibration interval; "
+                f"got {calibration_duration_s:.6f}s with tolerance {tolerance_s:.6f}s",
+                FailureCategory.RUNTIME_ERROR,
+            )
+        if _exceeds_tolerance(
+            abs(active_duration_s - durations.active_duration_s),
+            tolerance_s,
+        ):
+            raise ReplayValidationError(
+                "Processable chair-stand cases require a "
+                f"{durations.active_duration_s:g}-second production active test interval; "
+                f"got {active_duration_s:.6f}s with tolerance {tolerance_s:.6f}s",
+                FailureCategory.RUNTIME_ERROR,
+            )
     return ReplayTiming(
         calibration_start_s=case.timing.calibration_start_s,
         calibration_end_s=case.timing.calibration_end_s,
@@ -376,7 +392,8 @@ def replay_case(
         metadata = validate_video_metadata(capture)
         timing = timing_for_case(case, metadata.fps)
         strategy = strategy_factory("chair_stand")
-        strategy.on_init(case.subject.age, case.subject.sex.value, case.subject.height_cm)
+        subject = map_subject_to_production(case.subject)
+        strategy.on_init(subject.age, subject.sex, subject.height_cm)
         strategy.reset()
         min_cutoff, beta = strategy.smoother_config()
         smoother = smoother_factory(min_cutoff=min_cutoff, beta=beta)

@@ -23,6 +23,8 @@ from typing import Any, Callable, Mapping, TypeAlias, TypeVar
 
 
 SCHEMA_VERSION = 1
+MIN_SUBJECT_HEIGHT_CM = 100.0
+MAX_SUBJECT_HEIGHT_CM = 200.0
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
@@ -86,6 +88,16 @@ class ManifestValidationError(ValueError):
 
 @dataclass(frozen=True)
 class SubjectAnnotation:
+    """Subject values recorded at assessment time for production compatibility.
+
+    ``age`` is the non-negative integer age at assessment or recording time,
+    not a date of birth or an independent age-calculation authority. When a
+    case is linked to a production user, authors should use the age produced by
+    the production profile process; anonymous approved clips may use an
+    authorised assessment-time annotation. ``height_cm`` is measured in
+    centimetres.
+    """
+
     age: int
     sex: Sex
     height_cm: float
@@ -93,7 +105,7 @@ class SubjectAnnotation:
     def __post_init__(self) -> None:
         _validate_non_negative_int(self.age, "subject.age")
         _validate_enum(self.sex, Sex, "subject.sex")
-        _validate_positive_finite_number(self.height_cm, "subject.height_cm")
+        validate_subject_height_cm(self.height_cm)
 
     def to_dict(self) -> dict[str, JsonValue]:
         return {"age": self.age, "sex": self.sex.value, "height_cm": self.height_cm}
@@ -190,6 +202,13 @@ class GenerationProvenance:
 
 @dataclass(frozen=True)
 class ExpectedOutcome:
+    """Offline expected outcome and regression acceptance criteria.
+
+    ``minimum_calibration_quality`` is an offline comparison floor only. It is
+    not a live production rejection threshold and is not supplied to the
+    production strategy.
+    """
+
     validity: ExpectedValidity
     repetitions: int
     minimum_calibration_quality: float = 0.5
@@ -867,6 +886,17 @@ def _validate_positive_finite_number(value: object, field_path: str) -> None:
     _validate_non_negative_finite_number(value, field_path)
     if value <= 0:
         raise ValueError(f"{field_path} must be greater than zero")
+
+
+def validate_subject_height_cm(value: object) -> None:
+    """Validate the offline centimetre range used at production handoff."""
+    _validate_positive_finite_number(value, "subject.height_cm")
+    if not MIN_SUBJECT_HEIGHT_CM <= value <= MAX_SUBJECT_HEIGHT_CM:
+        raise ValueError(
+            "subject.height_cm must be between "
+            f"{MIN_SUBJECT_HEIGHT_CM:g} and {MAX_SUBJECT_HEIGHT_CM:g} "
+            "centimetres inclusive"
+        )
 
 
 def _validate_unit_interval(value: object, field_path: str) -> None:

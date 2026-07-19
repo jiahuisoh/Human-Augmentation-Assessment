@@ -15,6 +15,7 @@ import pytest
 
 import validation.chair_stand.replay as replay_module
 from app.cv.types import Landmark
+from validation.chair_stand.production_mapping import ProductionSubjectInputs
 from validation.chair_stand.replay import (
     ReplayCounters,
     ReplayExecution,
@@ -44,11 +45,18 @@ from validation.chair_stand.schema import (
     ValidationCase,
     ViewMetadata,
     compare_outcomes,
+    load_manifest,
 )
 
 
 FRAME = np.zeros((2, 2, 3), dtype=np.uint8)
 POSE = [Landmark(0.5, 0.5, 0.0, 1.0)]
+TEMPLATE_PATH = (
+    Path(__file__).parents[1]
+    / "validation"
+    / "chair_stand"
+    / "manifest.template.json"
+)
 
 
 class FakeCapture:
@@ -226,6 +234,10 @@ def _case(
     case_id: str = "case-001",
     validity: ExpectedValidity = ExpectedValidity.VALID_MOVEMENT,
     expected_reps: int = 5,
+    minimum_quality: float = 0.5,
+    subject: SubjectAnnotation | None = None,
+    calibration_start_s: float = 0.0,
+    calibration_end_s: float = 3.0,
     test_start_s: float = 6.5,
     test_end_s: float = 36.5,
 ) -> ValidationCase:
@@ -234,9 +246,14 @@ def _case(
         video_path=video_path,
         video_sha256=video_sha256,
         source_type=SourceType.REAL,
-        expected=ExpectedOutcome(validity, expected_reps, 0.5),
-        subject=SubjectAnnotation(70, Sex.FEMALE, 160.0),
-        timing=TimingAnnotation(0.0, 3.0, test_start_s, test_end_s),
+        expected=ExpectedOutcome(validity, expected_reps, minimum_quality),
+        subject=subject or SubjectAnnotation(70, Sex.FEMALE, 160.0),
+        timing=TimingAnnotation(
+            calibration_start_s,
+            calibration_end_s,
+            test_start_s,
+            test_end_s,
+        ),
         view=ViewMetadata("side", "full_body", "normal", "none"),
     )
 
@@ -505,6 +522,39 @@ def test_explicit_timing_boundaries_and_exact_active_window() -> None:
     assert frame_window(36.5001, timing) == "after"
 
 
+def test_both_template_cases_pass_production_timing_preflight_without_assets() -> None:
+    manifest = load_manifest(TEMPLATE_PATH)
+
+    timings = [timing_for_case(case, fps=30.0) for case in manifest.cases]
+
+    assert len(timings) == 2
+
+
+@pytest.mark.parametrize("active_duration_s", [29.0, 31.0])
+def test_processable_active_duration_must_match_production(
+    active_duration_s: float,
+) -> None:
+    with pytest.raises(ReplayValidationError, match="production active test interval"):
+        timing_for_case(
+            _case(test_end_s=6.5 + active_duration_s),
+            fps=30.0,
+        )
+
+
+def test_processable_calibration_duration_must_match_production() -> None:
+    with pytest.raises(ReplayValidationError, match="production calibration interval"):
+        timing_for_case(_case(calibration_end_s=2.0), fps=30.0)
+
+
+def test_arbitrary_non_negative_staging_gap_is_accepted() -> None:
+    timing = timing_for_case(
+        _case(test_start_s=17.25, test_end_s=47.25),
+        fps=30.0,
+    )
+
+    assert timing.test_start_s - timing.calibration_end_s == 14.25
+
+
 def test_active_window_allows_one_frame_tolerance() -> None:
     timing = timing_for_case(_case(test_end_s=36.6), fps=10.0)
 
@@ -577,6 +627,23 @@ def test_production_lifecycle_factory_and_window_call_order(tmp_path: Path) -> N
         "strategy.get_calibration_quality"
     )
     assert events[-2:] == ["capture.release", "detector.close"]
+
+
+def test_production_strategy_receives_mapping_values_unchanged(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mapped = ProductionSubjectInputs(81, "other", 177.5)
+    monkeypatch.setattr(
+        replay_module,
+        "map_subject_to_production",
+        lambda _: mapped,
+    )
+    strategy = FakeStrategy()
+
+    _run(tmp_path, strategy=strategy)
+
+    assert strategy.on_init_args == (mapped.age, mapped.sex, mapped.height_cm)
 
 
 def test_exact_closed_boundaries_produce_zero_and_full_elapsed_times(
@@ -757,6 +824,27 @@ def test_success_captures_production_calibration_quality(tmp_path: Path) -> None
     execution, _, _, _, _ = _run(tmp_path, strategy=FakeStrategy(quality=0.73))
 
     assert execution.case_result.detected.calibration_quality == 0.73
+
+
+def test_quality_floor_is_offline_comparison_only(tmp_path: Path) -> None:
+    root, manifest, _, digest = _files(tmp_path)
+    strategy = FakeStrategy(quality=0.9)
+    execution = replay_case(
+        _case(video_sha256=digest, minimum_quality=0.95),
+        manifest_path=manifest,
+        dataset_root=root,
+        write_reports=False,
+        capture_factory=lambda _: FakeCapture(),
+        detector_factory=FakeDetector,
+        strategy_factory=lambda _: strategy,
+        smoother_factory=lambda **_: FakeSmoother(),
+    )
+
+    assert execution.case_result.detected.status is ProcessingStatus.COMPLETED
+    assert strategy.finish_calls == 1
+    assert execution.case_result.comparison.failure_category is (
+        FailureCategory.CALIBRATION_QUALITY_LOW
+    )
 
 
 @pytest.mark.parametrize(

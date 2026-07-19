@@ -30,7 +30,7 @@
         "occlusion": "replace-with-observed-occlusion"
       },
       "generation": null,
-      "notes": "Template only: no private video or participant data is included. The portable video_path is relative to this manifest. Replace the path, video SHA-256, annotations, subject placeholders, timing, and view labels before execution."
+      "notes": "Template only: no private video or participant data is included. Replace every placeholder before execution. Age is an assessment-time snapshot sourced from the production profile process for linked users or an authorised annotation for anonymous approved clips. The calibration-quality minimum is an offline regression floor, not a live production threshold. Timing values are video annotations whose calibration and active intervals are constrained by production durations."
     },
     {
       "case_id": "cs-synthda-template-001",
@@ -51,7 +51,7 @@
         "calibration_start_s": 0.0,
         "calibration_end_s": 3.0,
         "test_start_s": 6.5,
-        "test_end_s": 20.0
+        "test_end_s": 36.5
       },
       "view": {
         "camera_angle": "side",
@@ -66,7 +66,7 @@
         "seed": "replace-with-actual-seed",
         "config_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
       },
-      "notes": "Template only: replace every placeholder, including video and configuration hashes, with actual external-run provenance before execution. Provenance records reproducibility metadata only and does not establish authenticity or clinical validity."
+      "notes": "Template only: replace every placeholder, including video and configuration hashes, with actual external-run provenance before execution. Age is an assessment-time snapshot sourced from the production profile process for linked users or an authorised annotation for anonymous approved clips. The calibration-quality minimum is an offline regression floor, not a live production threshold. Timing values are video annotations whose calibration and active intervals are constrained by production durations. Provenance records reproducibility metadata only and does not establish authenticity or clinical validity."
     }
   ]
 }

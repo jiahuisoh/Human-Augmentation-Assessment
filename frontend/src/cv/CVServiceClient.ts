@@ -37,9 +37,20 @@ export class CVServiceClient {
     });
   }
 
-  init(userAge: number | null, userSex: Sex, userHeight: number | null, sandbox = false): void {
+  init(
+    userAge: number | null,
+    userSex: Sex,
+    userHeight: number | null,
+    sandbox = false,
+    environment: "home" | "clinic" = "home",
+  ): void {
     const payload: InitAction = {
-      action: "init", user_age: userAge, user_sex: userSex, user_height: userHeight, sandbox,
+      action: "init",
+      user_age: userAge,
+      user_sex: userSex,
+      user_height: userHeight,
+      environment,
+      sandbox,
     };
     this.sendJson(payload);
   }

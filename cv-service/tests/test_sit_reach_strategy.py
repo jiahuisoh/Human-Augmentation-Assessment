@@ -153,6 +153,7 @@ class TestSitReachStrategy:
 
     def test_rejects_bent_knee(self) -> None:
         s = SitReachStrategy()
+        s.on_init(None, "male", 170.0, "clinic")
         _calibrate(s)
         bent = sit_reach_side_pose(side="right", knee=(0.338, 0.70))
         _hold_reach(s, finger_x=0.65, start_ms=0.0, frames=1)
@@ -161,10 +162,66 @@ class TestSitReachStrategy:
             update = s.update(bent, elapsed_ms=5000.0 + (i + 1) * 250.0, hand_landmarks=hand_middle_finger_at(0.65, 0.70))
             assert update.form_hint == HINT_KNEE_BENT
             assert update.measurement is None
+            assert update.raw_measurement is not None
+            assert update.recording_status is not None
+            assert 'Recording paused' in update.recording_status
         assert len(s._all_reaches) == before
+
+    def test_raw_reach_tracked_when_form_invalid(self) -> None:
+        s = SitReachStrategy()
+        s.on_init(None, "male", 170.0, "clinic")
+        _calibrate(s)
+        bent = sit_reach_side_pose(side="right", knee=(0.338, 0.70))
+        update = s.update(bent, elapsed_ms=2500.0, hand_landmarks=hand_middle_finger_at(0.65, 0.70))
+        assert update.raw_measurement is not None
+        assert update.form_valid is False
+
+    def test_home_threshold_allows_slightly_bent_knee(self) -> None:
+        s = SitReachStrategy()
+        s.on_init(None, "male", 170.0, "home")
+        clinic = SitReachStrategy()
+        clinic.on_init(None, "male", 170.0, "clinic")
+        pose = sit_reach_side_pose(side="right", knee=(0.338, 0.70))
+        assert s._evaluate_leg_form(pose, "right") is None
+        assert clinic._evaluate_leg_form(pose, "right") == HINT_KNEE_BENT
+
+    def test_home_threshold_allows_misaligned_leg(self) -> None:
+        s = SitReachStrategy()
+        s.on_init(None, "male", 170.0, "home")
+        clinic = SitReachStrategy()
+        clinic.on_init(None, "male", 170.0, "clinic")
+        pose = sit_reach_side_pose(side="right", knee=(0.342, 0.70))
+        assert s._evaluate_leg_form(pose, "right") is None
+        assert clinic._evaluate_leg_form(pose, "right") == HINT_LEG_ALIGN
+
+    def test_hold_progress_increases_during_stable_reach(self) -> None:
+        s = SitReachStrategy()
+        _calibrate(s)
+        pose = sit_reach_side_pose(side="right", finger=(0.65, 0.70))
+        hands = hand_middle_finger_at(0.65, 0.70)
+        update = s.update(pose, elapsed_ms=1000.0, hand_landmarks=hands)
+        assert update.form_valid is True
+        assert update.hold_progress == 0.0
+        update = s.update(pose, elapsed_ms=1500.0, hand_landmarks=hands)
+        assert update.hold_progress is not None
+        assert 0.0 < update.hold_progress < 1.0
+
+    def test_finalize_practice_only_when_no_valid_holds(self) -> None:
+        s = SitReachStrategy()
+        _calibrate(s)
+        pose = sit_reach_side_pose(side="right", finger=(0.65, 0.70))
+        hands = hand_middle_finger_at(0.65, 0.70)
+        bent = sit_reach_side_pose(side="right", knee=(0.338, 0.70))
+        for i in range(5):
+            s.update(bent, elapsed_ms=(i + 1) * 400.0, hand_landmarks=hands)
+        outcome = s.finalize(FinalizeContext(user_age=72, user_sex="male", terminated_early=True))
+        assert outcome.measurement_confidence == "practice_only"
+        assert outcome.practice_reach_cm is not None
+        assert outcome.measurement == outcome.practice_reach_cm
 
     def test_rejects_misaligned_leg(self) -> None:
         s = SitReachStrategy()
+        s.on_init(None, "male", 170.0, "clinic")
         _calibrate(s)
         misaligned = sit_reach_side_pose(side="right", knee=(0.35, 0.70))
         update = s.update(misaligned, elapsed_ms=2500.0, hand_landmarks=hand_middle_finger_at(0.65, 0.70))
@@ -180,6 +237,7 @@ class TestSitReachStrategy:
 
     def test_calibration_skips_bent_knee_frames(self) -> None:
         s = SitReachStrategy()
+        s.on_init(None, "male", 170.0, "clinic")
         good = sit_reach_side_pose(side="right")
         bent = sit_reach_side_pose(side="right", knee=(0.338, 0.70))
         s.on_calibration_frame(good)

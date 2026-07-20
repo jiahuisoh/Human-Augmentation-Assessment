@@ -107,6 +107,7 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
       <TestRunner
         testId={activeCv.testId}
         userAge={70} userSex="other" userHeight={170}
+        defaultEnvironment="clinic"
         onComplete={handleCvComplete}
         onBack={() => setActiveCv(null)}
       />

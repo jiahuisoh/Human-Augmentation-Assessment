@@ -7,6 +7,8 @@ export type Posture   = "up" | "down" | "unknown";
 export interface TestOutcomeWire {
   reps?:             number;
   measurement?:      number;
+  practice_reach_cm?: number;
+  measurement_confidence?: "high" | "low" | "practice_only";
   classification?:   string;
   risk_level?:       RiskLevel;
   interpretation?:   string;
@@ -46,7 +48,11 @@ export interface UpdateMessage {
   // Test phase — distance-based
   measurement?:      number;
   best_measurement?: number;
+  raw_measurement?:  number;
   form_hint?:        string;
+  form_valid?:       boolean;
+  hold_progress?:    number;
+  recording_status?: string;
 
   // Test phase — generic
   time_remaining?:  number;
@@ -67,11 +73,14 @@ export type ServerMessage = ReadyMessage | UpdateMessage | CompleteMessage | Err
 
 // ---- Client → Server actions ------------------------------------
 
+export type TestEnvironment = "home" | "clinic";
+
 export interface InitAction {
   action:      "init";
   user_age:    number | null;
   user_sex:    Sex;
   user_height: number | null;
+  environment?: TestEnvironment;
   /** When true, server should run with synthetic / de-identified user data. */
   sandbox?:    boolean;
 }

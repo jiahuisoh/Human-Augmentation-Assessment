@@ -54,6 +54,7 @@ class _Session:
         self.user_age: int | None = None
         self.user_sex: str = 'other'
         self.user_height: float | None = None
+        self.environment: str = 'home'
 
     async def run(self) -> None:
         await self.ws.send_json(ReadyMessage(test_id=self.test_id).model_dump())
@@ -81,8 +82,9 @@ class _Session:
             self.user_age = payload.get('user_age')
             self.user_sex = payload.get('user_sex', 'other')
             self.user_height = payload.get('user_height')
-            log.info('init: user_age=%s sex=%s height=%s', self.user_age, self.user_sex, self.user_height)
-            self.strategy.on_init(self.user_age, self.user_sex, self.user_height)
+            self.environment = payload.get('environment', 'home')
+            log.info('init: user_age=%s sex=%s height=%s environment=%s', self.user_age, self.user_sex, self.user_height, self.environment)
+            self.strategy.on_init(self.user_age, self.user_sex, self.user_height, self.environment)
         elif action == 'start':
             self._goto_phase('calibrating')
             self.strategy.reset()
@@ -141,7 +143,7 @@ class _Session:
             remaining = self.strategy.active_duration_s - elapsed_ms / 1000
             if usable and landmarks is not None:
                 u = self.strategy.update(landmarks, elapsed_ms, hand_landmarks)
-                await self._send_update(landmarks=landmarks, hand_landmarks=hand_landmarks, detection=detection, reps=u.reps, posture=u.posture, angle=u.angle, measurement=u.measurement, best_measurement=u.best_measurement, form_hint=u.form_hint, time_remaining=max(0.0, round(remaining, 2)))
+                await self._send_update(landmarks=landmarks, hand_landmarks=hand_landmarks, detection=detection, reps=u.reps, posture=u.posture, angle=u.angle, measurement=u.measurement, best_measurement=u.best_measurement, raw_measurement=u.raw_measurement, form_hint=u.form_hint, form_valid=u.form_valid, hold_progress=u.hold_progress, recording_status=u.recording_status, time_remaining=max(0.0, round(remaining, 2)))
                 if u.finished or remaining <= 0:
                     await self._finalize(terminated_early=False)
             else:

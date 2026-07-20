@@ -1,6 +1,7 @@
 import math
 import statistics
-from typing import Sequence
+from dataclasses import dataclass
+from typing import Literal, Sequence
 from app.cv.hand_detector import HAND_LANDMARK
 from app.cv.landmarks import LANDMARK, all_visible, angle_between, distance, pick_better_side
 from app.cv.types import Landmark, Sex, TestOutcome
@@ -11,9 +12,6 @@ LEG_LENGTH_FRACTION_OF_HEIGHT = 0.47
 ASSUMED_HEIGHT_CM = 165.0
 _MIN_CALIB_SAMPLES = 3
 _MIN_TEST_SAMPLES = 3
-_MIN_KNEE_ANGLE = 160.0
-_MAX_KNEE_LINE_DEV = 0.10
-_MAX_FOOT_LIFT = 0.12
 _OUTLIER_CM = 12.0
 _HOLD_MS = 2000.0
 _STABLE_CM = 2.5
@@ -21,16 +19,38 @@ _RETRACT_CM = 3.0
 _TOP_N_MEDIAN = 5
 _SMOOTHER_MIN_CUTOFF = 0.9
 _SMOOTHER_BETA = 0.02
+_GAMIFICATION_TARGET_CM = 35.0
 
 _LEFT_LEG = (LANDMARK.LEFT_HIP, LANDMARK.LEFT_ANKLE)
 _RIGHT_LEG = (LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_ANKLE)
 _LEFT_KNEE = (LANDMARK.LEFT_HIP, LANDMARK.LEFT_KNEE, LANDMARK.LEFT_ANKLE)
 _RIGHT_KNEE = (LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_KNEE, LANDMARK.RIGHT_ANKLE)
 
-HINT_KNEE_BENT = "Keep your test leg straight — bent knee won't count"
-HINT_LEG_ALIGN = "Align hip, knee, and ankle in one line"
-HINT_FOOT_FLAT = "Keep your heel and foot flat on the floor"
-HINT_LEG_VISIBLE = "Keep your test leg fully visible from the side"
+HINT_KNEE_BENT = 'Keep your test leg straight — bent knee won\'t count'
+HINT_LEG_ALIGN = 'Align hip, knee, and ankle in one line'
+HINT_FOOT_FLAT = 'Keep your heel and foot flat on the floor'
+HINT_LEG_VISIBLE = 'Keep your test leg fully visible from the side'
+
+FormEnvironment = Literal['home', 'clinic']
+MeasurementConfidence = Literal['high', 'low', 'practice_only']
+
+STATUS_REACH_STAR = 'Reach for the star at your toes!'
+STATUS_HOLD_STEADY = 'Hold steady!'
+STATUS_SCORE_LOCKED = 'Score locked!'
+STATUS_PAUSED_PREFIX = 'Recording paused'
+
+
+@dataclass(frozen=True)
+class FormThresholds:
+    min_knee_angle: float
+    max_knee_line_dev: float
+    max_foot_lift: float
+
+
+THRESHOLDS: dict[FormEnvironment, FormThresholds] = {
+    'clinic': FormThresholds(min_knee_angle=160.0, max_knee_line_dev=0.10, max_foot_lift=0.12),
+    'home': FormThresholds(min_knee_angle=155.0, max_knee_line_dev=0.12, max_foot_lift=0.14),
+}
 
 
 def forward_unit(hip: Landmark, ankle: Landmark, toe: Landmark) -> tuple[float, float]:
@@ -86,6 +106,8 @@ class SitReachStrategy(TestStrategy):
 
     def __init__(self) -> None:
         self._user_height_cm: float | None = None
+        self._environment: FormEnvironment = 'home'
+        self._thresholds: FormThresholds = THRESHOLDS['home']
         self._leg_samples: list[float] = []
         self._toe_baseline_offsets: list[float] = []
         self._cm_per_unit: float | None = None
@@ -93,11 +115,15 @@ class SitReachStrategy(TestStrategy):
         self._toe_baseline_offset: float | None = None
         self._calibration_quality: float | None = None
         self._best_side: str = 'right'
-        self._reach_cm: float | None = None
+        self._valid_reach_cm: float | None = None
+        self._raw_reach_cm: float | None = None
+        self._raw_best_cm: float | None = None
         self._all_reaches: list[float] = []
         self._hold_anchor_ms: float | None = None
         self._hold_anchor_cm: float | None = None
         self._hold_recorded = False
+        self._last_hold_progress: float = 0.0
+        self._last_recording_status: str | None = None
 
     def reset(self) -> None:
         self._leg_samples.clear()
@@ -107,15 +133,27 @@ class SitReachStrategy(TestStrategy):
         self._toe_baseline_offset = None
         self._calibration_quality = None
         self._best_side = 'right'
-        self._reach_cm = None
+        self._valid_reach_cm = None
+        self._raw_reach_cm = None
+        self._raw_best_cm = None
         self._all_reaches.clear()
         self._hold_anchor_ms = None
         self._hold_anchor_cm = None
         self._hold_recorded = False
+        self._last_hold_progress = 0.0
+        self._last_recording_status = None
 
-    def on_init(self, user_age: int | None, user_sex: Sex, user_height: float | None) -> None:
+    def on_init(
+        self,
+        user_age: int | None,
+        user_sex: Sex,
+        user_height: float | None,
+        environment: str = 'home',
+    ) -> None:
         _ = (user_age, user_sex)
         self._user_height_cm = user_height
+        self._environment = environment if environment in THRESHOLDS else 'home'
+        self._thresholds = THRESHOLDS[self._environment]
 
     def smoother_config(self) -> tuple[float, float]:
         return (_SMOOTHER_MIN_CUTOFF, _SMOOTHER_BETA)
@@ -171,11 +209,11 @@ class SitReachStrategy(TestStrategy):
     def update(self, landmarks: Sequence[Landmark], elapsed_ms: float, hand_landmarks: Sequence[Sequence[Landmark]] | None = None) -> TestStateUpdate:
         best = self._robust_best()
         if self._cm_per_unit is None or self._toe_baseline_offset is None:
-            return TestStateUpdate(measurement=self._reach_cm, best_measurement=best)
-
-        hint = self._evaluate_leg_form(landmarks, self._best_side)
-        if hint is not None:
-            return TestStateUpdate(measurement=None, best_measurement=best, form_hint=hint)
+            return TestStateUpdate(
+                measurement=None,
+                best_measurement=best,
+                raw_measurement=self._raw_reach_cm,
+            )
 
         idx_foot = LANDMARK.LEFT_FOOT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
         idx_hip = LANDMARK.LEFT_HIP if self._best_side == 'left' else LANDMARK.RIGHT_HIP
@@ -185,42 +223,142 @@ class SitReachStrategy(TestStrategy):
         toe = landmarks[idx_foot]
         self._forward = forward_unit(hip, ankle, toe)
         finger = self._finger_landmark(landmarks, hand_landmarks, toe)
-        if finger is None:
-            return TestStateUpdate(measurement=None, best_measurement=best)
 
-        reach_norm = reach_from_baseline(finger, hip, self._forward, self._toe_baseline_offset)
-        cm = round(reach_norm * self._cm_per_unit, 1)
-        self._reach_cm = cm
-        self._maybe_record_reach(cm, elapsed_ms)
-        return TestStateUpdate(measurement=cm, best_measurement=self._robust_best())
+        raw_cm: float | None = None
+        if finger is not None:
+            reach_norm = reach_from_baseline(finger, hip, self._forward, self._toe_baseline_offset)
+            raw_cm = round(reach_norm * self._cm_per_unit, 1)
+            self._raw_reach_cm = raw_cm
+            if self._raw_best_cm is None or raw_cm > self._raw_best_cm:
+                self._raw_best_cm = raw_cm
+
+        hint = self._evaluate_leg_form(landmarks, self._best_side)
+        form_valid = hint is None
+
+        hold_progress = 0.0
+        recording_status: str | None = None
+
+        if not form_valid:
+            recording_status = f'{STATUS_PAUSED_PREFIX} — {hint}'
+            self._hold_anchor_cm = None
+            self._hold_anchor_ms = None
+            self._hold_recorded = False
+            self._last_hold_progress = 0.0
+            return TestStateUpdate(
+                measurement=None,
+                best_measurement=best,
+                raw_measurement=raw_cm,
+                form_hint=hint,
+                form_valid=False,
+                hold_progress=0.0,
+                recording_status=recording_status,
+            )
+
+        if finger is None:
+            recording_status = HINT_LEG_VISIBLE
+            return TestStateUpdate(
+                measurement=None,
+                best_measurement=best,
+                raw_measurement=None,
+                form_valid=True,
+                hold_progress=0.0,
+                recording_status=recording_status,
+            )
+
+        valid_cm = raw_cm
+        self._valid_reach_cm = valid_cm
+        recorded_before = len(self._all_reaches)
+        self._maybe_record_reach(valid_cm, elapsed_ms)
+        hold_progress = self._last_hold_progress
+
+        if len(self._all_reaches) > recorded_before:
+            recording_status = STATUS_SCORE_LOCKED
+        elif hold_progress > 0.0 and hold_progress < 1.0:
+            recording_status = STATUS_HOLD_STEADY
+        else:
+            recording_status = STATUS_REACH_STAR
+
+        self._last_recording_status = recording_status
+        return TestStateUpdate(
+            measurement=valid_cm,
+            best_measurement=self._robust_best(),
+            raw_measurement=raw_cm,
+            form_valid=True,
+            hold_progress=round(hold_progress, 2),
+            recording_status=recording_status,
+        )
 
     def finalize(self, ctx: FinalizeContext) -> TestOutcome:
-        if not self._all_reaches:
+        official = self._robust_best()
+        practice = self._raw_best_cm
+        confidence = self._measurement_confidence(official)
+
+        if official is not None:
+            return self._finalize_with_official(official, practice, confidence, ctx)
+
+        if practice is not None and practice > 0:
+            interpretation = (
+                f'Practice reach {practice:+.1f} cm recorded without valid form holds. '
+                'Official score requires straight leg and a 2-second hold.'
+            )
+            if self._calibration_quality is not None and self._calibration_quality < 0.5:
+                interpretation += ' Low calibration confidence — clinician review recommended.'
             return TestOutcome(
-                measurement=0.0,
+                measurement=practice,
+                practice_reach_cm=practice,
+                measurement_confidence='practice_only',
                 terminated_early=ctx.terminated_early,
                 calibration_quality=self._calibration_quality,
+                interpretation=interpretation,
             )
-        best = self._robust_best() or 0.0
+
+        return TestOutcome(
+            measurement=0.0,
+            practice_reach_cm=practice,
+            measurement_confidence='practice_only',
+            terminated_early=ctx.terminated_early,
+            calibration_quality=self._calibration_quality,
+            interpretation='No reach detected. Try sitting sideways with your full leg visible.',
+        )
+
+    def _finalize_with_official(
+        self,
+        official: float,
+        practice: float | None,
+        confidence: MeasurementConfidence,
+        ctx: FinalizeContext,
+    ) -> TestOutcome:
         low_calib = self._calibration_quality is not None and self._calibration_quality < 0.5
         if len(self._all_reaches) < _MIN_TEST_SAMPLES:
+            interpretation = f'Official reach {official:+.1f} cm from limited valid holds.'
+            if confidence == 'low':
+                interpretation += ' Low calibration confidence — clinician review recommended.'
             return TestOutcome(
-                measurement=best,
+                measurement=official,
+                practice_reach_cm=practice,
+                measurement_confidence=confidence,
                 terminated_early=ctx.terminated_early,
                 calibration_quality=self._calibration_quality,
+                interpretation=interpretation,
             )
-        classification = classify_sit_reach(best, ctx.user_age, ctx.user_sex)
+
+        classification = classify_sit_reach(official, ctx.user_age, ctx.user_sex)
         if classification is None:
             return TestOutcome(
-                measurement=best,
+                measurement=official,
+                practice_reach_cm=practice,
+                measurement_confidence=confidence,
                 terminated_early=ctx.terminated_early,
                 calibration_quality=self._calibration_quality,
             )
+
         interpretation = classification.interpretation
-        if low_calib:
+        if confidence == 'low' or low_calib:
             interpretation = f'{interpretation} Low calibration confidence — clinician review recommended.'
         return TestOutcome(
-            measurement=best,
+            measurement=official,
+            practice_reach_cm=practice,
+            measurement_confidence=confidence,
             terminated_early=ctx.terminated_early,
             classification=classification.classification,
             risk_level=classification.risk_level,
@@ -229,6 +367,15 @@ class SitReachStrategy(TestStrategy):
             norm_high=classification.norm_high,
             calibration_quality=self._calibration_quality,
         )
+
+    def _measurement_confidence(self, official: float | None) -> MeasurementConfidence:
+        if official is None:
+            return 'practice_only'
+        if self._calibration_quality is not None and self._calibration_quality < 0.5:
+            return 'low'
+        if self._environment == 'home':
+            return 'low' if self._calibration_quality is not None and self._calibration_quality < 0.7 else 'high'
+        return 'high'
 
     def _evaluate_leg_form(self, landmarks: Sequence[Landmark], side: str) -> str | None:
         idx_knee = _LEFT_KNEE if side == 'left' else _RIGHT_KNEE
@@ -243,13 +390,13 @@ class SitReachStrategy(TestStrategy):
             return HINT_LEG_VISIBLE
 
         knee_angle = angle_between(hip, knee, ankle)
-        if point_line_distance(knee, hip, ankle) / leg_len > _MAX_KNEE_LINE_DEV:
+        if point_line_distance(knee, hip, ankle) / leg_len > self._thresholds.max_knee_line_dev:
             return HINT_LEG_ALIGN
 
-        if knee_angle < _MIN_KNEE_ANGLE:
+        if knee_angle < self._thresholds.min_knee_angle:
             return HINT_KNEE_BENT
 
-        if abs(toe.y - ankle.y) / leg_len > _MAX_FOOT_LIFT:
+        if abs(toe.y - ankle.y) / leg_len > self._thresholds.max_foot_lift:
             return HINT_FOOT_FLAT
 
         fwd = forward_unit(hip, ankle, toe)
@@ -302,20 +449,28 @@ class SitReachStrategy(TestStrategy):
         if self._hold_anchor_cm is None or abs(cm - self._hold_anchor_cm) > _STABLE_CM:
             self._start_hold(cm, elapsed_ms)
             return
-        if self._hold_recorded or self._hold_anchor_ms is None:
+        if self._hold_anchor_ms is None:
+            self._last_hold_progress = 0.0
             return
-        if elapsed_ms - self._hold_anchor_ms < _HOLD_MS:
+        progress = min(1.0, max(0.0, (elapsed_ms - self._hold_anchor_ms) / _HOLD_MS))
+        self._last_hold_progress = progress
+        if self._hold_recorded:
+            return
+        if progress < 1.0:
             return
         if self._is_outlier(cm):
             self._hold_recorded = True
+            self._last_hold_progress = 1.0
             return
         self._all_reaches.append(cm)
         self._hold_recorded = True
+        self._last_hold_progress = 1.0
 
     def _start_hold(self, cm: float, elapsed_ms: float) -> None:
         self._hold_anchor_cm = cm
         self._hold_anchor_ms = elapsed_ms
         self._hold_recorded = False
+        self._last_hold_progress = 0.0
 
     def _is_outlier(self, cm: float) -> bool:
         if len(self._all_reaches) < 2:
@@ -328,3 +483,7 @@ class SitReachStrategy(TestStrategy):
             return None
         top = sorted(self._all_reaches, reverse=True)[:_TOP_N_MEDIAN]
         return round(statistics.median(top), 1)
+
+    @staticmethod
+    def gamification_target_cm() -> float:
+        return _GAMIFICATION_TARGET_CM

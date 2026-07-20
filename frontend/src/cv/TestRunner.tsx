@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, AlertCircle, Loader } from "lucide-react";
+import { ArrowLeft, AlertCircle, Home, Loader, Stethoscope } from "lucide-react";
 import { cls } from "../utils/helpers";
 import { drawSkeleton, drawHands } from "./landmarks";
 import { CVServiceClient } from "./CVServiceClient";
 import PoseCamera, { type PoseCameraHandle } from "./PoseCamera";
-import type { Detection, Phase, TestOutcomeWire, UpdateMessage } from "./wireTypes";
+import SitReachGamification from "./SitReachGamification";
+import type { Detection, Phase, TestEnvironment, TestOutcomeWire, UpdateMessage } from "./wireTypes";
 import type { Sex, TestId } from "../types";
 import { TESTS } from "../utils/constants";
 import LivenessDetection from "../components/LivenessDetection";
@@ -14,26 +15,28 @@ function calibrationPromptFor(testId: TestId): string {
     ?? "Stand straight, sideways to the camera.";
 }
 
-// Default matches the cv-service host port from docker-compose.yml (4501 → 8000 in container).
-// Override via VITE_CV_WS_URL in frontend/.env if running the service on a different port.
 const CV_WS_URL: string = import.meta.env.VITE_CV_WS_URL || "ws://localhost:4501";
 const FRAME_JPEG_QUALITY = 0.7;
 
 export interface TestRunnerProps {
-  testId:     TestId;
-  userAge:    number | null;
-  userSex:    Sex;
-  userHeight: number | null;
-  /** When true, server runs in sandbox mode with de-identified data (Developer). */
-  sandbox?:   boolean;
-  onComplete: (outcome: TestOutcomeWire) => void;
-  onBack:     () => void;
+  testId:              TestId;
+  userAge:             number | null;
+  userSex:             Sex;
+  userHeight:          number | null;
+  defaultEnvironment?: TestEnvironment;
+  sandbox?:            boolean;
+  onComplete:          (outcome: TestOutcomeWire) => void;
+  onBack:              () => void;
 }
 
 export default function TestRunner({
-  testId, userAge, userSex, userHeight, sandbox = false, onComplete, onBack,
+  testId, userAge, userSex, userHeight,
+  defaultEnvironment = "home", sandbox = false, onComplete, onBack,
 }: TestRunnerProps) {
-  const [phase, setPhase]         = useState<Phase>("loading");
+  const needsSetup = testId === "sit_reach";
+  const [environment, setEnvironment] = useState<TestEnvironment>(defaultEnvironment);
+  const [sessionStarted, setSessionStarted] = useState(!needsSetup);
+  const [phase, setPhase]         = useState<Phase>(needsSetup ? "loading" : "loading");
   const [update, setUpdate]       = useState<UpdateMessage | null>(null);
   const [errorMsg, setErrorMsg]   = useState("");
   const [detection, setDetection] = useState<Detection>("missing");
@@ -50,6 +53,8 @@ export default function TestRunner({
   const transitionPhase = useCallback((next: Phase) => setPhase(next), []);
 
   useEffect(() => {
+    if (!sessionStarted) return;
+
     let cancelled = false;
     scratchRef.current = document.createElement("canvas");
 
@@ -86,7 +91,7 @@ export default function TestRunner({
 
         const client = new CVServiceClient(CV_WS_URL, {
           onReady: () => {
-            client.init(userAge, userSex, userHeight, sandbox);
+            client.init(userAge, userSex, userHeight, sandbox, environment);
             client.start();
           },
           onUpdate: (msg) => {
@@ -136,10 +141,56 @@ export default function TestRunner({
       const video = cameraRef.current?.video;
       if (video) video.srcObject = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sessionStarted, environment, testId, userAge, userSex, userHeight, sandbox, transitionPhase]);
 
   const stopEarly = () => clientRef.current?.stopEarly();
+  const isSitReach = testId === "sit_reach";
+  const recordingPaused = isSitReach && update?.form_valid === false && !!update?.recording_status;
+
+  if (needsSetup && !sessionStarted) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex flex-col p-6">
+        <button type="button" onClick={onBack} className="flex items-center gap-2 text-white text-lg font-semibold min-h-[48px] mb-6">
+          <ArrowLeft size={24} /> Back
+        </button>
+        <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full gap-6">
+          <h1 className="text-2xl font-bold text-white text-center">Sit &amp; Reach</h1>
+          <p className="text-gray-400 text-center text-sm">
+            Where are you taking this test? Home uses slightly relaxed form checks for uneven floors.
+            Clinic uses strict clinical thresholds.
+          </p>
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <button type="button" onClick={() => setEnvironment("home")}
+              className={cls(
+                "rounded-xl border p-4 text-left transition-all",
+                environment === "home"
+                  ? "border-violet-500 bg-violet-950/50 ring-2 ring-violet-500"
+                  : "border-gray-700 bg-gray-800 hover:border-gray-600",
+              )}>
+              <Home size={20} className="text-violet-400 mb-2" />
+              <div className="text-white font-semibold text-sm">At home</div>
+              <div className="text-gray-500 text-xs mt-1">Relaxed leg-form checks</div>
+            </button>
+            <button type="button" onClick={() => setEnvironment("clinic")}
+              className={cls(
+                "rounded-xl border p-4 text-left transition-all",
+                environment === "clinic"
+                  ? "border-emerald-500 bg-emerald-950/50 ring-2 ring-emerald-500"
+                  : "border-gray-700 bg-gray-800 hover:border-gray-600",
+              )}>
+              <Stethoscope size={20} className="text-emerald-400 mb-2" />
+              <div className="text-white font-semibold text-sm">At clinic</div>
+              <div className="text-gray-500 text-xs mt-1">Strict clinical form</div>
+            </button>
+          </div>
+          <button type="button" onClick={() => setSessionStarted(true)}
+            className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-4 rounded-xl text-lg">
+            Begin test
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 relative flex flex-col">
@@ -165,6 +216,23 @@ export default function TestRunner({
                 <div className="text-center">
                   {update.posture && <div className="text-yellow-400 text-lg font-bold uppercase">{update.posture}</div>}
                   {update.angle !== undefined && <div className="text-gray-500 text-sm">Hip angle: {Math.round(update.angle)}°</div>}
+                </div>
+              </>
+            ) : isSitReach ? (
+              <>
+                <div>
+                  <div className="text-gray-400 text-sm">REACH</div>
+                  <div className="text-4xl font-black text-gray-400 leading-none">
+                    {formatCm(update.raw_measurement)}
+                  </div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">practice</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-gray-400 text-sm">OFFICIAL</div>
+                  <div className="text-3xl font-black text-emerald-400 leading-none">
+                    {formatCm(update.best_measurement)}
+                  </div>
+                  <div className="text-[10px] text-emerald-600 mt-0.5">valid holds only</div>
                 </div>
               </>
             ) : (
@@ -194,7 +262,24 @@ export default function TestRunner({
               <LivenessDetection score={update.liveness_rolling} showDetails />
             </div>
           )}
-          {update.form_hint && (
+          {isSitReach && update.recording_status && (
+            <div className={cls(
+              "px-4 py-2 border-t text-center",
+              recordingPaused
+                ? "bg-amber-950/80 border-amber-700"
+                : update.recording_status === "Score locked!"
+                ? "bg-emerald-950/80 border-emerald-700"
+                : "bg-violet-950/60 border-violet-800",
+            )}>
+              <p className={cls(
+                "text-sm font-semibold",
+                recordingPaused ? "text-amber-200" : update.recording_status === "Score locked!" ? "text-emerald-200" : "text-violet-200",
+              )}>
+                {update.recording_status}
+              </p>
+            </div>
+          )}
+          {!isSitReach && update.form_hint && (
             <div className="px-4 py-2 bg-amber-950/80 border-t border-amber-700 text-center">
               <p className="text-amber-200 text-sm font-semibold">{update.form_hint}</p>
             </div>
@@ -211,17 +296,33 @@ export default function TestRunner({
             <>
               <h2 className="text-2xl font-bold text-white text-center mb-1">Calibrating…</h2>
               <p className="text-gray-300 text-base text-center">{calibrationPromptFor(testId)}</p>
+              {isSitReach && (
+                <p className="text-violet-300 text-xs text-center mt-1">
+                  Mode: {environment === "clinic" ? "Clinic (strict)" : "Home (relaxed)"}
+                </p>
+              )}
             </>
           )}
         </div>
       )}
 
       <div className="flex-1 flex items-center justify-center p-4">
-        <PoseCamera
-          ref={cameraRef}
-          overlayMessage={overlayMessageFor(phase, detection, update?.form_hint)}
-          overlayTone={update?.form_hint || detection !== "ok" ? "warning" : undefined}
-        />
+        <div className="relative w-full max-w-2xl">
+          <PoseCamera
+            ref={cameraRef}
+            overlayMessage={overlayMessageFor(phase, detection, update?.form_hint, isSitReach)}
+            overlayTone={update?.form_hint || detection !== "ok" ? "warning" : undefined}
+          />
+          {isSitReach && phase === "test" && update && (
+            <SitReachGamification
+              rawCm={update.raw_measurement}
+              bestCm={update.best_measurement}
+              holdProgress={update.hold_progress}
+              formValid={update.form_valid}
+              status={update.recording_status}
+            />
+          )}
+        </div>
       </div>
 
       {phase === "calibrating" && update && (
@@ -248,7 +349,7 @@ export default function TestRunner({
               update.calib_quality >= 0.5 ? "text-emerald-400" : "text-amber-400",
             )}>
               Calibration quality: {Math.round(update.calib_quality * 100)}%
-              {update.calib_quality < 0.5 && " — improve lighting or leg visibility"}
+              {update.calib_quality < 0.5 && " — try a flatter surface or better lighting"}
             </p>
           )}
           {update.form_hint && (
@@ -268,7 +369,7 @@ export default function TestRunner({
             {(update.countdown ?? 0) > 0 ? update.countdown : "GO!"}
           </div>
           <p className="text-gray-300 text-xl">
-            {(update.countdown ?? 0) > 0 ? "Get ready!" : "Begin!"}
+            {(update.countdown ?? 0) > 0 ? "Get ready!" : "Reach for the star at your toes!"}
           </p>
         </div>
       )}
@@ -313,7 +414,13 @@ function formatCm(cm: number | undefined): string {
   return (cm >= 0 ? "+" : "") + cm.toFixed(1) + " cm";
 }
 
-function overlayMessageFor(phase: Phase, detection: Detection, formHint?: string): string | undefined {
+function overlayMessageFor(
+  phase: Phase,
+  detection: Detection,
+  formHint?: string,
+  isSitReach?: boolean,
+): string | undefined {
+  if (isSitReach && phase === "test") return undefined;
   if (formHint) return formHint;
   if (phase !== "calibrating" && phase !== "countdown" && phase !== "test") return undefined;
   if (detection === "ok") return undefined;

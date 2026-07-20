@@ -12,14 +12,17 @@ JSONL format (one frame per line):
 Quick demo (synthetic poses, no SynthDa install needed):
   python validation/synthda/replay_landmarks.py --demo
 
-Real clip:
-  python validation/synthda/replay_landmarks.py sequences/my_clip.jsonl --height 170
+Synthetic clips:
+  python validation/synthda/generate_synth_sequences.py
+  python validation/synthda/batch_replay.py
+
+Real recording:
+  python validation/run_recording.py my_session.webm --session sr-p01 ...
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -27,81 +30,14 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.cv.types import Landmark
 from app.tests.base import FinalizeContext
 from app.tests.sit_reach.strategy import SitReachStrategy
-from tests.helpers import hand_middle_finger_at, sit_reach_side_pose, visible
-
-
-def landmarks_from_wire(pose: list[list[float]]) -> list[Landmark]:
-    out: list[Landmark] = []
-    for pt in pose:
-        if len(pt) >= 4:
-            out.append(Landmark(pt[0], pt[1], pt[2], pt[3]))
-        elif len(pt) == 3:
-            out.append(Landmark(pt[0], pt[1], pt[2], 0.9))
-        else:
-            out.append(Landmark(pt[0], pt[1], 0.0, 0.9))
-    while len(out) < 33:
-        out.append(Landmark(0.0, 0.0, 0.0, 0.0))
-    return out[:33]
-
-
-def hands_from_wire(hands: list[list[list[float]]] | None) -> list[list[Landmark]] | None:
-    if not hands:
-        return None
-    parsed: list[list[Landmark]] = []
-    for hand in hands:
-        pts: list[Landmark] = []
-        for pt in hand:
-            if len(pt) >= 4:
-                pts.append(Landmark(pt[0], pt[1], pt[2], pt[3]))
-            else:
-                pts.append(Landmark(pt[0], pt[1], 0.0, 0.9))
-        while len(pts) < 21:
-            pts.append(Landmark(0.0, 0.0, 0.0, 0.0))
-        parsed.append(pts[:21])
-    return parsed
-
-
-def wire_from_landmarks(landmarks: list[Landmark]) -> list[list[float]]:
-    return [[lm.x, lm.y, lm.z, lm.visibility] for lm in landmarks]
-
-
-def wire_from_hands(hands: list[list[Landmark]]) -> list[list[list[float]]]:
-    return [wire_from_landmarks(h) for h in hands]
+from validation.synthda.generate_synth_sequences import build_sequence
+from validation.synthda.landmark_io import hands_from_wire, landmarks_from_wire, load_frames
 
 
 def build_demo_sequence() -> list[dict]:
-    """Minimal calib + reach hold sequence using test helpers."""
-    frames: list[dict] = []
-    rest = sit_reach_side_pose(side='right', finger=(0.50, 0.70))
-    reach = sit_reach_side_pose(side='right', finger=(0.65, 0.70))
-    hands_rest = hand_middle_finger_at(0.50, 0.70)
-    hands_reach = hand_middle_finger_at(0.65, 0.70)
-
-    for i in range(12):
-        frames.append({
-            'elapsed_ms': (i + 1) * 250.0,
-            'pose': wire_from_landmarks(rest),
-            'hands': wire_from_hands(hands_rest),
-        })
-    for i in range(20):
-        frames.append({
-            'elapsed_ms': 3000.0 + (i + 1) * 250.0,
-            'pose': wire_from_landmarks(reach),
-            'hands': wire_from_hands(hands_reach),
-        })
-    return frames
-
-
-def load_frames(path: Path) -> list[dict]:
-    frames: list[dict] = []
-    with path.open(encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                frames.append(json.loads(line))
+    frames, _ = build_sequence(finger_x=0.65)
     return frames
 
 

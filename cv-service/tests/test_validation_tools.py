@@ -7,6 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RECORD = ROOT / 'validation' / 'record_session.py'
 REPLAY = ROOT / 'validation' / 'synthda' / 'replay_landmarks.py'
+GENERATE = ROOT / 'validation' / 'synthda' / 'generate_synth_sequences.py'
+BATCH = ROOT / 'validation' / 'synthda' / 'batch_replay.py'
 MAE = ROOT / 'validation' / 'compute_mae.py'
 
 
@@ -53,3 +55,27 @@ def test_synthda_replay_demo() -> None:
     )
     assert result.returncode == 0, result.stderr
     assert 'Measurement:' in result.stdout
+
+
+def test_generate_and_batch_replay(tmp_path: Path) -> None:
+    out_dir = tmp_path / 'sequences'
+    gen = subprocess.run(
+        [sys.executable, str(GENERATE), '--out-dir', str(out_dir)],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(ROOT),
+    )
+    assert gen.returncode == 0, gen.stderr
+    assert (out_dir / 'synth_reach_medium.jsonl').exists()
+
+    batch = subprocess.run(
+        [sys.executable, str(BATCH), '--dir', str(out_dir)],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(ROOT),
+    )
+    assert batch.returncode == 0, batch.stderr
+    assert 'synth_reach_medium' in batch.stdout
+    assert (out_dir / 'synth_replay_report.json').exists()

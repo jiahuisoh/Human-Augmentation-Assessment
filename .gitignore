@@ -23,6 +23,16 @@ cv-service/validation/ground_truth.csv
 cv-service/validation/synthda/sequences/*.jsonl
 !cv-service/validation/synthda/sequences/.gitkeep
 cv-service/validation/synthda/sequences/*.mp4
+cv-service/validation/synthda/sequences/*.webm
+cv-service/validation/synthda/sequences/synth_replay_report.json
+cv-service/validation/synthda/sequences/synth_manifest.json
+cv-service/models/
+cv-service/validation/output/
+cv-service/validation/videos/**/*.mp4
+cv-service/validation/videos/**/*.webm
+cv-service/validation/videos/**/*.mov
+!cv-service/validation/videos/**/.gitkeep
+!cv-service/validation/videos/**/README.md
 
 .idea/
 .vscode/

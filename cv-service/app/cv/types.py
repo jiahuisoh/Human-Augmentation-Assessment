@@ -18,6 +18,8 @@ Posture = Literal['up', 'down', 'unknown']
 class TestOutcome(BaseModel):
     reps: Optional[int] = None
     measurement: Optional[float] = None
+    practice_reach_cm: Optional[float] = None
+    measurement_confidence: Optional[Literal['high', 'low', 'practice_only']] = None
     classification: Optional[str] = None
     risk_level: Optional[RiskLevel] = None
     interpretation: Optional[str] = None
@@ -42,7 +44,11 @@ class UpdateMessage(BaseModel):
     angle: Optional[float] = None
     measurement: Optional[float] = None
     best_measurement: Optional[float] = None
+    raw_measurement: Optional[float] = None
     form_hint: Optional[str] = None
+    form_valid: Optional[bool] = None
+    hold_progress: Optional[float] = None
+    recording_status: Optional[str] = None
     time_remaining: Optional[float] = None
 
 class ReadyMessage(BaseModel):
@@ -62,6 +68,7 @@ class InitAction(BaseModel):
     user_age: Optional[int] = None
     user_sex: Sex = 'other'
     user_height: Optional[float] = None
+    environment: Literal['home', 'clinic'] = 'home'
 
 class StartAction(BaseModel):
     action: Literal['start']

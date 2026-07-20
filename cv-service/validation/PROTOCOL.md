@@ -22,20 +22,15 @@ Copy `ground_truth.pilot.csv` and fill one row per session after each run.
 2. **Height** — measure or use profile (cm); enter in CV Sandbox if possible
 3. **Ruler** — at toe line: `+` past toes, `−` short of toes → `manual_reach_cm`
 4. **CV run** — `docker compose up cv-service` + frontend → Sit & Reach → copy final cm
-5. **Log row** — use `record_session.py` or edit CSV directly:
+5. **Log row** — one command (extract + replay + CSV):
 
 ```powershell
-cd cv-service
-python validation/record_session.py `
-  --csv validation/ground_truth.pilot.csv `
-  --session sr-p01 `
-  --environment bedroom `
-  --age-group young_adult `
-  --height 170 `
-  --manual 12.5 `
-  --cv 11.8 `
-  --notes "Evening desk light; full leg visible"
+python validation/run_recording.py path\to\sr-p01.webm `
+  --session sr-p01 --environment bedroom --age-group young_adult `
+  --height 170 --manual 12.5 --notes "Desk webcam sideways"
 ```
+
+Or manually with `record_session.py` after live CV Sandbox.
 
 6. **After all 5** — compute MAE:
 

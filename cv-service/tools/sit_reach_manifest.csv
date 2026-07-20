@@ -1,0 +1,3 @@
+video_path,expected_reach_cm,expected_validity,scenario,camera_angle,user_height_cm,notes
+# Fill paths relative to cv-service/tools/ when running the suite
+# ..\validation\videos\sit_reach\sr-p01.webm,12.5,valid_movement,full_reach,side,170,Phone recording bedroom

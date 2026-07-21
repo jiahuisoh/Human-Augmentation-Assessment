@@ -38,11 +38,13 @@ class TestQualityFromSamples:
         assert calibration_quality_from_samples([0.0, 0.0, 0.0]) == 0.0
 
 
-def _back_scratch_pose(shoulder_width: float) -> list:
+def _back_scratch_pose(torso_length: float) -> list:
+    # Side-on calibration measures trunk length (shoulder -> hip), so vary the
+    # vertical shoulder-to-hip distance rather than shoulder width.
     return make_pose(
         {
-            LANDMARK.LEFT_SHOULDER: visible(0.5 - shoulder_width / 2, 0.3),
-            LANDMARK.RIGHT_SHOULDER: visible(0.5 + shoulder_width / 2, 0.3),
+            LANDMARK.RIGHT_SHOULDER: visible(0.5, 0.3),
+            LANDMARK.RIGHT_HIP: visible(0.5, 0.3 + torso_length),
         },
     )
 
@@ -53,20 +55,20 @@ class TestStrategyQuality:
         strategy.reset()
         assert strategy.get_calibration_quality() is None
 
-    def test_back_scratch_stable_shoulders_score_high(self) -> None:
+    def test_back_scratch_stable_trunk_scores_high(self) -> None:
         strategy = BackScratchStrategy()
         strategy.reset()
-        for width in (0.200, 0.201, 0.199, 0.200):
-            strategy.on_calibration_frame(_back_scratch_pose(width))
+        for length in (0.400, 0.401, 0.399, 0.400):
+            strategy.on_calibration_frame(_back_scratch_pose(length))
         quality = strategy.get_calibration_quality()
         assert quality is not None
         assert quality >= 0.9
 
-    def test_back_scratch_jittery_shoulders_score_low(self) -> None:
+    def test_back_scratch_jittery_trunk_scores_low(self) -> None:
         strategy = BackScratchStrategy()
         strategy.reset()
-        for width in (0.20, 0.30, 0.14, 0.27):
-            strategy.on_calibration_frame(_back_scratch_pose(width))
+        for length in (0.40, 0.52, 0.34, 0.49):
+            strategy.on_calibration_frame(_back_scratch_pose(length))
         quality = strategy.get_calibration_quality()
         assert quality is not None
         assert quality < 0.5

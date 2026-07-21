@@ -1,24 +1,37 @@
 const asyncHandler = require("../utils/asyncHandler");
 const { validate, validationFailed } = require("../utils/validators");
-const { TEST_IDS, RISK_LEVELS } = require("../utils/constants");
+const { TEST_IDS } = require("../utils/constants");
 const sessionService = require("../services/sessionService");
 
-// POST /api/sessions - CV result lands here after a test completes
-const createSession = asyncHandler(async (req, res) => {
-  // Whitelist + bound every field before it can reach Session.create: enums for
-  // testId/riskLevel, ranges on the numbers (measurements in cm), length
-  // caps on the free-text CV outputs.
+// POST /api/sessions/cv-grant - authorise one CV run and hand the service the
+// client's real demographics inside a signed, short-lived token.
+const createCvGrant = asyncHandler(async (req, res) => {
   const { ok, fields, values } = validate(req.body, {
-    clientId:        { type: "objectId", required: req.user.role !== "client", label: "clientId" },
-    testId:          { type: "enum", required: true, values: TEST_IDS, label: "testId" },
-    reps:            { type: "number", min: 0, max: 50, label: "reps" },
-    measurement:     { type: "number", min: -100, max: 100, label: "measurement" },
-    classification:  { type: "string", max: 200, label: "classification" },
-    riskLevel:       { type: "enum", values: RISK_LEVELS, label: "riskLevel" },
-    interpretation:  { type: "string", max: 1500, label: "interpretation" },
-    normLow:         { type: "number", min: -100, max: 100, label: "normLow" },
-    normHigh:        { type: "number", min: -100, max: 100, label: "normHigh" },
-    terminatedEarly: { type: "boolean", label: "terminatedEarly" },
+    testId:   { type: "enum", required: true, values: TEST_IDS, label: "testId" },
+    clientId: { type: "objectId", label: "clientId" },
+    sandbox:  { type: "boolean", label: "sandbox" },
+  });
+  if (!ok) return validationFailed(res, fields);
+
+  if (!values.sandbox && req.user.role !== "client" && !values.clientId) {
+    return res.status(400).json({ error: "clientId is required" });
+  }
+
+  const grant = await sessionService.issueCvGrant(req.user, values);
+  res.status(201).json(grant);
+});
+
+// POST /api/sessions - the signed CV outcome lands here after a test completes.
+const createSession = asyncHandler(async (req, res) => {
+  // The token is the whole input. Every measurement, the test id and the client
+  // id are read from inside it after the signature is checked, so nothing a
+  // caller writes in the body can influence the stored record - not the score,
+  // and not the clinical verdict (which sessionService derives independently).
+  const { ok, fields, values } = validate(req.body, {
+    cvOutcomeToken: {
+      type: "string", required: true, max: 4096, label: "cvOutcomeToken",
+      message: "A signed result from the assessment service is required.",
+    },
   });
   if (!ok) return validationFailed(res, fields);
 
@@ -44,4 +57,15 @@ const overrideScore = asyncHandler(async (req, res) => {
   res.json(session);
 });
 
-module.exports = { createSession, listForClient, overrideScore };
+// DELETE /api/sessions/:id - permanent removal, reason required for the audit trail
+const deleteSession = asyncHandler(async (req, res) => {
+  const { ok, fields, values } = validate(req.body, {
+    reason: { type: "string", required: true, max: 1000, label: "Reason", message: "reason is required to delete an assessment" },
+  });
+  if (!ok) return validationFailed(res, fields);
+
+  const result = await sessionService.deleteSession(req.user, req.params.id, values);
+  res.json(result);
+});
+
+module.exports = { createCvGrant, createSession, listForClient, overrideScore, deleteSession };

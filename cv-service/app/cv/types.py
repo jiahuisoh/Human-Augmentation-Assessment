@@ -14,6 +14,8 @@ RiskLevel = Literal['low', 'moderate', 'high']
 Phase = Literal['loading', 'calibrating', 'countdown', 'test', 'done', 'error']
 Detection = Literal['ok', 'partial', 'missing']
 Posture = Literal['up', 'down', 'unknown']
+TrafficLight = Literal['red', 'amber', 'green']
+NormApplicability = Literal['in_range', 'extrapolated', 'out_of_range']
 
 class TestOutcome(BaseModel):
     reps: Optional[int] = None
@@ -23,8 +25,25 @@ class TestOutcome(BaseModel):
     interpretation: Optional[str] = None
     norm_low: Optional[float] = None
     norm_high: Optional[float] = None
+    norm_applicability: Optional[NormApplicability] = None
     terminated_early: bool = False
     calibration_quality: Optional[float] = None
+    # FFMOT at-home booklet Red/Amber/Green rating (sit_reach only). Shown
+    # live; the backend re-derives its own from knee_offset_cm for storage.
+    traffic_light: Optional[TrafficLight] = None
+    # Knee position along the leg axis relative to the toes, in cm (negative:
+    # the knee sits behind the toes). A raw geometric measurement, signed and
+    # sent so the server can derive the traffic light itself.
+    knee_offset_cm: Optional[float] = None
+    # Protocol flag (sit_reach): the extended knee bent during the scored hold,
+    # which invalidates the trial under the protocol. Recorded, never enforced -
+    # a clinician decides whether the trial stands.
+    knee_bent: Optional[bool] = None
+    # Exploratory SPPB sit-to-stand derivation (chair_stand only) - see
+    # app/tests/chair_stand/sppb.py for why this is not a scored SPPB subtest.
+    time_to_5_stands_s: Optional[float] = None
+    sppb_sts_points: Optional[int] = None
+    awgs19_slow_sts: Optional[bool] = None
 
 class UpdateMessage(BaseModel):
     type: Literal['update'] = 'update'
@@ -42,6 +61,7 @@ class UpdateMessage(BaseModel):
     angle: Optional[float] = None
     measurement: Optional[float] = None
     best_measurement: Optional[float] = None
+    knee_bent: Optional[bool] = None
     time_remaining: Optional[float] = None
 
 class ReadyMessage(BaseModel):
@@ -51,6 +71,9 @@ class ReadyMessage(BaseModel):
 class CompleteMessage(BaseModel):
     type: Literal['complete'] = 'complete'
     outcome: TestOutcome
+    # Signed raw measurements for the backend. The browser forwards this
+    # verbatim; it cannot read or alter what is inside.
+    outcome_token: Optional[str] = None
 
 class ErrorMessage(BaseModel):
     type: Literal['error'] = 'error'
@@ -58,9 +81,9 @@ class ErrorMessage(BaseModel):
 
 class InitAction(BaseModel):
     action: Literal['init']
-    user_age: Optional[int] = None
-    user_sex: Sex = 'other'
-    user_height: Optional[float] = None
+    # Backend-signed grant. The subject (age/sex/height) is read from inside it;
+    # the browser does not get to state who it is testing.
+    token: str
 
 class StartAction(BaseModel):
     action: Literal['start']

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Edit3 } from "lucide-react";
+import { Edit3, Trash2 } from "lucide-react";
 import { ClientProfile } from "../../../components/ClientProfile";
 import { TESTS } from "../../../utils/constants";
 import { adherenceOf, riskFromSessions, type PatientView } from "../ClinicianShared";
@@ -8,6 +8,7 @@ import type { AssessmentSession } from "../../../types";
 interface PatientDetailProps {
   patient: PatientView;
   onOverride: (sessionId: string, reason: string, newScore: number) => Promise<void>;
+  onDelete: (sessionId: string, reason: string) => Promise<void>;
 }
 
 // The score a clinician acts on - and the one the backend records as the
@@ -18,15 +19,35 @@ const effectiveScore = (s: AssessmentSession): number | null => {
   return s.reps ?? s.measurement ?? null;
 };
 
-export default function PatientDetail({ patient, onOverride }: PatientDetailProps) {
+export default function PatientDetail({ patient, onOverride, onDelete }: PatientDetailProps) {
   const [overriding, setOverriding]   = useState<string | null>(null);
   const [reason, setReason]           = useState("");
   const [newScore, setNewScore]       = useState("");
   const [overrideErr, setOverrideErr] = useState("");
   const [busy, setBusy]               = useState(false);
+  const [deleting, setDeleting]       = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteErr, setDeleteErr]     = useState("");
 
   const startOverride = (sessionId: string): void => {
-    setOverriding(sessionId); setReason(""); setNewScore(""); setOverrideErr("");
+    setOverriding(sessionId); setDeleting(null); setReason(""); setNewScore(""); setOverrideErr("");
+  };
+
+  const startDelete = (sessionId: string): void => {
+    setDeleting(sessionId); setOverriding(null); setDeleteReason(""); setDeleteErr("");
+  };
+
+  const confirmDelete = async (sessionId: string): Promise<void> => {
+    setBusy(true);
+    setDeleteErr("");
+    try {
+      await onDelete(sessionId, deleteReason);
+      setDeleting(null); setDeleteReason("");
+    } catch (e) {
+      setDeleteErr(e instanceof Error ? e.message : "Failed to delete the assessment.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const confirmOverride = async (sessionId: string): Promise<void> => {
@@ -62,7 +83,7 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
           ))}
         </div>
 
-        <h4 className="text-sm font-semibold text-gray-900 mb-3">Assessment sessions (full clinical data)</h4>
+        <h4 className="text-sm font-semibold text-gray-900 mb-3">Assessment Sessions (Full Clinical Data)</h4>
         {patient.sessions.map(s => {
           const overridden = (s.overrides?.length ?? 0) > 0;
           const score = effectiveScore(s);
@@ -93,7 +114,7 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
                 <label htmlFor="ov-score" className="block text-xs font-medium text-gray-600 mb-1">New Score</label>
                 <input id="ov-score" value={newScore} onChange={e => setNewScore(e.target.value)} type="number"
                   className="w-full mb-2 px-3 py-1.5 border border-gray-200 rounded text-sm focus:border-violet-500 focus:outline-none" />
-                <label htmlFor="ov-reason" className="block text-xs font-medium text-gray-600 mb-1">Override Reason (required for audit)</label>
+                <label htmlFor="ov-reason" className="block text-xs font-medium text-gray-600 mb-1">Override Reason (Required for Audit)</label>
                 <textarea id="ov-reason" value={reason} onChange={e => setReason(e.target.value)} rows={2}
                   className="w-full mb-2 px-3 py-1.5 border border-gray-200 rounded text-xs focus:border-violet-500 focus:outline-none resize-none" />
                 {overrideErr && <p className="mb-2 text-xs font-medium text-red-600">{overrideErr}</p>}
@@ -102,7 +123,7 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
                     disabled={busy || !reason.trim() || !newScore}
                     onClick={() => void confirmOverride(s._id)}
                     className="px-3 py-1.5 bg-amber-600 disabled:opacity-50 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg">
-                    {busy ? "Saving…" : "Confirm override"}
+                    {busy ? "Saving…" : "Confirm Override"}
                   </button>
                   <button type="button" onClick={() => setOverriding(null)}
                     className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50">
@@ -110,11 +131,45 @@ export default function PatientDetail({ patient, onOverride }: PatientDetailProp
                   </button>
                 </div>
               </div>
+            ) : deleting === s._id ? (
+              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="mb-2 text-xs font-semibold text-red-800">
+                  Permanently delete this assessment?
+                </p>
+                <p className="mb-2 text-xs text-red-700">
+                  The record is removed from the database and cannot be recovered. The reason
+                  and a copy of the score are kept in the audit log.
+                </p>
+                <label htmlFor="del-reason" className="block text-xs font-medium text-gray-600 mb-1">
+                  Reason for Deletion (required for audit)
+                </label>
+                <textarea id="del-reason" value={deleteReason} onChange={e => setDeleteReason(e.target.value)} rows={2}
+                  className="w-full mb-2 px-3 py-1.5 border border-gray-200 rounded text-xs focus:border-red-500 focus:outline-none resize-none" />
+                {deleteErr && <p className="mb-2 text-xs font-medium text-red-600">{deleteErr}</p>}
+                <div className="flex gap-2">
+                  <button type="button"
+                    disabled={busy || !deleteReason.trim()}
+                    onClick={() => void confirmDelete(s._id)}
+                    className="px-3 py-1.5 bg-red-600 disabled:opacity-50 hover:bg-red-700 text-white text-xs font-semibold rounded-lg">
+                    {busy ? "Deleting…" : "Delete Permanently"}
+                  </button>
+                  <button type="button" onClick={() => setDeleting(null)}
+                    className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50">
+                    Cancel
+                  </button>
+                </div>
+              </div>
             ) : (
-              <button type="button" onClick={() => startOverride(s._id)}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-800 font-medium">
-                <Edit3 size={11} /> Override score (audit trail)
-              </button>
+              <div className="mt-2 flex items-center gap-4">
+                <button type="button" onClick={() => startOverride(s._id)}
+                  className="inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-800 font-medium">
+                  <Edit3 size={11} /> Override Score (Audit)
+                </button>
+                <button type="button" onClick={() => startDelete(s._id)}
+                  className="inline-flex items-center gap-1.5 text-xs text-red-700 hover:text-red-800 font-medium">
+                  <Trash2 size={11} /> Delete Assessment
+                </button>
+              </div>
             )}
           </div>
           );

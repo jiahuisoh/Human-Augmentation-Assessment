@@ -67,18 +67,48 @@ export interface AssessmentSession {
   clientId: string;
   conductedBy: string;
   testId: TestId;
+  // Raw measurements, as reported by the device that ran the test.
   reps?: number;
   measurement?: number;
+  timeTo5StandsS?: number;
+  // Derived by the server from the client's stored profile. Read-only here:
+  // anything sent for these on save is discarded by the API.
   classification?: string;
   riskLevel?: RiskLevel;
   interpretation?: string;
   normLow?: number;
   normHigh?: number;
+  sppbStsPoints?: number;
+  awgs19SlowSts?: boolean;
+  normApplicability?: "in_range" | "extrapolated" | "out_of_range";
+  trafficLight?: "red" | "amber" | "green";
+  calibrationQuality?: number;
+  needsQualityReview?: boolean;
+  kneeBent?: boolean;
+  ageAtTest?: number;
+  sexAtTest?: Sex;
+  heightAtTestCm?: number;
   terminatedEarly?: boolean;
   livenessScore?: number;
-  recordHash?: string; 
+  recordHash?: string;
   overrides?: AssessmentOverride[];
   createdAt: string;
+}
+
+/**
+ * What a client is allowed to submit. The clinical verdict (classification,
+ * risk level, interpretation, norm band, SPPB points) is computed server-side
+ * and is deliberately absent - see backend/src/utils/norms.js.
+ */
+export interface NewSessionPayload {
+  /** Opaque, signed by the CV service. The browser forwards it unread. */
+  cvOutcomeToken: string;
+}
+
+/** Short-lived authorisation to run one assessment on the CV service. */
+export interface CvGrant {
+  token: string;
+  expiresInSeconds: number;
 }
 
 export interface AssessmentOverride {

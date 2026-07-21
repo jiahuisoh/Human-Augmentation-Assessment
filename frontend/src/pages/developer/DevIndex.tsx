@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Terminal, AlertTriangle, Camera,
 } from "lucide-react";
-import { auditApi } from "../../utils/api";
+import { auditApi, sessionApi } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
 import type { AuditLog, TestId, User } from "../../types";
@@ -25,11 +25,22 @@ interface DeveloperProps {
 export default function Developer({ user, onSignOut }: DeveloperProps) {
   const [tab, setTab]             = useState<TabId>("cv_sandbox");
   const [logs, setLogs]           = useState<AuditLog[]>([]);
-  const [cvTest, setCvTest]       = useState<TestId | null>(null);
+  const [cvTest, setCvTest]       = useState<{ testId: TestId; token: string } | null>(null);
 
   useEffect(() => {
     void auditApi.list(100).then(setLogs);
   }, []);
+
+  // Sandbox grants carry a synthetic subject and are marked sandbox: true, so
+  // the backend refuses to save any result produced under one.
+  const startSandbox = async (testId: TestId): Promise<void> => {
+    try {
+      const grant = await sessionApi.requestCvGrant({ testId, sandbox: true });
+      setCvTest({ testId, token: grant.token });
+    } catch (err) {
+      alert(`Could not start the sandbox test: ${err instanceof Error ? err.message : "unknown error"}`);
+    }
+  };
 
   const handleCvComplete = async (): Promise<void> => {
     setLogs(await auditApi.list(100));
@@ -39,8 +50,8 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
   if (cvTest) {
     return (
       <TestRunner
-        testId={cvTest}
-        userAge={70} userSex="other" userHeight={170}
+        testId={cvTest.testId}
+        token={cvTest.token}
         sandbox
         onComplete={handleCvComplete}
         onBack={() => setCvTest(null)}
@@ -71,7 +82,7 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
           Developer access is restricted to sandbox environments only. No identifiable patient data is accessible. All actions are logged.
         </div>
 
-        {tab === "cv_sandbox" && <CVSandbox  onLaunch={setCvTest} />}
+        {tab === "cv_sandbox" && <CVSandbox  onLaunch={testId => void startSandbox(testId)} />}
         {tab === "logs"       && <Logs       logs={logs} />}
       </div>
     </SidebarLayout>

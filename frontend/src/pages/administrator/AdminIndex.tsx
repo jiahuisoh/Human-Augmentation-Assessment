@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Users, Terminal,
-  Settings, Camera,
+  Settings, Camera, ClipboardList,
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
 import {
@@ -9,27 +9,30 @@ import {
 } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
+import AssessmentResult from "../../cv/AssessmentResult";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
-  AuditLog, ScheduleEntry, TestId, User,
+  AssessmentSession, AuditLog, ScheduleEntry, TestId, User,
 } from "../../types";
 
-import Overview  from "./tabs/Overview";
-import Users_    from "./tabs/Users";
-import Audit     from "./tabs/Audit";
-import Config    from "./tabs/Config";
-import Cv        from "./tabs/Cv";
+import Overview    from "./tabs/Overview";
+import Users_      from "./tabs/Users";
+import Assessments from "./tabs/Assessments";
+import Audit       from "./tabs/Audit";
+import Config      from "./tabs/Config";
+import Cv          from "./tabs/Cv";
 
 type TabId =
-  | "overview" | "users"
+  | "overview" | "users" | "assessments"
   | "audit" | "config" | "cv";
 
 const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
-  { id: "overview",   label: "Overview",        Icon: LayoutDashboard },
-  { id: "users",      label: "User Management", Icon: Users           },
-  { id: "audit",      label: "Audit Trail",     Icon: Terminal        },
-  { id: "config",     label: "Configuration",   Icon: Settings        },
-  { id: "cv",         label: "CV (Authorised)", Icon: Camera          },
+  { id: "overview",    label: "Overview",        Icon: LayoutDashboard },
+  { id: "users",       label: "User Management", Icon: Users           },
+  { id: "assessments", label: "Assessments",     Icon: ClipboardList   },
+  { id: "audit",       label: "Audit Trail",     Icon: Terminal        },
+  { id: "config",      label: "Configuration",   Icon: Settings        },
+  { id: "cv",          label: "CV (Authorised)", Icon: Camera          },
 ];
 
 interface AdministratorProps {
@@ -44,7 +47,8 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
   const [schedule, setSchedule]     = useState<ScheduleEntry[]>([]);
 
   const [cvAuthorised, setCvAuthorised] = useState(false);
-  const [activeCv, setActiveCv]         = useState<{ clientId: string; testId: TestId } | null>(null);
+  const [activeCv, setActiveCv]         = useState<{ clientId: string; testId: TestId; token: string } | null>(null);
+  const [result,   setResult]           = useState<AssessmentSession | null>(null);
 
   useEffect(() => { void refresh(); }, []);
 
@@ -55,24 +59,41 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
     setUsers(u); setLogs(l); setSchedule(s);
   }
 
-  const handleCvComplete = async (outcome: TestOutcomeWire): Promise<void> => {
+  const startCv = async (clientId: string, testId: TestId): Promise<void> => {
+    try {
+      const grant = await sessionApi.requestCvGrant({ clientId, testId });
+      setActiveCv({ clientId, testId, token: grant.token });
+    } catch (err) {
+      alert(`Could not start the test: ${err instanceof Error ? err.message : "unknown error"}`);
+    }
+  };
+
+  const handleCvComplete = async (outcome: TestOutcomeWire, outcomeToken?: string): Promise<void> => {
     if (!activeCv) return;
-    await sessionApi.save({
-      clientId: activeCv.clientId, conductedBy: user._id, testId: activeCv.testId,
-      reps: outcome.reps, measurement: outcome.measurement,
-      classification: outcome.classification, riskLevel: outcome.risk_level,
-      interpretation: outcome.interpretation,
-      normLow: outcome.norm_low, normHigh: outcome.norm_high,
-      terminatedEarly: outcome.terminated_early,
-    });
+    if (outcome.terminated_early) {
+      alert("Test stopped early - nothing was saved. Run the test again when the client is ready.");
+      setActiveCv(null);
+      return;
+    }
+    if (!outcomeToken) {
+      alert("This result could not be verified by the assessment service, so it was not saved. Please run the test again.");
+      setActiveCv(null);
+      return;
+    }
+    const saved = await sessionApi.save({ cvOutcomeToken: outcomeToken });
+    setResult(saved);
     setActiveCv(null);
   };
+
+  if (result) {
+    return <AssessmentResult session={result} onDone={() => setResult(null)} />;
+  }
 
   if (activeCv) {
     return (
       <TestRunner
         testId={activeCv.testId}
-        userAge={70} userSex="other" userHeight={170}
+        token={activeCv.token}
         onComplete={handleCvComplete}
         onBack={() => setActiveCv(null)}
       />
@@ -98,9 +119,10 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
       <div className="space-y-5">
         {tab === "overview"  && <Overview  users={users} />}
         {tab === "users"     && <Users_    users={users} actor={user} onChange={refresh} />}
+        {tab === "assessments" && <Assessments users={users} />}
         {tab === "audit"     && <Audit     logs={logs} />}
         {tab === "config"    && <Config />}
-        {tab === "cv"        && <Cv        schedule={schedule} authorised={cvAuthorised} onAuthorise={setCvAuthorised} onLaunch={(clientId, testId) => setActiveCv({ clientId, testId })} />}
+        {tab === "cv"        && <Cv        schedule={schedule} authorised={cvAuthorised} onAuthorise={setCvAuthorised} onLaunch={(clientId, testId) => void startCv(clientId, testId)} />}
       </div>
     </SidebarLayout>
   );

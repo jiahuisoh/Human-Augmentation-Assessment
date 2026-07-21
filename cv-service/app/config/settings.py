@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     cors_origin: str = 'http://localhost:2000'
     pose_model_variant: Literal['lite', 'full', 'heavy'] = 'full'
     min_landmark_visibility: float = 0.5
+    cv_signing_secret: str = ''
+    outcome_ttl_seconds: int = 300
 
     @property
     def pose_model_path(self) -> str:

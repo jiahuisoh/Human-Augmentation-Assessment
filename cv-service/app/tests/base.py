@@ -31,6 +31,7 @@ class TestStateUpdate:
     angle: float | None = None
     measurement: float | None = None
     best_measurement: float | None = None
+    knee_bent: bool | None = None
     finished: bool = False
 
 @dataclass
@@ -84,6 +85,10 @@ class TestStrategy(ABC):
         if landmarks is None:
             return 'missing'
         return 'ok' if self.is_frame_usable(landmarks) else 'partial'
+
+    def is_tracking(self, landmarks: Sequence[Landmark] | None, hand_landmarks: Sequence[HandPose] | None) -> bool:
+        _ = hand_landmarks
+        return landmarks is not None and self.is_frame_usable(landmarks)
 
     def smoother_config(self) -> tuple[float, float]:
         """One Euro filter (min_cutoff, beta) for pose landmark smoothing."""

@@ -8,12 +8,13 @@ import {
 } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
+import AssessmentResult from "../../cv/AssessmentResult";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
-  InterventionPlanItem, TestId, User,
+  AssessmentSession, InterventionPlanItem, TestId, User,
 } from "../../types";
 
-import { calcAge, type PatientView } from "./ClinicianShared";
+import { type PatientView } from "./ClinicianShared";
 
 import Overview      from "./tabs/Overview";
 import PatientList   from "./tabs/PatientList";
@@ -40,7 +41,8 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
   const [patients, setPatients]       = useState<PatientView[]>([]);
   const [selected, setSelected]       = useState<PatientView | null>(null);
   const [search, setSearch]           = useState("");
-  const [activeCv, setActiveCv]       = useState<{ clientId: string; testId: TestId } | null>(null);
+  const [activeCv, setActiveCv]       = useState<{ clientId: string; testId: TestId; token: string } | null>(null);
+  const [result,   setResult]         = useState<AssessmentSession | null>(null);
 
   const hour = new Date().getHours();
   const greetWord = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -73,23 +75,46 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
     setSelected(prev => prev ? (fresh.find(p => p.user._id === prev.user._id) ?? null) : null);
   }
 
-  const handleCvComplete = async (outcome: TestOutcomeWire): Promise<void> => {
-    if (!activeCv) return;
-    await sessionApi.save({
-      clientId: activeCv.clientId, conductedBy: user._id, testId: activeCv.testId,
-      reps: outcome.reps, measurement: outcome.measurement,
-      classification: outcome.classification, riskLevel: outcome.risk_level,
-      interpretation: outcome.interpretation,
-      normLow: outcome.norm_low, normHigh: outcome.norm_high,
-      terminatedEarly: outcome.terminated_early,
-    });
+  const startCv = async (clientId: string, testId: TestId): Promise<void> => {
+    try {
+      const grant = await sessionApi.requestCvGrant({ clientId, testId });
+      setActiveCv({ clientId, testId, token: grant.token });
+    } catch (err) {
+      alert(`Could not start the test: ${err instanceof Error ? err.message : "unknown error"}`);
+    }
+  };
 
-    await loadPatients();
+  const handleCvComplete = async (outcome: TestOutcomeWire, outcomeToken?: string): Promise<void> => {
+    if (!activeCv) return;
+    if (outcome.terminated_early) {
+      alert("Test stopped early - nothing was saved. Run the test again when the client is ready.");
+      setActiveCv(null);
+      return;
+    }
+    if (!outcomeToken) {
+      alert("This result could not be verified by the assessment service, so it was not saved. Please run the test again.");
+      setActiveCv(null);
+      return;
+    }
+    // The signed token is the whole payload: the score inside it and the
+    // clinical verdict derived from it are both settled server-side.
+    const saved = await sessionApi.save({ cvOutcomeToken: outcomeToken });
+    setResult(saved);
     setActiveCv(null);
+  };
+
+  const dismissResult = async (): Promise<void> => {
+    setResult(null);
+    await loadPatients();
   };
 
   const handleOverride = async (sessionId: string, reason: string, next: number): Promise<void> => {
     await sessionApi.override(sessionId, reason, next);
+    await loadPatients();
+  };
+
+  const handleDeleteSession = async (sessionId: string, reason: string): Promise<void> => {
+    await sessionApi.delete(sessionId, reason);
     await loadPatients();
   };
 
@@ -99,17 +124,18 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
   };
 
   if (activeCv) {
-    const p = patients.find(x => x.user._id === activeCv.clientId);
     return (
       <TestRunner
         testId={activeCv.testId}
-        userAge={calcAge(p?.user.dateOfBirth)}
-        userSex={p?.user.gender ?? "other"}
-        userHeight={p?.user.height ?? null}
+        token={activeCv.token}
         onComplete={handleCvComplete}
         onBack={() => setActiveCv(null)}
       />
     );
+  }
+
+  if (result) {
+    return <AssessmentResult session={result} onDone={() => void dismissResult()} />;
   }
 
   return (
@@ -134,11 +160,11 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
     >
       {tab === "overview"    && !selected && <Overview      patients={patients} onOpen={p => { setSelected(p); setTab("patients"); }} />}
       {tab === "patients"    && !selected && <PatientList   patients={patients} search={search} onSearch={setSearch} onOpen={setSelected} />}
-      {tab === "patients"    && selected  && <PatientDetail patient={selected} onOverride={handleOverride} />}
+      {tab === "patients"    && selected  && <PatientDetail patient={selected} onOverride={handleOverride} onDelete={handleDeleteSession} />}
       {tab === "assessments" && (
         <Assessments
           patients={patients}
-          onLaunchCV={(clientId, testId) => setActiveCv({ clientId, testId })}
+          onLaunchCV={(clientId, testId) => void startCv(clientId, testId)}
         />
       )}
       {tab === "plans"       && <Plans       patients={patients} onSave={handleSavePlan} />}

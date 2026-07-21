@@ -12,6 +12,11 @@ def configure_logging() -> None:
 
 def create_app() -> FastAPI:
     configure_logging()
+    # Without the shared secret we could neither authenticate a grant nor sign a
+    # result, so every outcome would be indistinguishable from a made-up one.
+    # There is no safe degraded mode - refuse to start.
+    if not settings.cv_signing_secret:
+        raise RuntimeError('CV_SIGNING_SECRET is not set - refusing to start. It must match the value given to the backend.')
     detector.init()
     hand_detector.init()
     app = FastAPI(title='HANA CV Service', version='0.1.0', description='Pose detection over WebSocket. See /docs for the HTTP API.')

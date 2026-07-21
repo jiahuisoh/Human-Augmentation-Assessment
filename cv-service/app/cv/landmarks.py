@@ -59,10 +59,27 @@ def decode_jpeg(frame_bytes: bytes) -> np.ndarray | None:
         return None
     return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
-def landmarks_to_wire(landmarks: Sequence[Landmark]) -> list[list[float]]:
-    return [[lm.x, lm.y, lm.visibility] for lm in landmarks]
+def apply_aspect(landmarks: Sequence[Landmark], aspect: float) -> list[Landmark]:
+    """Convert MediaPipe's anisotropic coordinates into isotropic ones.
 
-def hands_to_wire(hands: Sequence[Sequence[Landmark]] | None) -> list[list[list[float]]] | None:
+    MediaPipe divides x by image WIDTH and y by image HEIGHT, so on any
+    non-square frame the same physical length yields a different number
+    depending on its direction. Measuring a vertical distance with a scale
+    calibrated on a horizontal one is then wrong by exactly W/H - 33% on a
+    640x480 stream. Scaling x by W/H puts both axes in units of image height,
+    after which plain hypot() and angles are geometrically valid.
+    """
+    if aspect == 1.0:
+        return list(landmarks)
+    return [Landmark(x=lm.x * aspect, y=lm.y, z=lm.z, visibility=lm.visibility) for lm in landmarks]
+
+
+def landmarks_to_wire(landmarks: Sequence[Landmark], aspect: float=1.0) -> list[list[float]]:
+    # Undoes apply_aspect: the overlay is drawn against a canvas sized in the
+    # frame's own pixels, so the browser wants MediaPipe's original coordinates.
+    return [[round(lm.x / aspect, 4), round(lm.y, 4), round(lm.visibility, 3)] for lm in landmarks]
+
+def hands_to_wire(hands: Sequence[Sequence[Landmark]] | None, aspect: float=1.0) -> list[list[list[float]]] | None:
     if not hands:
         return None
-    return [landmarks_to_wire(hand) for hand in hands]
+    return [landmarks_to_wire(hand, aspect) for hand in hands]

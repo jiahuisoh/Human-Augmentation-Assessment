@@ -4,17 +4,25 @@ export type Phase     = "loading" | "calibrating" | "countdown" | "test" | "done
 export type Detection = "ok" | "partial" | "missing";
 export type Posture   = "up" | "down" | "unknown";
 
+export type TrafficLight = "red" | "amber" | "green";
+
 export interface TestOutcomeWire {
   reps?:             number;
+  /** cm, clinical convention: sit-reach + = past the toes; back-scratch + = fingers overlap. */
   measurement?:      number;
   classification?:   string;
   risk_level?:       RiskLevel;
   interpretation?:   string;
   norm_low?:         number;
   norm_high?:        number;
+  norm_applicability?: "in_range" | "extrapolated" | "out_of_range";
   terminated_early?: boolean;
   calibration_quality?: number;
   liveness_score?:   number;
+  traffic_light?:    TrafficLight;
+  time_to_5_stands_s?: number;
+  sppb_sts_points?:  number;
+  awgs19_slow_sts?:  boolean;
 }
 
 export interface ReadyMessage {
@@ -55,6 +63,8 @@ export interface UpdateMessage {
 export interface CompleteMessage {
   type:    "complete";
   outcome: TestOutcomeWire;
+  /** Signed raw measurements for the backend; forwarded verbatim, never read here. */
+  outcome_token?: string;
 }
 
 export interface ErrorMessage {
@@ -67,12 +77,9 @@ export type ServerMessage = ReadyMessage | UpdateMessage | CompleteMessage | Err
 // ---- Client → Server actions ------------------------------------
 
 export interface InitAction {
-  action:      "init";
-  user_age:    number | null;
-  user_sex:    Sex;
-  user_height: number | null;
-  /** When true, server should run with synthetic / de-identified user data. */
-  sandbox?:    boolean;
+  action: "init";
+  /** Backend-signed grant carrying the subject's real age, sex and height. */
+  token:  string;
 }
 
 export interface StartAction      { action: "start"; }

@@ -11,12 +11,13 @@ import {
 } from "../../utils/api";
 import VerificationBanner from "../../components/VerificationBanner";
 import TestRunner from "../../cv/TestRunner";
+import AssessmentResult from "../../cv/AssessmentResult";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
   AssessmentSession, ConsentEvent, InterventionPlan,
   TestId, User,
 } from "../../types";
-import { calcAge, greeting } from "./ClientShared";
+import { greeting } from "./ClientShared";
 
 import Home            from "./tabs/Home";
 import Assessments     from "./tabs/Assessments";
@@ -63,7 +64,8 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
   const [sessions, setSessions]     = useState<AssessmentSession[]>([]);
   const [consents, setConsents]     = useState<ConsentEvent[]>([]);
   const [plan,     setPlan]         = useState<InterventionPlan | null>(null);
-  const [activeCv,     setActiveCv]     = useState<{ testId: TestId } | null>(null);
+  const [activeCv,     setActiveCv]     = useState<{ testId: TestId; token: string } | null>(null);
+  const [result,       setResult]       = useState<AssessmentSession | null>(null);
 
   useEffect(() => {
     void Promise.all([
@@ -75,8 +77,27 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
     });
   }, [user._id]);
 
-  const handleSelfTestComplete = async (outcome: TestOutcomeWire): Promise<void> => {
+  const startSelfTest = async (testId: TestId): Promise<void> => {
+    try {
+      const grant = await sessionApi.requestCvGrant({ testId });
+      setActiveCv({ testId, token: grant.token });
+    } catch (err) {
+      alert(`Could not start the test: ${err instanceof Error ? err.message : "unknown error"}`);
+    }
+  };
+
+  const handleSelfTestComplete = async (outcome: TestOutcomeWire, outcomeToken?: string): Promise<void> => {
     if (!activeCv) return;
+    if (outcome.terminated_early) {
+      alert("Test stopped early - nothing was saved. You can try again whenever you're ready.");
+      setActiveCv(null);
+      return;
+    }
+    if (!outcomeToken) {
+      alert("This result could not be verified by the assessment service, so it was not saved. Please try again.");
+      setActiveCv(null);
+      return;
+    }
     try {
       const hasConsent = consents.some(c => c.scope === "assessment_data" && c.granted);
       if (!hasConsent) {
@@ -84,19 +105,12 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
           "Save this assessment and share it with your clinician?\n\n" +
           "This records your consent to store your assessment data. You can withdraw it later through your clinic.",
         );
-        if (!agreed) return;
+        if (!agreed) { setActiveCv(null); return; }
         await consentApi.set(user._id, "assessment_data", true);
         setConsents(await consentApi.historyFor(user._id));
       }
-      await sessionApi.save({
-        clientId: user._id, conductedBy: user._id, testId: activeCv.testId,
-        reps: outcome.reps, measurement: outcome.measurement,
-        classification: outcome.classification, riskLevel: outcome.risk_level,
-        interpretation: outcome.interpretation,
-        normLow: outcome.norm_low, normHigh: outcome.norm_high,
-        terminatedEarly: outcome.terminated_early,
-      });
-      setSessions(await sessionApi.listForClient(user._id));
+      const saved = await sessionApi.save({ cvOutcomeToken: outcomeToken });
+      setResult(saved);
     } catch (err) {
       alert(`Could not save your result: ${err instanceof Error ? err.message : "unknown error"}`);
     } finally {
@@ -104,17 +118,24 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
     }
   };
 
+  const dismissResult = async (): Promise<void> => {
+    setResult(null);
+    setSessions(await sessionApi.listForClient(user._id));
+  };
+
   if (activeCv) {
     return (
       <TestRunner
         testId={activeCv.testId}
-        userAge={calcAge(user.dateOfBirth)}
-        userSex={user.gender ?? "other"}
-        userHeight={user.height ?? null}
+        token={activeCv.token}
         onComplete={handleSelfTestComplete}
         onBack={() => setActiveCv(null)}
       />
     );
+  }
+
+  if (result) {
+    return <AssessmentResult session={result} onDone={() => void dismissResult()} />;
   }
 
   return (
@@ -159,7 +180,7 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
 
         {tab === "home"             && <Home            user={user} sessions={sessions} onStart={() => goTab("self_test")} onNavigate={(t) => goTab(t as TabId)} />}
         {tab === "assessments"      && <Assessments     sessions={sessions} />}
-        {tab === "self_test"        && <SelfTest        onStart={testId => setActiveCv({ testId })} />}
+        {tab === "self_test"        && <SelfTest        onStart={testId => void startSelfTest(testId)} />}
         {tab === "questionnaire"    && <Questionnaire   user={user} />}
         {tab === "plan"             && <Plan            plan={plan} />}
         {tab === "activity"         && <Activity_ />}

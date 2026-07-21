@@ -1,8 +1,8 @@
 import type {
   AssessmentSession, AuditLog, AuthResponse, ConsentEvent,
-  EmergencyContact, InterventionPlan, Measurement, NewUserPayload,
+  CvGrant, EmergencyContact, InterventionPlan, Measurement, NewSessionPayload, NewUserPayload,
   PendingVerificationClient, ProfileUpdate, QuestionnaireSubmission, Role,
-  ScheduleEntry, User, VerificationStatus,
+  ScheduleEntry, TestId, User, VerificationStatus,
 } from "../types";
 import { clearToken, getToken, setToken } from "./tokenStore";
 import { emitAuthFailure } from "./authEvents";
@@ -70,11 +70,19 @@ export interface IUserApi {
 }
 
 export interface ISessionApi {
-  save(session: Omit<AssessmentSession, "_id" | "createdAt">): Promise<AssessmentSession>;
+  // Authorise one CV run. The returned token carries the client's real
+  // demographics to the CV service, signed, so the browser cannot alter them.
+  requestCvGrant(req: { testId: TestId; clientId?: string; sandbox?: boolean }): Promise<CvGrant>;
+  // Submits only the CV service's signed outcome; the score and the clinical
+  // verdict are both read/derived server-side.
+  save(session: NewSessionPayload): Promise<AssessmentSession>;
   listForClient(clientId: string): Promise<AssessmentSession[]>;
   // The "before" score is derived server-side from the stored session (latest
   // override, else base result) so the audit trail can't be spoofed.
   override(id: string, reason: string, newScore: number): Promise<AssessmentSession>;
+  // Permanent: the document is removed from MongoDB. The reason is recorded in
+  // the audit log alongside a snapshot of the deleted record.
+  delete(id: string, reason: string): Promise<{ deleted: boolean; _id: string }>;
 }
 
 export interface IScheduleApi {
@@ -157,7 +165,10 @@ class RestUserApi implements IUserApi {
 
 class RestSessionApi implements ISessionApi {
   constructor(private base: string) {}
-  save(s: Omit<AssessmentSession, "_id" | "createdAt">) {
+  requestCvGrant(req: { testId: TestId; clientId?: string; sandbox?: boolean }) {
+    return apiFetch<CvGrant>(`${this.base}/api/sessions/cv-grant`, { method: "POST", body: req });
+  }
+  save(s: NewSessionPayload) {
     return apiFetch<AssessmentSession>(`${this.base}/api/sessions`, { method: "POST", body: s });
   }
   listForClient(clientId: string) {
@@ -167,6 +178,12 @@ class RestSessionApi implements ISessionApi {
     return apiFetch<AssessmentSession>(`${this.base}/api/sessions/${id}/override`, {
       method: "PATCH",
       body: { reason, newScore },
+    });
+  }
+  delete(id: string, reason: string) {
+    return apiFetch<{ deleted: boolean; _id: string }>(`${this.base}/api/sessions/${id}`, {
+      method: "DELETE",
+      body: { reason },
     });
   }
 }

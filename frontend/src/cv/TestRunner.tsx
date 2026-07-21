@@ -5,7 +5,7 @@ import { drawSkeleton, drawHands } from "./landmarks";
 import { CVServiceClient } from "./CVServiceClient";
 import PoseCamera, { type PoseCameraHandle } from "./PoseCamera";
 import type { Detection, Phase, TestOutcomeWire, UpdateMessage } from "./wireTypes";
-import type { Sex, TestId } from "../types";
+import type { TestId } from "../types";
 import { TESTS } from "../utils/constants";
 
 function calibrationPromptFor(testId: TestId): string {
@@ -19,18 +19,15 @@ const CV_WS_URL: string = import.meta.env.VITE_CV_WS_URL || "ws://localhost:4501
 const FRAME_JPEG_QUALITY = 0.7;
 
 export interface TestRunnerProps {
-  testId:     TestId;
-  userAge:    number | null;
-  userSex:    Sex;
-  userHeight: number | null;
-  /** When true, server runs in sandbox mode with de-identified data (Developer). */
+  testId: TestId;
+  token:  string;
   sandbox?:   boolean;
-  onComplete: (outcome: TestOutcomeWire) => void;
+  onComplete: (outcome: TestOutcomeWire, outcomeToken?: string) => void;
   onBack:     () => void;
 }
 
 export default function TestRunner({
-  testId, userAge, userSex, userHeight, sandbox = false, onComplete, onBack,
+  testId, token, sandbox = false, onComplete, onBack,
 }: TestRunnerProps) {
   const [phase, setPhase]         = useState<Phase>("loading");
   const [update, setUpdate]       = useState<UpdateMessage | null>(null);
@@ -57,7 +54,7 @@ export default function TestRunner({
       const video   = cameraRef.current?.video;
       const client  = clientRef.current;
       const scratch = scratchRef.current;
-      if (video && client && scratch && video.readyState >= 2 && video.videoWidth > 0) {
+      if (video && client && scratch && client.readyForFrame && video.readyState >= 2 && video.videoWidth > 0) {
         scratch.width  = video.videoWidth;
         scratch.height = video.videoHeight;
         const ctx = scratch.getContext("2d");
@@ -85,7 +82,7 @@ export default function TestRunner({
 
         const client = new CVServiceClient(CV_WS_URL, {
           onReady: () => {
-            client.init(userAge, userSex, userHeight, sandbox);
+            client.init(token);
             client.start();
           },
           onUpdate: (msg) => {
@@ -101,7 +98,7 @@ export default function TestRunner({
           },
           onComplete: (msg) => {
             setPhase("done");
-            onCompleteRef.current(msg.outcome);
+            onCompleteRef.current(msg.outcome, msg.outcome_token);
           },
           onError: (msg) => {
             setErrorMsg(msg.message);
@@ -163,7 +160,7 @@ export default function TestRunner({
                 </div>
                 <div className="text-center">
                   {update.posture && <div className="text-yellow-400 text-lg font-bold uppercase">{update.posture}</div>}
-                  {update.angle !== undefined && <div className="text-gray-500 text-sm">Hip angle: {Math.round(update.angle)}°</div>}
+                  {update.angle !== undefined && <div className="text-gray-500 text-sm">Knee angle: {Math.round(update.angle)}°</div>}
                 </div>
               </>
             ) : (
@@ -220,7 +217,7 @@ export default function TestRunner({
               {detection === "ok"
                 ? `Gathering… ${update.calib_samples ?? 0} samples`
                 : detection === "partial"
-                ? "Move so your full body is visible"
+                ? "Move so your upper body is visible"
                 : "Step into frame so we can see you"}
             </span>
             {update.calib_remaining_s !== undefined && update.calib_remaining_s > 0 && (
@@ -301,5 +298,5 @@ function overlayMessageFor(phase: Phase, detection: Detection): string | undefin
   if (phase !== "calibrating" && phase !== "countdown" && phase !== "test") return undefined;
   if (detection === "ok") return undefined;
   if (detection === "missing") return "Step into frame so we can see you";
-  return "Move so your full body is visible";
+  return "Move so we can your upper body is visible";
 }

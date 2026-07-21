@@ -11,6 +11,7 @@ services:
       - CORS_ORIGIN=http://localhost:4500
       - POSE_MODEL_VARIANT=full
       - MIN_LANDMARK_VISIBILITY=0.5
+      - CV_SIGNING_SECRET=${CV_SIGNING_SECRET:?set CV_SIGNING_SECRET in the .env beside docker-compose.yml}
     volumes:
       - ./cv-service:/app
     networks:

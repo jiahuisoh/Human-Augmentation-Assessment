@@ -1,4 +1,4 @@
-import type { Sex, TestId } from "../types";
+import type { TestId } from "../types";
 import type {
   ClientAction, CompleteMessage, ErrorMessage, InitAction, ReadyMessage,
   ServerMessage, StartAction, StopEarlyAction, UpdateMessage,
@@ -15,6 +15,7 @@ export class CVServiceClient {
   private ws: WebSocket | null = null;
   private waitingForResponse = false;
   private closed = false;
+  private finished = false;
 
   constructor(
     private readonly baseUrl: string,
@@ -32,15 +33,13 @@ export class CVServiceClient {
       ws.addEventListener("error",   () => reject(new Error("CV service WebSocket failed to open.")));
       ws.addEventListener("message", (e) => this.handleMessage(e));
       ws.addEventListener("close",   () => {
-        if (!this.closed) this.callbacks.onError({ message: "CV service connection closed." });
+        if (!this.closed && !this.finished) this.callbacks.onError({ message: "CV service connection closed." });
       });
     });
   }
 
-  init(userAge: number | null, userSex: Sex, userHeight: number | null, sandbox = false): void {
-    const payload: InitAction = {
-      action: "init", user_age: userAge, user_sex: userSex, user_height: userHeight, sandbox,
-    };
+  init(token: string): void {
+    const payload: InitAction = { action: "init", token };
     this.sendJson(payload);
   }
 
@@ -52,6 +51,11 @@ export class CVServiceClient {
   stopEarly(): void {
     const payload: StopEarlyAction = { action: "stop_early" };
     this.sendJson(payload);
+  }
+
+
+  get readyForFrame(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN && !this.waitingForResponse && !this.finished;
   }
 
   /** Returns true if a frame was actually sent (false = skipped due to backpressure). */
@@ -94,8 +98,8 @@ export class CVServiceClient {
     switch (msg.type) {
       case "ready":    this.callbacks.onReady(msg); break;
       case "update":   this.callbacks.onUpdate(msg); break;
-      case "complete": this.callbacks.onComplete(msg); break;
-      case "error":    this.callbacks.onError(msg); break;
+      case "complete": this.finished = true; this.callbacks.onComplete(msg); break;
+      case "error":    this.finished = true; this.callbacks.onError(msg); break;
     }
   }
 }

@@ -293,22 +293,22 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-1">Change password</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-1">Change Password</h3>
         <p className="text-xs text-gray-400 mb-3">
           After the change, all other signed-in devices are logged out.
         </p>
         <div className="space-y-3 mb-3">
-          <PwField id="pw-current" label="Current password" value={pwForm.current} error={pwErrors.current}
+          <PwField id="pw-current" label="Current Password" value={pwForm.current} error={pwErrors.current}
             onChange={v => setPwForm(p => ({ ...p, current: v }))} />
-          <PwField id="pw-new" label="New password" value={pwForm.next} error={pwErrors.next}
+          <PwField id="pw-new" label="New Password" value={pwForm.next} error={pwErrors.next}
             onChange={v => setPwForm(p => ({ ...p, next: v }))} />
-          <PwField id="pw-confirm" label="Confirm new password" value={pwForm.confirm} error={pwErrors.confirm}
+          <PwField id="pw-confirm" label="Confirm New Password" value={pwForm.confirm} error={pwErrors.confirm}
             onChange={v => setPwForm(p => ({ ...p, confirm: v }))} />
         </div>
         {pwForm.next && <PasswordFeedback value={pwForm.next} userInputs={pwContext} />}
         <button type="button" onClick={() => void changePassword()} disabled={changingPw}
           className="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
-          {changingPw ? "Changing…" : "Change password"}
+          {changingPw ? "Changing…" : "Change Password"}
         </button>
       </div>
     </div>

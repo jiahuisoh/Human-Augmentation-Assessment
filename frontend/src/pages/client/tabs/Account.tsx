@@ -5,7 +5,7 @@ import { measurementApi, userApi } from "../../../utils/api";
 import { EmergencyContactSection } from "../../../components/EmergencyContact";
 import { PasswordInput, PasswordFeedback } from "../../../components/PasswordFields";
 import { meetsPasswordReqs } from "../../../utils/passwordStrength";
-import { BMICard, BMIChart, BMI_ZONES, calcBmi } from "../components/BMICard";
+import { BMICard, BMIChart, calcBmi } from "../components/BMICard";
 import type { EmergencyContact, Measurement, ProfileUpdate, Sex, User } from "../../../types";
 
 const today   = new Date();
@@ -273,17 +273,9 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-900 mb-3">BMI history</h3>
+        {/* The classification bands are drawn and named inside the chart, so a
+            separate colour legend underneath would only restate them. */}
         <BMIChart data={measurements} />
-        {measurements.length >= 2 && (
-          <div className="flex gap-3 mt-2 flex-wrap">
-            {BMI_ZONES.map(z => (
-              <div key={z.label} className="flex items-center gap-1.5">
-                <div className={cls("w-2.5 h-2.5 rounded-full", z.bg)} />
-                <span className="text-xs text-gray-500">{z.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">

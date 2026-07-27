@@ -80,17 +80,40 @@ Clinician / administrator assessment flows also launch the same Test Runner
 
 ## Offline validation (optional)
 
-For MAE pilots and SynthDa / recorded clips (no live WebSocket), see:
+Sit & Reach supports **live MAE** (ruler vs CV) and **SynthDa / offline** clips (no WebSocket).
 
-- `cv-service/tools/README.md` — single-clip and batch validators
-- `cv-service/validation/PROTOCOL.md` — ground-truth / MAE pilot protocol
-- `cv-service/validation/videos/sit_reach/` — drop videos here (`.mp4` / `.webm` are gitignored)
+| Doc / path | What it’s for |
+|------------|----------------|
+| `cv-service/validation/PROTOCOL.md` | MAE pilot protocol + how to log sessions |
+| `cv-service/validation/ground_truth.pilot.post_fix.csv` | Post-fix home pilot rows (report MAE from this) |
+| `cv-service/tools/README.md` | Single-clip + batch video validators |
+| `cv-service/validation/synthda/README.md` | JSONL replay + SynthDa provenance |
+| `cv-service/validation/synthda/sit_reach_synthda_manifest.json` | `source_type: synthda` + Colab seed `16428` |
+| `cv-service/validation/videos/sit_reach/` | Drop `.mp4` / `.webm` here (large videos gitignored) |
 
-Example (PowerShell, short clips may need shorter calib/countdown):
+**Post-fix home pilot (n=4):** MAE ≈ **3.6 cm**, bias ≈ **−1.8 cm**  
+(`python validation/compute_mae.py validation/ground_truth.pilot.post_fix.csv`)
+
+Example single-clip validate (PowerShell). Short SynthDa renders (~4 s) need shorter calib/countdown:
 
 ```
 cd cv-service\tools
-.\validate_one_clip.ps1 -Video "..\validation\videos\sit_reach\sr-p01.webm" -ExpectedReachCm 12.5
+python validate_sit_reach_video.py `
+  --video ..\validation\videos\sit_reach\animation_front_left.mp4 `
+  --expected-reach-cm 0 `
+  --expected-validity valid_movement `
+  --scenario synthda_multi_angle `
+  --camera-angle front_left `
+  --user-height-cm 164 `
+  --calibration-seconds 1 `
+  --countdown-seconds 0 `
+  --output-json ..\validation\output\animation_front_left_result.json
+```
+
+Or the helper script for longer real recordings:
+
+```
+.\validate_one_clip.ps1 -Video "..\validation\videos\sit_reach\sr-p01.webm" -ExpectedReachCm 12.5 -HeightCm 164
 ```
 
 ## Project layout

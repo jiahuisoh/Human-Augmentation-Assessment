@@ -1,3 +1,4 @@
 video_path,expected_reach_cm,expected_validity,scenario,camera_angle,user_height_cm,notes
-# Fill paths relative to cv-service/tools/ when running the suite
-# ..\validation\videos\sit_reach\sr-p01.webm,12.5,valid_movement,full_reach,side,170,Phone recording bedroom
+..\validation\videos\sit_reach\animation_front_left.mp4,0,valid_movement,synthda_multi_angle,front_left,164,Colab Industry_SynthDa render; short calib; completed pose pipeline (practice_only / no 3s hold in demo motion)
+..\validation\videos\sit_reach\animation_top_45.mp4,0,invalid_movement,synthda_multi_angle,top_45,164,Expected weak for sit-reach (not side view); calibration/form fail is informative
+..\validation\videos\sit_reach\animation_back.mp4,0,invalid_movement,synthda_multi_angle,back,164,Expected weak for sit-reach (back view); calibration/form fail is informative

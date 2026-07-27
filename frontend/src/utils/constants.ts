@@ -46,12 +46,13 @@ export const TESTS: readonly TestDefinition[] = [
   },
   {
     id: "sit_reach",
-    name: "Sit & Reach Test",
-    shortDesc: "Lower body & trunk flexibility",
+    name: "Sit & Reach",
+    shortDesc: "Hamstring & lower-back flexibility",
     instructions:
-      "Sit on the floor with your legs straight. Place one hand on top of the other. Slowly reach forward as far as you can, keeping your knees straight. Hold the furthest point for 2 seconds.",
-    calibrationPrompt: "Sit sideways with your test leg straight, heel down, and foot flat.",
-    safetyNote: "Never bounce during the stretch. Move smoothly and steadily.",
+      "Choose Chair (one leg extended) or Floor (both legs extended). Use a side (profile) camera view so the extended leg and hands are clear — face does not need to be in frame. Keep the test knee(s) straight, stack your hands, reach toward your toes, and hold 3 seconds. Score: − short of toes, 0 at toes, + past toes.",
+    calibrationPrompt:
+      "Side view: hips through toes of the test leg(s) plus both hands in frame. Heel(s) down, knee(s) straight. Face optional.",
+    safetyNote: "Never bounce. If a knee bends, sit back until it is straight before counting the reach.",
     Icon: Footprints,
     metricLabel: "Distance (cm)",
     cvEnabled: true,

@@ -69,6 +69,7 @@ class InitAction(BaseModel):
     user_sex: Sex = 'other'
     user_height: Optional[float] = None
     environment: Literal['home', 'clinic'] = 'home'
+    seating: Literal['chair', 'floor'] = 'chair'
 
 class StartAction(BaseModel):
     action: Literal['start']

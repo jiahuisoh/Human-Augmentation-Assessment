@@ -1,6 +1,29 @@
-"""Unit tests for sit-and-reach age/sex norm classification."""
+"""Unit tests for sit-and-reach age/sex and traffic-light classification."""
 
-from app.tests.sit_reach.norms import classify_sit_reach
+from app.tests.sit_reach.norms import classify_chair_sit_reach_position, classify_sit_reach
+
+
+class TestChairSitReachPosition:
+    def test_position_1_when_form_invalid(self) -> None:
+        result = classify_chair_sit_reach_position(5.0, form_valid=False, past_knee=True)
+        assert result.classification == "Position 1"
+        assert result.risk_level == "high"
+
+    def test_position_1_when_not_past_knee(self) -> None:
+        result = classify_chair_sit_reach_position(-20.0, form_valid=True, past_knee=False)
+        assert result.classification == "Position 1"
+
+    def test_position_2_between_knee_and_toes(self) -> None:
+        result = classify_chair_sit_reach_position(-8.0, form_valid=True, past_knee=True)
+        assert result.classification == "Position 2"
+        assert result.risk_level == "moderate"
+
+    def test_position_3_at_or_past_toes(self) -> None:
+        result = classify_chair_sit_reach_position(0.0, form_valid=True, past_knee=True)
+        assert result.classification == "Position 3"
+        assert result.risk_level == "low"
+        result2 = classify_chair_sit_reach_position(4.0, form_valid=True, past_knee=True)
+        assert result2.classification == "Position 3"
 
 
 class TestClassifySitReach:

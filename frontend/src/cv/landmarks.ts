@@ -1,5 +1,27 @@
 const MIN_VIS = 0.5;
 
+/** MediaPipe Pose landmark indices for foot tips. */
+export const LEFT_FOOT_INDEX = 31;
+export const RIGHT_FOOT_INDEX = 32;
+
+/** Pick the more visible toe tip for overlay anchors (normalized 0–1). */
+export function pickToeAnchor(
+  landmarks: number[][] | undefined,
+): { x: number; y: number } | null {
+  if (!landmarks || landmarks.length < 33) return null;
+  const left = landmarks[LEFT_FOOT_INDEX];
+  const right = landmarks[RIGHT_FOOT_INDEX];
+  const leftOk = left && (left[2] ?? 0) >= MIN_VIS;
+  const rightOk = right && (right[2] ?? 0) >= MIN_VIS;
+  if (!leftOk && !rightOk) return null;
+  if (leftOk && rightOk) {
+    const pick = (left[2] ?? 0) >= (right[2] ?? 0) ? left : right;
+    return { x: pick[0], y: pick[1] };
+  }
+  const pick = leftOk ? left : right;
+  return { x: pick[0], y: pick[1] };
+}
+
 const SKELETON_EDGES: ReadonlyArray<readonly [number, number]> = [
   [11, 12], [11, 23], [12, 24], [23, 24],   // torso
   [11, 13], [13, 15],                       // left arm

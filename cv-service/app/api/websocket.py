@@ -55,6 +55,7 @@ class _Session:
         self.user_sex: str = 'other'
         self.user_height: float | None = None
         self.environment: str = 'home'
+        self.seating: str = 'chair'
 
     async def run(self) -> None:
         await self.ws.send_json(ReadyMessage(test_id=self.test_id).model_dump())
@@ -83,8 +84,14 @@ class _Session:
             self.user_sex = payload.get('user_sex', 'other')
             self.user_height = payload.get('user_height')
             self.environment = payload.get('environment', 'home')
-            log.info('init: user_age=%s sex=%s height=%s environment=%s', self.user_age, self.user_sex, self.user_height, self.environment)
-            self.strategy.on_init(self.user_age, self.user_sex, self.user_height, self.environment)
+            self.seating = payload.get('seating', 'chair')
+            log.info(
+                'init: user_age=%s sex=%s height=%s environment=%s seating=%s',
+                self.user_age, self.user_sex, self.user_height, self.environment, self.seating,
+            )
+            self.strategy.on_init(
+                self.user_age, self.user_sex, self.user_height, self.environment, self.seating,
+            )
         elif action == 'start':
             self._goto_phase('calibrating')
             self.strategy.reset()

@@ -26,17 +26,19 @@ from app.tests.sit_reach.strategy import (
     forward_offset,
     forward_unit,
     reach_from_baseline,
+    toe_line_landmark,
 )
 from tests.helpers import hand_middle_finger_at, sit_reach_side_pose, visible
 from validation.synthda.landmark_io import landmarks_to_wire, write_frames
 
 
 def _expected_reach_cm(finger_x: float, *, height_cm: float = ASSUMED_HEIGHT_CM) -> float:
-    hip = visible(0.30, 0.50)
-    ankle = visible(0.30, 0.90)
-    toe = visible(0.55, 0.90)
-    finger = visible(finger_x, 0.70)
-    fwd = forward_unit(hip, ankle, toe)
+    hip = visible(0.30, 0.55)
+    ankle = visible(0.70, 0.55)
+    toe_tip = visible(0.78, 0.55)
+    toe = toe_line_landmark(ankle, toe_tip)
+    finger = visible(finger_x, 0.50)
+    fwd = forward_unit(hip, ankle, toe_tip)
     baseline = forward_offset(toe, hip, fwd)
     scale = height_cm * LEG_LENGTH_FRACTION_OF_HEIGHT / 0.4
     return round(reach_from_baseline(finger, hip, fwd, baseline) * scale, 1)
@@ -50,11 +52,11 @@ def build_sequence(
     hold_frames: int = 24,
     bent_knee: bool = False,
 ) -> tuple[list[dict], float]:
-    knee = (0.338, 0.70) if bent_knee else (0.30, 0.70)
-    rest = sit_reach_side_pose(side='right', knee=knee, finger=(0.50, 0.70))
-    reach = sit_reach_side_pose(side='right', knee=knee, finger=(finger_x, 0.70))
-    hands_rest = hand_middle_finger_at(0.50, 0.70)
-    hands_reach = hand_middle_finger_at(finger_x, 0.70)
+    knee = (0.50, 0.59) if bent_knee else (0.50, 0.55)
+    rest = sit_reach_side_pose(side='right', knee=knee, finger=(0.70, 0.50))
+    reach = sit_reach_side_pose(side='right', knee=knee, finger=(finger_x, 0.50))
+    hands_rest = hand_middle_finger_at(0.70, 0.50)
+    hands_reach = hand_middle_finger_at(finger_x, 0.50)
 
     label = _expected_reach_cm(finger_x, height_cm=height_cm)
     frames: list[dict] = []
@@ -78,9 +80,9 @@ def build_sequence(
 
 
 CLIPS = [
-    ('synth_reach_short', 0.58),
-    ('synth_reach_medium', 0.65),
-    ('synth_reach_long', 0.72),
+    ('synth_reach_short', 0.70),
+    ('synth_reach_medium', 0.88),
+    ('synth_reach_long', 0.95),
 ]
 
 
@@ -100,7 +102,7 @@ def main() -> int:
         manifest.append({'file': str(out_path), 'finger_x': finger_x, 'label_reach_cm': label})
         print(f'{name}: label={label} cm -> {out_path}')
 
-    bent_frames, _ = build_sequence(finger_x=0.65, bent_knee=True)
+    bent_frames, _ = build_sequence(finger_x=0.88, bent_knee=True)
     bent_path = args.out_dir / 'synth_bent_knee.jsonl'
     write_frames(bent_path, bent_frames)
     manifest.append({'file': str(bent_path), 'note': 'bent knee — expect form_hint / no score'})

@@ -43,8 +43,9 @@ class TestStrategy(ABC):
         user_sex: Sex,
         user_height: float | None,
         environment: str = 'home',
+        seating: str = 'chair',
     ) -> None:
-        _ = (user_age, user_sex, user_height, environment)
+        _ = (user_age, user_sex, user_height, environment, seating)
 
     @abstractmethod
     def is_frame_usable(self, landmarks: Sequence[Landmark]) -> bool:

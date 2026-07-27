@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, AlertCircle, Home, Loader, Stethoscope } from "lucide-react";
+import { ArrowLeft, AlertCircle, Armchair, Home, Loader, Square, Stethoscope } from "lucide-react";
 import { cls } from "../utils/helpers";
-import { drawSkeleton, drawHands } from "./landmarks";
+import { drawSkeleton, drawHands, pickToeAnchor } from "./landmarks";
 import { CVServiceClient } from "./CVServiceClient";
 import PoseCamera, { type PoseCameraHandle } from "./PoseCamera";
 import SitReachGamification from "./SitReachGamification";
-import type { Detection, Phase, TestEnvironment, TestOutcomeWire, UpdateMessage } from "./wireTypes";
+import type { Detection, Phase, TestEnvironment, TestOutcomeWire, TestSeating, UpdateMessage } from "./wireTypes";
 import type { Sex, TestId } from "../types";
 import { TESTS } from "../utils/constants";
 import LivenessDetection from "../components/LivenessDetection";
 
-function calibrationPromptFor(testId: TestId): string {
+function calibrationPromptFor(testId: TestId, seating?: TestSeating): string {
+  if (testId === "sit_reach") {
+    return seating === "floor"
+      ? "Side view to the camera. Keep hips–knees–ankles–toes and both hands in frame. Both legs extended, heels down, knees straight. Face optional."
+      : "Side view to the camera. Keep hips–knee–ankle–toes of the extended leg and both hands in frame. One foot flat; test leg heel down, knee straight. Face optional.";
+  }
   return TESTS.find(t => t.id === testId)?.calibrationPrompt
     ?? "Stand straight, sideways to the camera.";
 }
@@ -35,6 +40,7 @@ export default function TestRunner({
 }: TestRunnerProps) {
   const needsSetup = testId === "sit_reach";
   const [environment, setEnvironment] = useState<TestEnvironment>(defaultEnvironment);
+  const [seating, setSeating] = useState<TestSeating>("chair");
   const [sessionStarted, setSessionStarted] = useState(!needsSetup);
   const [phase, setPhase]         = useState<Phase>(needsSetup ? "loading" : "loading");
   const [update, setUpdate]       = useState<UpdateMessage | null>(null);
@@ -91,7 +97,7 @@ export default function TestRunner({
 
         const client = new CVServiceClient(CV_WS_URL, {
           onReady: () => {
-            client.init(userAge, userSex, userHeight, sandbox, environment);
+            client.init(userAge, userSex, userHeight, sandbox, environment, seating);
             client.start();
           },
           onUpdate: (msg) => {
@@ -141,7 +147,7 @@ export default function TestRunner({
       const video = cameraRef.current?.video;
       if (video) video.srcObject = null;
     };
-  }, [sessionStarted, environment, testId, userAge, userSex, userHeight, sandbox, transitionPhase]);
+  }, [sessionStarted, environment, seating, testId, userAge, userSex, userHeight, sandbox, transitionPhase]);
 
   const stopEarly = () => clientRef.current?.stopEarly();
   const isSitReach = testId === "sit_reach";
@@ -156,33 +162,66 @@ export default function TestRunner({
         <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full gap-6">
           <h1 className="text-2xl font-bold text-white text-center">Sit &amp; Reach</h1>
           <p className="text-gray-400 text-center text-sm">
-            Where are you taking this test? Home uses slightly relaxed form checks for uneven floors.
-            Clinic uses strict clinical thresholds.
+            Choose seating protocol and location. Hold furthest reach for 3 seconds.
+            Score vs toes: − short, 0 at toes, + past.
           </p>
-          <div className="grid grid-cols-2 gap-3 w-full">
-            <button type="button" onClick={() => setEnvironment("home")}
-              className={cls(
-                "rounded-xl border p-4 text-left transition-all",
-                environment === "home"
-                  ? "border-violet-500 bg-violet-950/50 ring-2 ring-violet-500"
-                  : "border-gray-700 bg-gray-800 hover:border-gray-600",
-              )}>
-              <Home size={20} className="text-violet-400 mb-2" />
-              <div className="text-white font-semibold text-sm">At home</div>
-              <div className="text-gray-500 text-xs mt-1">Relaxed leg-form checks</div>
-            </button>
-            <button type="button" onClick={() => setEnvironment("clinic")}
-              className={cls(
-                "rounded-xl border p-4 text-left transition-all",
-                environment === "clinic"
-                  ? "border-emerald-500 bg-emerald-950/50 ring-2 ring-emerald-500"
-                  : "border-gray-700 bg-gray-800 hover:border-gray-600",
-              )}>
-              <Stethoscope size={20} className="text-emerald-400 mb-2" />
-              <div className="text-white font-semibold text-sm">At clinic</div>
-              <div className="text-gray-500 text-xs mt-1">Strict clinical form</div>
-            </button>
+
+          <div className="w-full">
+            <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wide">Seating</p>
+            <div className="grid grid-cols-2 gap-3 w-full">
+              <button type="button" onClick={() => setSeating("chair")}
+                className={cls(
+                  "rounded-xl border p-4 text-left transition-all",
+                  seating === "chair"
+                    ? "border-amber-500 bg-amber-950/40 ring-2 ring-amber-500"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600",
+                )}>
+                <Armchair size={20} className="text-amber-400 mb-2" />
+                <div className="text-white font-semibold text-sm">Chair</div>
+                <div className="text-gray-500 text-xs mt-1">One leg extended</div>
+              </button>
+              <button type="button" onClick={() => setSeating("floor")}
+                className={cls(
+                  "rounded-xl border p-4 text-left transition-all",
+                  seating === "floor"
+                    ? "border-sky-500 bg-sky-950/40 ring-2 ring-sky-500"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600",
+                )}>
+                <Square size={20} className="text-sky-400 mb-2" />
+                <div className="text-white font-semibold text-sm">Floor</div>
+                <div className="text-gray-500 text-xs mt-1">Both legs extended</div>
+              </button>
+            </div>
           </div>
+
+          <div className="w-full">
+            <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wide">Location</p>
+            <div className="grid grid-cols-2 gap-3 w-full">
+              <button type="button" onClick={() => setEnvironment("home")}
+                className={cls(
+                  "rounded-xl border p-4 text-left transition-all",
+                  environment === "home"
+                    ? "border-violet-500 bg-violet-950/50 ring-2 ring-violet-500"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600",
+                )}>
+                <Home size={20} className="text-violet-400 mb-2" />
+                <div className="text-white font-semibold text-sm">At home</div>
+                <div className="text-gray-500 text-xs mt-1">Relaxed leg-form checks</div>
+              </button>
+              <button type="button" onClick={() => setEnvironment("clinic")}
+                className={cls(
+                  "rounded-xl border p-4 text-left transition-all",
+                  environment === "clinic"
+                    ? "border-emerald-500 bg-emerald-950/50 ring-2 ring-emerald-500"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600",
+                )}>
+                <Stethoscope size={20} className="text-emerald-400 mb-2" />
+                <div className="text-white font-semibold text-sm">At clinic</div>
+                <div className="text-gray-500 text-xs mt-1">Strict clinical form</div>
+              </button>
+            </div>
+          </div>
+
           <button type="button" onClick={() => setSessionStarted(true)}
             className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-4 rounded-xl text-lg">
             Begin test
@@ -222,10 +261,15 @@ export default function TestRunner({
               <>
                 <div>
                   <div className="text-gray-400 text-sm">REACH</div>
-                  <div className="text-4xl font-black text-gray-400 leading-none">
-                    {formatCm(update.raw_measurement)}
+                  <div className={cls(
+                    "text-4xl font-black leading-none",
+                    update.form_valid ? "text-white" : "text-gray-600",
+                  )}>
+                    {update.form_valid ? formatCm(update.measurement ?? update.raw_measurement) : "—"}
                   </div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">practice</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">
+                    {update.form_valid ? "live" : "straighten leg"}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-gray-400 text-sm">OFFICIAL</div>
@@ -295,10 +339,11 @@ export default function TestRunner({
           {phase === "calibrating" && (
             <>
               <h2 className="text-2xl font-bold text-white text-center mb-1">Calibrating…</h2>
-              <p className="text-gray-300 text-base text-center">{calibrationPromptFor(testId)}</p>
+              <p className="text-gray-300 text-base text-center">{calibrationPromptFor(testId, seating)}</p>
               {isSitReach && (
                 <p className="text-violet-300 text-xs text-center mt-1">
-                  Mode: {environment === "clinic" ? "Clinic (strict)" : "Home (relaxed)"}
+                  {seating === "floor" ? "Floor" : "Chair"} ·{" "}
+                  {environment === "clinic" ? "Clinic (strict)" : "Home (relaxed)"}
                 </p>
               )}
             </>
@@ -307,22 +352,22 @@ export default function TestRunner({
       )}
 
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-2xl">
-          <PoseCamera
-            ref={cameraRef}
-            overlayMessage={overlayMessageFor(phase, detection, update?.form_hint, isSitReach)}
-            overlayTone={update?.form_hint || detection !== "ok" ? "warning" : undefined}
-          />
+        <PoseCamera
+          ref={cameraRef}
+          overlayMessage={overlayMessageFor(phase, detection, update?.form_hint, isSitReach)}
+          overlayTone={update?.form_hint || detection !== "ok" ? "warning" : undefined}
+        >
           {isSitReach && phase === "test" && update && (
             <SitReachGamification
-              rawCm={update.raw_measurement}
+              rawCm={update.measurement ?? update.raw_measurement}
               bestCm={update.best_measurement}
               holdProgress={update.hold_progress}
               formValid={update.form_valid}
               status={update.recording_status}
+              toe={pickToeAnchor(update.landmarks)}
             />
           )}
-        </div>
+        </PoseCamera>
       </div>
 
       {phase === "calibrating" && update && (

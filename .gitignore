@@ -34,6 +34,9 @@ cv-service/validation/videos/**/*.mov
 !cv-service/validation/videos/**/.gitkeep
 !cv-service/validation/videos/**/README.md
 
+# Local-only notes / papers — never commit
+references/
+
 .idea/
 .vscode/
 *.swp

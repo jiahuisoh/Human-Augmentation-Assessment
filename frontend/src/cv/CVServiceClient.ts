@@ -43,6 +43,7 @@ export class CVServiceClient {
     userHeight: number | null,
     sandbox = false,
     environment: "home" | "clinic" = "home",
+    seating: "chair" | "floor" = "chair",
   ): void {
     const payload: InitAction = {
       action: "init",
@@ -50,6 +51,7 @@ export class CVServiceClient {
       user_sex: userSex,
       user_height: userHeight,
       environment,
+      seating,
       sandbox,
     };
     this.sendJson(payload);

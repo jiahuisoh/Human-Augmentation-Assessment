@@ -61,7 +61,12 @@ Copy `ground_truth.template.csv` → `ground_truth.csv` and fill one row per ses
 
 ## 2. Filming setup
 
-**Camera:** laptop webcam, sideways to subject, full test leg + hands visible.
+**Camera:** laptop webcam, sideways to subject on a **chair** (front edge), full
+extended test leg + hands visible. One foot flat on the floor; other leg extended
+with heel down. Stacked hands (middle fingertips even). Hold furthest reach **3 s**.
+
+**Scoring:** cm from toes (− short, 0 at toes, + past) plus traffic-light Position
+1 / 2 / 3.
 
 **Bedroom:** typical home desk height, personal clutter OK (note in notes).
 

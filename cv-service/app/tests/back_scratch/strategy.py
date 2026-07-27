@@ -35,8 +35,15 @@ class BackScratchStrategy(TestStrategy):
         self._gaps_cm.clear()
         self._last_gap_cm = None
 
-    def on_init(self, user_age: int | None, user_sex: Sex, user_height: float | None, environment: str = 'home') -> None:
-        _ = (user_age, user_sex, environment)
+    def on_init(
+        self,
+        user_age: int | None,
+        user_sex: Sex,
+        user_height: float | None,
+        environment: str = 'home',
+        seating: str = 'chair',
+    ) -> None:
+        _ = (user_age, user_sex, environment, seating)
         self._user_height_cm = user_height
 
     def is_frame_usable(self, landmarks: Sequence[Landmark]) -> bool:

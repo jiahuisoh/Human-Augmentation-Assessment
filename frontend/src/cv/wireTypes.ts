@@ -74,6 +74,7 @@ export type ServerMessage = ReadyMessage | UpdateMessage | CompleteMessage | Err
 // ---- Client → Server actions ------------------------------------
 
 export type TestEnvironment = "home" | "clinic";
+export type TestSeating = "chair" | "floor";
 
 export interface InitAction {
   action:      "init";
@@ -81,6 +82,7 @@ export interface InitAction {
   user_sex:    Sex;
   user_height: number | null;
   environment?: TestEnvironment;
+  seating?:    TestSeating;
   /** When true, server should run with synthetic / de-identified user data. */
   sandbox?:    boolean;
 }

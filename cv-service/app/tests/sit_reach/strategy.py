@@ -3,17 +3,20 @@ import statistics
 from dataclasses import dataclass
 from typing import Literal, Sequence
 from app.cv.hand_detector import HAND_LANDMARK
-from app.cv.landmarks import LANDMARK, all_visible, angle_between, distance, pick_better_side
+from app.cv.landmarks import LANDMARK, all_visible, angle_between, avg_visibility, distance
 from app.cv.types import Landmark, Sex, TestOutcome
 from app.tests.base import FinalizeContext, TestStateUpdate, TestStrategy
-from app.tests.sit_reach.norms import classify_sit_reach
+from app.tests.sit_reach.norms import classify_chair_sit_reach_position, classify_sit_reach
 
 LEG_LENGTH_FRACTION_OF_HEIGHT = 0.47
 ASSUMED_HEIGHT_CM = 165.0
+# FOOT_INDEX is the tip; people usually touch slightly behind that (shoe top / toe pads).
+# Pull the zero back along ankle→toe so "touching toes" reads nearer 0 cm.
+TOE_LINE_BACK_FRACTION = 0.45
 _MIN_CALIB_SAMPLES = 3
 _MIN_TEST_SAMPLES = 3
 _OUTLIER_CM = 12.0
-_HOLD_MS = 2000.0
+_HOLD_MS = 3000.0
 _STABLE_CM = 2.5
 _RETRACT_CM = 3.0
 _TOP_N_MEDIAN = 5
@@ -28,16 +31,29 @@ _RIGHT_KNEE = (LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_KNEE, LANDMARK.RIGHT_ANKLE)
 
 HINT_KNEE_BENT = 'Keep your test leg straight — bent knee won\'t count'
 HINT_LEG_ALIGN = 'Align hip, knee, and ankle in one line'
-HINT_FOOT_FLAT = 'Keep your heel and foot flat on the floor'
+HINT_FOOT_FLAT = 'Keep your heel down (toes may point up)'
 HINT_LEG_VISIBLE = 'Keep your test leg fully visible from the side'
 
 FormEnvironment = Literal['home', 'clinic']
+SeatingMode = Literal['chair', 'floor']
 MeasurementConfidence = Literal['high', 'low', 'practice_only']
 
 STATUS_REACH_STAR = 'Reach for the star at your toes!'
 STATUS_HOLD_STEADY = 'Hold steady!'
 STATUS_SCORE_LOCKED = 'Score locked!'
 STATUS_PAUSED_PREFIX = 'Recording paused'
+
+CHAIR_CALIBRATION_PROMPT = (
+    'Sit on the front of a chair in side view (profile) to the camera. '
+    'Keep hips–knee–ankle–toes of the extended leg and both hands in frame. '
+    'One foot flat; test leg heel down, knee straight. Face does not need to be visible.'
+)
+# Floor: both legs extended, heels at toe line (classic floor sit-and-reach).
+FLOOR_CALIBRATION_PROMPT = (
+    'Sit on the floor in side view (profile) to the camera. '
+    'Keep hips–knees–ankles–toes and both hands in frame. '
+    'Both legs extended, heels down, knees straight. Face does not need to be visible.'
+)
 
 
 @dataclass(frozen=True)
@@ -48,24 +64,26 @@ class FormThresholds:
 
 
 THRESHOLDS: dict[FormEnvironment, FormThresholds] = {
-    'clinic': FormThresholds(min_knee_angle=160.0, max_knee_line_dev=0.10, max_foot_lift=0.12),
-    'home': FormThresholds(min_knee_angle=155.0, max_knee_line_dev=0.12, max_foot_lift=0.14),
+    'clinic': FormThresholds(min_knee_angle=160.0, max_knee_line_dev=0.10, max_foot_lift=0.18),
+    'home': FormThresholds(min_knee_angle=150.0, max_knee_line_dev=0.14, max_foot_lift=0.22),
 }
 
 
 def forward_unit(hip: Landmark, ankle: Landmark, toe: Landmark) -> tuple[float, float]:
-    """Unit vector perpendicular to the leg axis, pointing toward the toes."""
+    """Unit vector along the leg axis, pointing toward the toes (side-view reach direction)."""
     ax, ay = ankle.x - hip.x, ankle.y - hip.y
     leg_len = math.hypot(ax, ay)
     if leg_len == 0:
-        return (1.0, 0.0)
+        tx, ty = toe.x - hip.x, toe.y - hip.y
+        toe_len = math.hypot(tx, ty)
+        if toe_len == 0:
+            return (1.0, 0.0)
+        return (tx / toe_len, ty / toe_len)
     ux, uy = ax / leg_len, ay / leg_len
-    perp_a = (-uy, ux)
-    perp_b = (uy, -ux)
-    tx, ty = toe.x - hip.x, toe.y - hip.y
-    if tx * perp_a[0] + ty * perp_a[1] >= tx * perp_b[0] + ty * perp_b[1]:
-        return perp_a
-    return perp_b
+    # Ensure forward points toward the toes, not back toward the hip.
+    if (toe.x - hip.x) * ux + (toe.y - hip.y) * uy < 0:
+        return (-ux, -uy)
+    return (ux, uy)
 
 
 def forward_offset(point: Landmark, origin: Landmark, fwd: tuple[float, float]) -> float:
@@ -80,8 +98,17 @@ def forward_reach_norm(finger: Landmark, toe: Landmark, fwd: tuple[float, float]
 
 
 def reach_from_baseline(finger: Landmark, hip: Landmark, fwd: tuple[float, float], toe_baseline_offset: float) -> float:
-    """Reach along forward axis relative to the toe baseline captured at calibration."""
+    """Reach along forward axis relative to a toe baseline offset from hip (tests / legacy)."""
     return forward_offset(finger, hip, fwd) - toe_baseline_offset
+
+
+def toe_line_landmark(ankle: Landmark, toe: Landmark) -> Landmark:
+    """Zero line for scoring: between ankle and FOOT_INDEX tip (closer to contact surface)."""
+    return Landmark(
+        x=toe.x + (ankle.x - toe.x) * TOE_LINE_BACK_FRACTION,
+        y=toe.y + (ankle.y - toe.y) * TOE_LINE_BACK_FRACTION,
+        visibility=min(ankle.visibility, toe.visibility),
+    )
 
 
 def point_line_distance(point: Landmark, line_a: Landmark, line_b: Landmark) -> float:
@@ -102,11 +129,12 @@ class SitReachStrategy(TestStrategy):
     active_duration_s = 30
     min_calibration_samples = _MIN_CALIB_SAMPLES
     requires_hands = True
-    calibration_prompt = 'Sit sideways with your test leg straight, heel down, and foot flat.'
+    calibration_prompt = CHAIR_CALIBRATION_PROMPT
 
     def __init__(self) -> None:
         self._user_height_cm: float | None = None
         self._environment: FormEnvironment = 'home'
+        self._seating: SeatingMode = 'chair'
         self._thresholds: FormThresholds = THRESHOLDS['home']
         self._leg_samples: list[float] = []
         self._toe_baseline_offsets: list[float] = []
@@ -124,6 +152,8 @@ class SitReachStrategy(TestStrategy):
         self._hold_recorded = False
         self._last_hold_progress: float = 0.0
         self._last_recording_status: str | None = None
+        self._best_past_knee: bool = False
+        self._had_valid_form: bool = False
 
     def reset(self) -> None:
         self._leg_samples.clear()
@@ -142,6 +172,8 @@ class SitReachStrategy(TestStrategy):
         self._hold_recorded = False
         self._last_hold_progress = 0.0
         self._last_recording_status = None
+        self._best_past_knee = False
+        self._had_valid_form = False
 
     def on_init(
         self,
@@ -149,11 +181,16 @@ class SitReachStrategy(TestStrategy):
         user_sex: Sex,
         user_height: float | None,
         environment: str = 'home',
+        seating: str = 'chair',
     ) -> None:
         _ = (user_age, user_sex)
         self._user_height_cm = user_height
         self._environment = environment if environment in THRESHOLDS else 'home'
         self._thresholds = THRESHOLDS[self._environment]
+        self._seating = seating if seating in ('chair', 'floor') else 'chair'
+        self.calibration_prompt = (
+            FLOOR_CALIBRATION_PROMPT if self._seating == 'floor' else CHAIR_CALIBRATION_PROMPT
+        )
 
     def smoother_config(self) -> tuple[float, float]:
         return (_SMOOTHER_MIN_CUTOFF, _SMOOTHER_BETA)
@@ -168,8 +205,55 @@ class SitReachStrategy(TestStrategy):
     def form_hint_for(self, landmarks: Sequence[Landmark] | None, phase: str) -> str | None:
         if landmarks is None or phase not in ('calibrating', 'test'):
             return None
-        side, _ = pick_better_side(landmarks, _LEFT_LEG, _RIGHT_LEG)
+        return self._form_hint_for_seating(landmarks)
+
+    def _form_hint_for_seating(self, landmarks: Sequence[Landmark]) -> str | None:
+        if self._seating == 'floor':
+            # Floor mode: both knees should stay extended when visible.
+            for check_side in ('left', 'right'):
+                idx = _LEFT_LEG if check_side == 'left' else _RIGHT_LEG
+                if not all_visible(landmarks, idx):
+                    continue
+                hint = self._evaluate_leg_form(landmarks, check_side)
+                if hint is not None:
+                    return hint
+            if not (all_visible(landmarks, _LEFT_LEG) or all_visible(landmarks, _RIGHT_LEG)):
+                return HINT_LEG_VISIBLE
+            return None
+        side = self._select_test_side(landmarks)
+        if side is None:
+            return HINT_LEG_VISIBLE
         return self._evaluate_leg_form(landmarks, side)
+
+    def _select_test_side(self, landmarks: Sequence[Landmark]) -> str | None:
+        """Pick which leg is the measurement leg.
+
+        Chair: the extended test leg (straighter + further forward), not the planted foot.
+        Floor: either extended leg; prefer higher visibility.
+        """
+        scored: list[tuple[float, float, str]] = []
+        for side in ('left', 'right'):
+            idx_knee = _LEFT_KNEE if side == 'left' else _RIGHT_KNEE
+            idx_foot = LANDMARK.LEFT_FOOT_INDEX if side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
+            if not all_visible(landmarks, (*idx_knee, idx_foot)):
+                continue
+            hip, knee, ankle = landmarks[idx_knee[0]], landmarks[idx_knee[1]], landmarks[idx_knee[2]]
+            toe = landmarks[idx_foot]
+            leg_len = distance(hip, ankle)
+            if leg_len <= 0:
+                continue
+            knee_angle = angle_between(hip, knee, ankle)
+            fwd = forward_unit(hip, ankle, toe)
+            extension = forward_offset(toe, hip, fwd)
+            if self._seating == 'chair':
+                scored.append((knee_angle, extension, side))
+            else:
+                vis = avg_visibility(landmarks, idx_knee)
+                scored.append((vis, extension, side))
+        if not scored:
+            return None
+        scored.sort(key=lambda row: (row[0], row[1]), reverse=True)
+        return scored[0][2]
 
     def is_frame_usable(self, landmarks: Sequence[Landmark]) -> bool:
         return all_visible(landmarks, _LEFT_LEG) or all_visible(landmarks, _RIGHT_LEG)
@@ -179,19 +263,22 @@ class SitReachStrategy(TestStrategy):
 
     def on_calibration_frame(self, landmarks: Sequence[Landmark], hand_landmarks: Sequence[Sequence[Landmark]] | None = None) -> None:
         _ = hand_landmarks
-        side, _ = pick_better_side(landmarks, _LEFT_LEG, _RIGHT_LEG)
+        side = self._select_test_side(landmarks)
+        if side is None:
+            return
         self._best_side = side
-        if self._evaluate_leg_form(landmarks, side) is not None:
+        if self._form_hint_for_seating(landmarks) is not None:
             return
         idx_leg = _LEFT_LEG if side == 'left' else _RIGHT_LEG
         idx_foot = LANDMARK.LEFT_FOOT_INDEX if side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
         idx_hip = LANDMARK.LEFT_HIP if side == 'left' else LANDMARK.RIGHT_HIP
-        hip, ankle, toe = landmarks[idx_hip], landmarks[idx_leg[1]], landmarks[idx_foot]
+        hip, ankle, toe_tip = landmarks[idx_hip], landmarks[idx_leg[1]], landmarks[idx_foot]
         leg_len = distance(hip, ankle)
         if leg_len <= 0:
             return
         self._leg_samples.append(leg_len)
-        fwd = forward_unit(hip, ankle, toe)
+        fwd = forward_unit(hip, ankle, toe_tip)
+        toe = toe_line_landmark(ankle, toe_tip)
         self._toe_baseline_offsets.append(forward_offset(toe, hip, fwd))
 
     def finish_calibration(self) -> tuple[bool, str | None]:
@@ -215,31 +302,15 @@ class SitReachStrategy(TestStrategy):
                 raw_measurement=self._raw_reach_cm,
             )
 
+        side = self._select_test_side(landmarks) or self._best_side
+        if side is not None:
+            self._best_side = side
         idx_foot = LANDMARK.LEFT_FOOT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_FOOT_INDEX
         idx_hip = LANDMARK.LEFT_HIP if self._best_side == 'left' else LANDMARK.RIGHT_HIP
         idx_ankle = LANDMARK.LEFT_ANKLE if self._best_side == 'left' else LANDMARK.RIGHT_ANKLE
-        hip = landmarks[idx_hip]
-        ankle = landmarks[idx_ankle]
-        toe = landmarks[idx_foot]
-        self._forward = forward_unit(hip, ankle, toe)
-        finger = self._finger_landmark(landmarks, hand_landmarks, toe)
-
-        raw_cm: float | None = None
-        if finger is not None:
-            reach_norm = reach_from_baseline(finger, hip, self._forward, self._toe_baseline_offset)
-            raw_cm = round(reach_norm * self._cm_per_unit, 1)
-            self._raw_reach_cm = raw_cm
-            if self._raw_best_cm is None or raw_cm > self._raw_best_cm:
-                self._raw_best_cm = raw_cm
-
-        hint = self._evaluate_leg_form(landmarks, self._best_side)
-        form_valid = hint is None
-
-        hold_progress = 0.0
-        recording_status: str | None = None
-
-        if not form_valid:
-            recording_status = f'{STATUS_PAUSED_PREFIX} — {hint}'
+        hint = self._form_hint_for_seating(landmarks)
+        if hint is not None:
+            # No reach tracking while form is invalid (e.g. bent knee while just sitting).
             self._hold_anchor_cm = None
             self._hold_anchor_ms = None
             self._hold_recorded = False
@@ -247,28 +318,47 @@ class SitReachStrategy(TestStrategy):
             return TestStateUpdate(
                 measurement=None,
                 best_measurement=best,
-                raw_measurement=raw_cm,
+                raw_measurement=None,
                 form_hint=hint,
                 form_valid=False,
                 hold_progress=0.0,
-                recording_status=recording_status,
+                recording_status=f'{STATUS_PAUSED_PREFIX} — {hint}',
             )
 
+        hip = landmarks[idx_hip]
+        ankle = landmarks[idx_ankle]
+        toe_tip = landmarks[idx_foot]
+        toe = toe_line_landmark(ankle, toe_tip)
+        self._forward = forward_unit(hip, ankle, toe_tip)
+        finger = self._finger_landmark(landmarks, hand_landmarks, toe)
+
         if finger is None:
-            recording_status = HINT_LEG_VISIBLE
             return TestStateUpdate(
                 measurement=None,
                 best_measurement=best,
                 raw_measurement=None,
                 form_valid=True,
                 hold_progress=0.0,
-                recording_status=recording_status,
+                recording_status=HINT_LEG_VISIBLE,
             )
 
-        valid_cm = raw_cm
-        self._valid_reach_cm = valid_cm
+        # Zero at the live toe each frame (ruler at toe line), not a frozen calib offset.
+        reach_norm = forward_reach_norm(finger, toe, self._forward)
+        cm = round(reach_norm * self._cm_per_unit, 1)
+        self._raw_reach_cm = cm
+        self._valid_reach_cm = cm
+        if self._raw_best_cm is None or cm > self._raw_best_cm:
+            self._raw_best_cm = cm
+
+        idx_knee = LANDMARK.LEFT_KNEE if self._best_side == 'left' else LANDMARK.RIGHT_KNEE
+        knee = landmarks[idx_knee]
+        past_knee = forward_offset(finger, hip, self._forward) >= forward_offset(knee, hip, self._forward)
+        self._had_valid_form = True
+        if past_knee:
+            self._best_past_knee = True
+
         recorded_before = len(self._all_reaches)
-        self._maybe_record_reach(valid_cm, elapsed_ms)
+        self._maybe_record_reach(cm, elapsed_ms)
         hold_progress = self._last_hold_progress
 
         if len(self._all_reaches) > recorded_before:
@@ -280,9 +370,9 @@ class SitReachStrategy(TestStrategy):
 
         self._last_recording_status = recording_status
         return TestStateUpdate(
-            measurement=valid_cm,
+            measurement=cm,
             best_measurement=self._robust_best(),
-            raw_measurement=raw_cm,
+            raw_measurement=cm,
             form_valid=True,
             hold_progress=round(hold_progress, 2),
             recording_status=recording_status,
@@ -296,29 +386,23 @@ class SitReachStrategy(TestStrategy):
         if official is not None:
             return self._finalize_with_official(official, practice, confidence, ctx)
 
-        if practice is not None and practice > 0:
-            interpretation = (
-                f'Practice reach {practice:+.1f} cm recorded without valid form holds. '
-                'Official score requires straight leg and a 2-second hold.'
-            )
-            if self._calibration_quality is not None and self._calibration_quality < 0.5:
-                interpretation += ' Low calibration confidence — clinician review recommended.'
-            return TestOutcome(
-                measurement=practice,
-                practice_reach_cm=practice,
-                measurement_confidence='practice_only',
-                terminated_early=ctx.terminated_early,
-                calibration_quality=self._calibration_quality,
-                interpretation=interpretation,
-            )
-
+        # No locked hold — still report traffic-light Position 1 guidance.
+        position = classify_chair_sit_reach_position(
+            practice,
+            form_valid=self._had_valid_form,
+            past_knee=self._best_past_knee,
+        )
         return TestOutcome(
-            measurement=0.0,
+            measurement=0.0 if practice is None else practice,
             practice_reach_cm=practice,
             measurement_confidence='practice_only',
+            classification=position.classification,
+            risk_level=position.risk_level,
             terminated_early=ctx.terminated_early,
             calibration_quality=self._calibration_quality,
-            interpretation='No reach detected. Try sitting sideways with your full leg visible.',
+            interpretation=(
+                f'{position.interpretation} Official score needs a straight-leg hold for 3 seconds.'
+            ),
         )
 
     def _finalize_with_official(
@@ -329,42 +413,40 @@ class SitReachStrategy(TestStrategy):
         ctx: FinalizeContext,
     ) -> TestOutcome:
         low_calib = self._calibration_quality is not None and self._calibration_quality < 0.5
-        if len(self._all_reaches) < _MIN_TEST_SAMPLES:
-            interpretation = f'Official reach {official:+.1f} cm from limited valid holds.'
-            if confidence == 'low':
-                interpretation += ' Low calibration confidence — clinician review recommended.'
-            return TestOutcome(
-                measurement=official,
-                practice_reach_cm=practice,
-                measurement_confidence=confidence,
-                terminated_early=ctx.terminated_early,
-                calibration_quality=self._calibration_quality,
-                interpretation=interpretation,
+        position = classify_chair_sit_reach_position(
+            official,
+            form_valid=True,
+            past_knee=self._best_past_knee or official >= 0.0,
+        )
+        interpretation = (
+            f'{position.interpretation} '
+            f'Score vs toes: {official:+.1f} cm (− short, 0 at toes, + past toes).'
+        )
+        if self._seating == 'floor':
+            interpretation = f'Floor sit-and-reach. {interpretation}'
+        else:
+            interpretation = f'Chair sit-and-reach. {interpretation}'
+
+        age_band = classify_sit_reach(official, ctx.user_age, ctx.user_sex)
+        if age_band is not None:
+            interpretation = (
+                f'{interpretation} Age-band check: {age_band.classification} '
+                f'({age_band.norm_low:+.1f} to {age_band.norm_high:+.1f} cm).'
             )
 
-        classification = classify_sit_reach(official, ctx.user_age, ctx.user_sex)
-        if classification is None:
-            return TestOutcome(
-                measurement=official,
-                practice_reach_cm=practice,
-                measurement_confidence=confidence,
-                terminated_early=ctx.terminated_early,
-                calibration_quality=self._calibration_quality,
-            )
-
-        interpretation = classification.interpretation
         if confidence == 'low' or low_calib:
             interpretation = f'{interpretation} Low calibration confidence — clinician review recommended.'
+
         return TestOutcome(
             measurement=official,
             practice_reach_cm=practice,
             measurement_confidence=confidence,
             terminated_early=ctx.terminated_early,
-            classification=classification.classification,
-            risk_level=classification.risk_level,
+            classification=position.classification,
+            risk_level=position.risk_level,
             interpretation=interpretation,
-            norm_low=classification.norm_low,
-            norm_high=classification.norm_high,
+            norm_low=age_band.norm_low if age_band else position.norm_low,
+            norm_high=age_band.norm_high if age_band else position.norm_high,
             calibration_quality=self._calibration_quality,
         )
 
@@ -396,7 +478,9 @@ class SitReachStrategy(TestStrategy):
         if knee_angle < self._thresholds.min_knee_angle:
             return HINT_KNEE_BENT
 
-        if abs(toe.y - ankle.y) / leg_len > self._thresholds.max_foot_lift:
+        # Chair sit-and-reach often uses a flexed foot (toes pointing up). Allow that;
+        # only reject when the toes droop well below the ankle (heel / contact unreliable).
+        if (toe.y - ankle.y) / leg_len > self._thresholds.max_foot_lift:
             return HINT_FOOT_FLAT
 
         fwd = forward_unit(hip, ankle, toe)
@@ -427,15 +511,22 @@ class SitReachStrategy(TestStrategy):
         hand_landmarks: Sequence[Sequence[Landmark]] | None,
         toe: Landmark,
     ) -> Landmark | None:
+        tip_ids = (
+            HAND_LANDMARK.INDEX_FINGER_TIP,
+            HAND_LANDMARK.MIDDLE_FINGER_TIP,
+            HAND_LANDMARK.RING_FINGER_TIP,
+            HAND_LANDMARK.PINKY_TIP,
+        )
         if hand_landmarks and self._forward is not None:
             best: Landmark | None = None
             best_reach: float | None = None
             for hand in hand_landmarks:
-                tip = hand[HAND_LANDMARK.MIDDLE_FINGER_TIP]
-                reach = forward_reach_norm(tip, toe, self._forward)
-                if best_reach is None or reach > best_reach:
-                    best = tip
-                    best_reach = reach
+                for tip_id in tip_ids:
+                    tip = hand[tip_id]
+                    reach = forward_reach_norm(tip, toe, self._forward)
+                    if best_reach is None or reach > best_reach:
+                        best = tip
+                        best_reach = reach
             if best is not None:
                 return best
         idx = LANDMARK.LEFT_INDEX if self._best_side == 'left' else LANDMARK.RIGHT_INDEX

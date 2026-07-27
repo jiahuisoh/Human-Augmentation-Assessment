@@ -11,6 +11,7 @@ export interface TestDefinition {
   name: string;
   shortDesc: string;
   instructions: string;
+  calibrationPrompt: string;
   safetyNote: string;
   Icon: LucideIcon;
   metricLabel: string;
@@ -25,6 +26,7 @@ export const TESTS: readonly TestDefinition[] = [
     shortDesc: "Lower body strength",
     instructions:
       "Sit on a sturdy chair with your back straight and feet flat on the floor. Cross your arms over your chest. On 'Start', rise to a full standing position then sit back down. Repeat as many times as you can in 30 seconds.",
+    calibrationPrompt: "Stand straight, sideways to the camera.",
     safetyNote: "Stop immediately if you feel dizzy, pain, or short of breath.",
     Icon: Armchair,
     metricLabel: "Repetitions",
@@ -36,6 +38,7 @@ export const TESTS: readonly TestDefinition[] = [
     shortDesc: "Shoulder flexibility",
     instructions:
       "Reach one hand over your shoulder (palm facing your back) and the other hand up the centre of your back (palm facing outward). Stretch your fingers toward each other. Measure the distance between fingertips.",
+    calibrationPrompt: "Face the camera with your full upper body visible.",
     safetyNote: "Do not force the stretch. Stop if you feel any shoulder pain.",
     Icon: Hand,
     metricLabel: "Distance (cm)",
@@ -43,11 +46,13 @@ export const TESTS: readonly TestDefinition[] = [
   },
   {
     id: "sit_reach",
-    name: "Sit & Reach Test",
-    shortDesc: "Lower body & trunk flexibility",
+    name: "Sit & Reach",
+    shortDesc: "Hamstring & lower-back flexibility",
     instructions:
-      "Sit on the floor with your legs straight. Place one hand on top of the other. Slowly reach forward as far as you can, keeping your knees straight. Hold the furthest point for 2 seconds.",
-    safetyNote: "Never bounce during the stretch. Move smoothly and steadily.",
+      "Choose Chair (one leg extended) or Floor (both legs extended). Use a side (profile) camera view so the extended leg and hands are clear — face does not need to be in frame. Keep the test knee(s) straight, stack your hands, reach toward your toes, and hold 3 seconds. Score: − short of toes, 0 at toes, + past toes.",
+    calibrationPrompt:
+      "Side view: hips through toes of the test leg(s) plus both hands in frame. Heel(s) down, knee(s) straight. Face optional.",
+    safetyNote: "Never bounce. If a knee bends, sit back until it is straight before counting the reach.",
     Icon: Footprints,
     metricLabel: "Distance (cm)",
     cvEnabled: true,

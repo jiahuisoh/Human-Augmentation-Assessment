@@ -166,6 +166,7 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
         userAge={calcAge(p?.user.dateOfBirth)}
         userSex={p?.user.gender ?? "other"}
         userHeight={p?.user.height ?? null}
+        defaultEnvironment={activeCv.testId === "sit_reach" ? "clinic" : "home"}
         onComplete={handleCvComplete}
         onBack={() => setActiveCv(null)}
       />

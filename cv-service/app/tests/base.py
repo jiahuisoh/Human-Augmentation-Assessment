@@ -10,6 +10,11 @@ class TestStateUpdate:
     angle: float | None = None
     measurement: float | None = None
     best_measurement: float | None = None
+    raw_measurement: float | None = None
+    form_hint: str | None = None
+    form_valid: bool | None = None
+    hold_progress: float | None = None
+    recording_status: str | None = None
     finished: bool = False
 
 @dataclass
@@ -32,8 +37,15 @@ class TestStrategy(ABC):
     def reset(self) -> None:
         ...
 
-    def on_init(self, user_age: int | None, user_sex: Sex, user_height: float | None) -> None:
-        _ = (user_age, user_sex, user_height)
+    def on_init(
+        self,
+        user_age: int | None,
+        user_sex: Sex,
+        user_height: float | None,
+        environment: str = 'home',
+        seating: str = 'chair',
+    ) -> None:
+        _ = (user_age, user_sex, user_height, environment, seating)
 
     @abstractmethod
     def is_frame_usable(self, landmarks: Sequence[Landmark]) -> bool:
@@ -63,3 +75,15 @@ class TestStrategy(ABC):
         if landmarks is None:
             return 'missing'
         return 'ok' if self.is_frame_usable(landmarks) else 'partial'
+
+    def smoother_config(self) -> tuple[float, float]:
+        """One Euro filter (min_cutoff, beta) for pose landmark smoothing."""
+        return (1.5, 0.05)
+
+    def get_calibration_quality(self) -> float | None:
+        """0–1 score after calibration; None if not yet calibrated."""
+        return None
+
+    def form_hint_for(self, landmarks: Sequence[Landmark] | None, phase: str) -> str | None:
+        _ = (landmarks, phase)
+        return None

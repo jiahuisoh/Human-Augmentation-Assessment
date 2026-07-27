@@ -62,6 +62,7 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
       <TestRunner
         testId={cvTest}
         userAge={70} userSex="other" userHeight={170}
+        defaultEnvironment="home"
         sandbox
         onComplete={handleCvComplete}
         onBack={() => setCvTest(null)}

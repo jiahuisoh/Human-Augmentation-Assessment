@@ -54,6 +54,8 @@ class _Session:
         self.user_age: int | None = None
         self.user_sex: str = 'other'
         self.user_height: float | None = None
+        self.environment: str = 'home'
+        self.seating: str = 'chair'
 
     async def run(self) -> None:
         await self.ws.send_json(ReadyMessage(test_id=self.test_id).model_dump())
@@ -81,12 +83,20 @@ class _Session:
             self.user_age = payload.get('user_age')
             self.user_sex = payload.get('user_sex', 'other')
             self.user_height = payload.get('user_height')
-            log.info('init: user_age=%s sex=%s height=%s', self.user_age, self.user_sex, self.user_height)
-            self.strategy.on_init(self.user_age, self.user_sex, self.user_height)
+            self.environment = payload.get('environment', 'home')
+            self.seating = payload.get('seating', 'chair')
+            log.info(
+                'init: user_age=%s sex=%s height=%s environment=%s seating=%s',
+                self.user_age, self.user_sex, self.user_height, self.environment, self.seating,
+            )
+            self.strategy.on_init(
+                self.user_age, self.user_sex, self.user_height, self.environment, self.seating,
+            )
         elif action == 'start':
             self._goto_phase('calibrating')
             self.strategy.reset()
-            self.smoother.reset()
+            mc, beta = self.strategy.smoother_config()
+            self.smoother = LandmarkSmoother(min_cutoff=mc, beta=beta)
         elif action == 'stop_early':
             await self._finalize(terminated_early=True)
 
@@ -107,12 +117,22 @@ class _Session:
         detection = self.strategy.detection_for(landmarks)
         usable = landmarks is not None and self.strategy.is_frame_usable(landmarks)
         if self.phase == 'calibrating':
+            form_hint = self.strategy.form_hint_for(landmarks, self.phase)
             if usable and landmarks is not None:
                 self.strategy.on_calibration_frame(landmarks, hand_landmarks)
             calib_ms = self.strategy.calibration_s * 1000
             progress = min(1.0, elapsed_ms / calib_ms)
             remaining = max(0.0, self.strategy.calibration_s - elapsed_ms / 1000)
-            await self._send_update(landmarks=landmarks, hand_landmarks=hand_landmarks, detection=detection, calib_progress=round(progress, 2), calib_samples=self.strategy.get_calibration_sample_count(), calib_remaining_s=round(remaining, 2))
+            await self._send_update(
+                landmarks=landmarks,
+                hand_landmarks=hand_landmarks,
+                detection=detection,
+                calib_progress=round(progress, 2),
+                calib_samples=self.strategy.get_calibration_sample_count(),
+                calib_remaining_s=round(remaining, 2),
+                calib_quality=self.strategy.get_calibration_quality(),
+                form_hint=form_hint,
+            )
             if elapsed_ms >= calib_ms and self.strategy.get_calibration_sample_count() >= self.strategy.min_calibration_samples:
                 ok, reason = self.strategy.finish_calibration()
                 if not ok:
@@ -130,7 +150,7 @@ class _Session:
             remaining = self.strategy.active_duration_s - elapsed_ms / 1000
             if usable and landmarks is not None:
                 u = self.strategy.update(landmarks, elapsed_ms, hand_landmarks)
-                await self._send_update(landmarks=landmarks, hand_landmarks=hand_landmarks, detection=detection, reps=u.reps, posture=u.posture, angle=u.angle, measurement=u.measurement, best_measurement=u.best_measurement, time_remaining=max(0.0, round(remaining, 2)))
+                await self._send_update(landmarks=landmarks, hand_landmarks=hand_landmarks, detection=detection, reps=u.reps, posture=u.posture, angle=u.angle, measurement=u.measurement, best_measurement=u.best_measurement, raw_measurement=u.raw_measurement, form_hint=u.form_hint, form_valid=u.form_valid, hold_progress=u.hold_progress, recording_status=u.recording_status, time_remaining=max(0.0, round(remaining, 2)))
                 if u.finished or remaining <= 0:
                     await self._finalize(terminated_early=False)
             else:

@@ -1,0 +1,9 @@
+session_id,environment,age_group,user_height_cm,manual_reach_cm,cv_reach_cm,notes
+sr-p01,bedroom,young_adult,164,-5,12,"Chair/home PRE axis-fix. Slanted view; torso+feet+hands only. CV flipped short→positive."
+sr-p02,bedroom,young_adult,164,-7,18,"Chair/home PRE axis-fix. Retry; CV ~+18 vs ruler -7."
+sr-p03,bedroom,young_adult,164,-17,-17,"Floor/home POST axis-fix PRE toe-line. User: CV -17 kinda accurate to ruler."
+sr-p04,bedroom,young_adult,164,0,-12,"Floor/home POST axis-fix PRE toe-line. Touched toes (ruler 0) but CV -12."
+sr-p05,bedroom,young_adult,164,0,-3,"Floor/home POST toe-line fix. Touched toes (ruler 0); CV -3."
+sr-p06,bedroom,young_adult,164,2.5,-4,"Chair/home POST extended-leg + toe-line fixes. Ruler ~+2–3 cm (logged 2.5); CV -4."
+sr-p07,bedroom,young_adult,164,10,8.7,"Floor/home POST fix. Ruler +10; CV +8.7."
+sr-p08,bedroom,young_adult,164,7,10.7,"Chair/home POST fix. Ruler +7; CV +10.7."

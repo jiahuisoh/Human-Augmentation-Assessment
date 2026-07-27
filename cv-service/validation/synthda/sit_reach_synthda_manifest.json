@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "dataset_id": "sit-reach-synthda-v1",
+  "notes": "Local-only video files under validation/videos/sit_reach/ (gitignored patterns may apply). This manifest records provenance only — it does not change live CV or MAE pilot CSVs.",
+  "generation_defaults": {
+    "tool": "SynthDA",
+    "colab_notebook": "Industry_SynthDa_Simplified_Demo",
+    "colab_url": "https://colab.research.google.com/drive/150jzmeDh_8S7fw28umGom0QYrIE69Ct4",
+    "seed": "16428",
+    "mode": "demo_multi_angle_render"
+  },
+  "cases": [
+    {
+      "case_id": "sr-synthda-front-left-001",
+      "video_path": "../videos/sit_reach/animation_front_left.mp4",
+      "source_type": "synthda",
+      "expected": {
+        "validity": "valid_movement",
+        "reach_cm": null,
+        "notes": "Side-ish multi-angle render; used for harness smoke (pose pipeline), not primary MAE."
+      },
+      "subject": {
+        "height_cm": 164.0
+      },
+      "view": {
+        "camera_angle": "front_left"
+      },
+      "generation": {
+        "tool": "SynthDA",
+        "seed": "16428",
+        "run_id": "sit-reach-industry-demo-angles",
+        "config_note": "Industry demo multi-angle render (front_left / top_45 / back)"
+      },
+      "validation_result_ref": "../output/animation_front_left_result.json"
+    },
+    {
+      "case_id": "sr-synthda-top-45-001",
+      "video_path": "../videos/sit_reach/animation_top_45.mp4",
+      "source_type": "synthda",
+      "expected": {
+        "validity": "invalid_movement",
+        "reach_cm": null,
+        "notes": "Non-side angle — sit-reach form gates expected to struggle."
+      },
+      "subject": {
+        "height_cm": 164.0
+      },
+      "view": {
+        "camera_angle": "top_45"
+      },
+      "generation": {
+        "tool": "SynthDA",
+        "seed": "16428",
+        "run_id": "sit-reach-industry-demo-angles",
+        "config_note": "Industry demo multi-angle render (front_left / top_45 / back)"
+      },
+      "validation_result_ref": "../output/animation_top_45_result.json"
+    },
+    {
+      "case_id": "sr-synthda-back-001",
+      "video_path": "../videos/sit_reach/animation_back.mp4",
+      "source_type": "synthda",
+      "expected": {
+        "validity": "invalid_movement",
+        "reach_cm": null,
+        "notes": "Back view — sit-reach form gates expected to struggle."
+      },
+      "subject": {
+        "height_cm": 164.0
+      },
+      "view": {
+        "camera_angle": "back"
+      },
+      "generation": {
+        "tool": "SynthDA",
+        "seed": "16428",
+        "run_id": "sit-reach-industry-demo-angles",
+        "config_note": "Industry demo multi-angle render (front_left / top_45 / back)"
+      },
+      "validation_result_ref": "../output/animation_back_result.json"
+    }
+  ],
+  "related": {
+    "labelled_jsonl_replay": "sequences/synth_replay_report.json",
+    "mae_pilot_post_fix": "../ground_truth.pilot.post_fix.csv",
+    "harness_manifest": "../../tools/sit_reach_manifest.csv"
+  }
+}

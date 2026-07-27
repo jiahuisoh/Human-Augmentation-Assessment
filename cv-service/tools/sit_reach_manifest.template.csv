@@ -1,0 +1,5 @@
+video_path,expected_reach_cm,expected_validity,scenario,camera_angle,user_height_cm,notes
+# paths relative to repo root or absolute; fill after exporting SynthDa clips
+# examples/sit_reach_short.mp4,5.8,valid_movement,short_reach,side,165,SynthDa or synthetic short reach
+# examples/sit_reach_bent_knee.mp4,0.0,invalid_movement,bent_knee,side,165,Should not record reach while knee bent
+# examples/black_no_person.mp4,0.0,invalid_input,no_person,side,165,Should reject bad input

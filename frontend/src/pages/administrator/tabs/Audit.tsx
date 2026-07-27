@@ -1,20 +1,10 @@
-import { cls } from "../../../utils/helpers";
-import type { AuditCategory, AuditLog } from "../../../types";
+import { cls, formatLogStamp } from "../../../utils/helpers";
+import { AUDIT_CATEGORY_STYLE } from "../../../utils/constants";
+import type { AuditLog } from "../../../types";
 
 interface AuditProps {
   logs: AuditLog[];
 }
-
-const TAG_STYLE: Record<AuditCategory, string> = {
-  TOKEN:      "bg-indigo-50 text-indigo-700 border-indigo-200",
-  AUTH:       "bg-emerald-50 text-emerald-700 border-emerald-200",
-  ADMIN:      "bg-violet-50 text-violet-700 border-violet-200",
-  CONTRACT:   "bg-amber-50 text-amber-700 border-amber-200",
-  CONSENT:    "bg-blue-50 text-blue-700 border-blue-200",
-  AI:         "bg-gray-100 text-gray-600 border-gray-200",
-  CV:         "bg-violet-50 text-violet-700 border-violet-200",
-  ASSESSMENT: "bg-emerald-50 text-emerald-700 border-emerald-200",
-};
 
 export default function Audit({ logs }: AuditProps) {
   return (
@@ -32,10 +22,10 @@ export default function Audit({ logs }: AuditProps) {
             : "text-gray-700";
           return (
             <div key={l._id} className="flex gap-3">
-              <span className="text-gray-400 flex-shrink-0">
-                {new Date(l.createdAt).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })}
+              <span className="text-gray-400 flex-shrink-0 w-36">
+                {formatLogStamp(l.createdAt)}
               </span>
-              <span className={cls("px-1.5 py-0.5 rounded text-[10px] font-semibold border flex-shrink-0 self-start", TAG_STYLE[l.category])}>
+              <span className={cls("px-1.5 py-0.5 rounded text-[10px] font-semibold border flex-shrink-0 self-start", AUDIT_CATEGORY_STYLE[l.category])}>
                 {l.category}
               </span>
               <span className={col}>{l.message}</span>

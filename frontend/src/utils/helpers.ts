@@ -22,6 +22,48 @@ export function formatDOB(dateOfBirth?: string | null): string {
   });
 }
 
+/**
+ * Audit/log stamp: "27 Jul 2026, 14:32". Both log views span more than one day,
+ * so a bare clock time is ambiguous - the date has to be on the row.
+ */
+export function formatLogStamp(iso?: string | null): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString("en-SG", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+}
+
+/**
+ * Today as "YYYY-MM-DD" in the browser's own timezone - the same calendar day
+ * the backend stores for a booking. "en-CA" is the locale whose short date
+ * format is already ISO.
+ */
+export function todayIso(): string {
+  return isoDateIn(0);
+}
+
+/** A calendar date `days` from now as "YYYY-MM-DD"; handles month and year rollover. */
+export function isoDateIn(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString("en-CA");
+}
+
+/**
+ * Current wall-clock time as 24-hour "HH:MM", matching the format a booking
+ * stores. hourCycle "h23" rather than hour12:false - several locales answer the
+ * latter with a 1-24 clock, rendering midnight as "24:00", which would sort
+ * after every other time of day.
+ */
+export function nowHhMm(): string {
+  return new Date().toLocaleTimeString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  });
+}
+
 export function initialsOf(name?: string): string {
   if (!name) return "U";
   return name.split(/\s+/).map(p => p[0] ?? "").join("").slice(0, 2).toUpperCase();

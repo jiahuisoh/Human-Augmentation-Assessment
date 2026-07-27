@@ -3,12 +3,15 @@ import { Edit3, Trash2 } from "lucide-react";
 import { ClientProfile } from "../../../components/ClientProfile";
 import { TESTS } from "../../../utils/constants";
 import { adherenceOf, riskFromSessions, type PatientView } from "../ClinicianShared";
-import type { AssessmentSession } from "../../../types";
+import ScheduleCard from "../components/ScheduleCard";
+import type { AssessmentSession, TestId } from "../../../types";
 
 interface PatientDetailProps {
   patient: PatientView;
   onOverride: (sessionId: string, reason: string, newScore: number) => Promise<void>;
   onDelete: (sessionId: string, reason: string) => Promise<void>;
+  onBook: (clientId: string, testId: TestId, date: string, time: string) => Promise<void>;
+  onCancelBooking: (clientId: string, entryId: string) => Promise<void>;
 }
 
 // The score a clinician acts on - and the one the backend records as the
@@ -19,7 +22,9 @@ const effectiveScore = (s: AssessmentSession): number | null => {
   return s.reps ?? s.measurement ?? null;
 };
 
-export default function PatientDetail({ patient, onOverride, onDelete }: PatientDetailProps) {
+export default function PatientDetail({
+  patient, onOverride, onDelete, onBook, onCancelBooking,
+}: PatientDetailProps) {
   const [overriding, setOverriding]   = useState<string | null>(null);
   const [reason, setReason]           = useState("");
   const [newScore, setNewScore]       = useState("");
@@ -69,6 +74,12 @@ export default function PatientDetail({ patient, onOverride, onDelete }: Patient
         <h4 className="text-sm font-semibold text-gray-900 mb-3">Client profile</h4>
         <ClientProfile user={patient.user} />
       </div>
+
+      <ScheduleCard
+        entries={patient.schedule}
+        onBook={(testId, date, time) => onBook(patient.user._id, testId, date, time)}
+        onCancel={entryId => onCancelBooking(patient.user._id, entryId)}
+      />
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="grid grid-cols-2 gap-4 mb-4">

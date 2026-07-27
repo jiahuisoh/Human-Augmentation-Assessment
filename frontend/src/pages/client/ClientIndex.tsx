@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Heart, ClipboardList, Shield, Activity, TrendingUp,
+  Heart, ClipboardList, Shield, Activity,
   LogOut, User as UserIcon, HelpCircle,
   ListChecks, Camera, Lock,
   type LucideIcon,
@@ -14,24 +14,23 @@ import TestRunner from "../../cv/TestRunner";
 import AssessmentResult from "../../cv/AssessmentResult";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
-  AssessmentSession, ConsentEvent, InterventionPlan,
+  AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
   TestId, User,
 } from "../../types";
-import { greeting } from "./ClientShared";
+import { greeting, latestConsentByScope } from "./ClientShared";
 
 import Home            from "./tabs/Home";
 import Assessments     from "./tabs/Assessments";
 import SelfTest        from "./tabs/SelfTest";
 import Questionnaire   from "./tabs/Questionnaire";
 import Plan            from "./tabs/Plan";
-import Activity_       from "./tabs/Activity";
 import Records         from "./tabs/Records";
 import Account         from "./tabs/Account";
 import Help            from "./tabs/Help";
 
 type TabId =
   | "home" | "assessments" | "self_test" | "questionnaire"
-  | "plan" | "activity" | "records" | "account" | "help";
+  | "plan" | "records" | "account" | "help";
 
 const TABS: ReadonlyArray<{ id: TabId; label: string; Icon: LucideIcon }> = [
   { id: "home",             label: "Home",        Icon: Heart         },
@@ -39,8 +38,7 @@ const TABS: ReadonlyArray<{ id: TabId; label: string; Icon: LucideIcon }> = [
   { id: "self_test",        label: "Assessment",  Icon: Camera        },
   { id: "questionnaire",    label: "Questionnaire", Icon: ListChecks    },
   { id: "plan",             label: "Plan",        Icon: Activity      },
-  { id: "activity",         label: "Activity",    Icon: TrendingUp    },
-  { id: "records",          label: "Records",     Icon: Shield        },
+  { id: "records",          label: "Privacy",     Icon: Shield        },
   { id: "account",          label: "Account",     Icon: UserIcon      },
   { id: "help",             label: "Help",        Icon: HelpCircle    },
 ];
@@ -50,6 +48,11 @@ interface ClientProps {
   onSignOut: () => void;
   onUserUpdate: (user: User) => void;
 }
+
+// The save prompt asks to store the result AND to let the responsible clinician
+// see it, so both are recorded. Previously only the first was written, and the
+// consent log understated what the client had actually been asked.
+const CONSENT_ON_SAVE: ReadonlyArray<ConsentScope> = ["assessment_data", "clinician_share"];
 
 // Until identity verification completes (staff NRIC check + admin approval),
 // clients can only see Home, Account and Help. Mirrors the backend gate
@@ -99,28 +102,32 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
       return;
     }
     try {
-      const hasConsent = consents.some(c => c.scope === "assessment_data" && c.granted);
-      if (!hasConsent) {
+      // Not `.some(granted)`: consent is append-only, so a client who granted
+      // and later withdrew would still match an old grant and never be asked.
+      const latest = latestConsentByScope(consents);
+      const missing = CONSENT_ON_SAVE.filter(scope => latest.get(scope)?.granted !== true);
+      if (missing.length > 0) {
         const agreed = window.confirm(
           "Save this assessment and share it with your clinician?\n\n" +
-          "This records your consent to store your assessment data. You can withdraw it later through your clinic.",
+          "This records your consent to store your assessment data and to let the clinician " +
+          "responsible for your care see it. You can withdraw it later through your clinic.",
         );
         if (!agreed) { setActiveCv(null); return; }
-        await consentApi.set(user._id, "assessment_data", true);
+        // Only what is actually outstanding, so re-consenting never appends a
+        // duplicate grant to the log.
+        await Promise.all(missing.map(scope => consentApi.set(user._id, scope, true)));
         setConsents(await consentApi.historyFor(user._id));
       }
       const saved = await sessionApi.save({ cvOutcomeToken: outcomeToken });
+      // The list is newest-first, so the saved session belongs at the front.
+      // Splicing it in beats re-fetching every past assessment to learn one.
+      setSessions(prev => [saved, ...prev]);
       setResult(saved);
     } catch (err) {
       alert(`Could not save your result: ${err instanceof Error ? err.message : "unknown error"}`);
     } finally {
       setActiveCv(null);
     }
-  };
-
-  const dismissResult = async (): Promise<void> => {
-    setResult(null);
-    setSessions(await sessionApi.listForClient(user._id));
   };
 
   if (activeCv) {
@@ -134,8 +141,10 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
     );
   }
 
+  // Shown both straight after a test and when a past result is opened from
+  // Results, so a client sees exactly the same breakdown either way.
   if (result) {
-    return <AssessmentResult session={result} onDone={() => void dismissResult()} />;
+    return <AssessmentResult session={result} onDone={() => setResult(null)} />;
   }
 
   return (
@@ -179,12 +188,11 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
         {user.verificationStatus !== "verified" && <VerificationBanner status={user.verificationStatus} />}
 
         {tab === "home"             && <Home            user={user} sessions={sessions} onStart={() => goTab("self_test")} onNavigate={(t) => goTab(t as TabId)} />}
-        {tab === "assessments"      && <Assessments     sessions={sessions} />}
+        {tab === "assessments"      && <Assessments     sessions={sessions} onOpen={setResult} />}
         {tab === "self_test"        && <SelfTest        onStart={testId => void startSelfTest(testId)} />}
         {tab === "questionnaire"    && <Questionnaire   user={user} />}
         {tab === "plan"             && <Plan            plan={plan} />}
-        {tab === "activity"         && <Activity_ />}
-        {tab === "records"          && <Records         sessions={sessions} />}
+        {tab === "records"          && <Records         consents={consents} />}
         {tab === "account"          && <Account         user={user} onUserUpdate={onUserUpdate} />}
         {tab === "help"             && <Help />}
       </div>

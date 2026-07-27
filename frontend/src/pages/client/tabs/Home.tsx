@@ -49,7 +49,7 @@ export default function Home({ user, sessions, onStart, onNavigate }: HomeProps)
         {([
           ["Start today's assessment",   ClipboardList, "text-violet-600",  "bg-violet-50",  onStart],
           ["View my intervention plan",  Activity,    "text-emerald-600", "bg-emerald-50", () => onNavigate("plan")],
-          ["Manage data consents",      Shield,      "text-blue-600",    "bg-blue-50",    () => onNavigate("records")],
+          ["How my data is used",       Shield,      "text-blue-600",    "bg-blue-50",    () => onNavigate("records")],
         ] as const).map(([label, Icon, col, bg, action]) => (
           <button key={label} type="button" onClick={action}
             className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">

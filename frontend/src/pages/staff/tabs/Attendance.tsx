@@ -12,6 +12,9 @@ export default function Attendance({ schedule, onMark }: AttendanceProps) {
       <p className="text-xs text-gray-400 mb-4">
         Attendance only. Clinical notes and assessment results are managed by the assigned clinician.
       </p>
+      {schedule.length === 0 && (
+        <p className="text-sm text-gray-400">No sessions are booked for today.</p>
+      )}
       {schedule.map(s => {
         const isDone = s.status === "present" || s.status === "absent";
         return (

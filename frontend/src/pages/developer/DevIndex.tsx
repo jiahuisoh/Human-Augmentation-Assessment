@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 import {
-  Terminal, AlertTriangle, Camera,
+  Terminal, AlertTriangle, Camera, Activity,
 } from "lucide-react";
 import { auditApi, sessionApi } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
 import type { AuditLog, TestId, User } from "../../types";
 
-import CVSandbox  from "./tabs/CVSandbox";
+import CvSandboxLauncher from "../../components/CvSandboxLauncher";
+import { runHealthChecks, type HealthReport } from "./DeveloperShared";
+import SystemHealth from "./tabs/SystemHealth";
 import Logs       from "./tabs/Logs";
 
-type TabId = "cv_sandbox" | "logs";
+type TabId = "health" | "cv_sandbox" | "logs";
 
 const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
+  { id: "health",     label: "System Health",   Icon: Activity },
   { id: "cv_sandbox", label: "CV Sandbox",      Icon: Camera   },
   { id: "logs",       label: "Tech Logs",       Icon: Terminal },
 ];
@@ -23,13 +26,40 @@ interface DeveloperProps {
 }
 
 export default function Developer({ user, onSignOut }: DeveloperProps) {
-  const [tab, setTab]             = useState<TabId>("cv_sandbox");
+  const [tab, setTab]             = useState<TabId>("health");
   const [logs, setLogs]           = useState<AuditLog[]>([]);
+  const [logsErr, setLogsErr]     = useState("");
+  const [logsBusy, setLogsBusy]   = useState(false);
   const [cvTest, setCvTest]       = useState<{ testId: TestId; token: string } | null>(null);
+  const [health, setHealth]       = useState<HealthReport | null>(null);
+  const [checking, setChecking]   = useState(false);
 
   useEffect(() => {
-    void auditApi.list(100).then(setLogs);
+    void refreshLogs();
+    void refreshHealth();
   }, []);
+
+  const refreshHealth = async (): Promise<void> => {
+    setChecking(true);
+    try {
+      setHealth(await runHealthChecks());
+    } finally {
+      setChecking(false);
+    }
+  };
+
+
+  const refreshLogs = async (): Promise<void> => {
+    setLogsBusy(true);
+    try {
+      setLogs(await auditApi.list(100));
+      setLogsErr("");
+    } catch (err) {
+      setLogsErr(err instanceof Error ? err.message : "Could not load the technical logs.");
+    } finally {
+      setLogsBusy(false);
+    }
+  };
 
   // Sandbox grants carry a synthetic subject and are marked sandbox: true, so
   // the backend refuses to save any result produced under one.
@@ -42,9 +72,11 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
     }
   };
 
+
   const handleCvComplete = async (): Promise<void> => {
-    setLogs(await auditApi.list(100));
     setCvTest(null);
+    // A completed run is itself evidence about the pipeline, so refresh both.
+    await Promise.all([refreshLogs(), refreshHealth()]);
   };
 
   if (cvTest) {
@@ -70,11 +102,6 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
           <div className="text-xs text-gray-400">Sandbox environment - no live patient data</div>
         </div>
       }
-      headerRight={
-        <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-          <AlertTriangle size={11} /> SANDBOX · DEV
-        </div>
-      }
     >
       <div className="space-y-5">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-3 text-xs text-amber-700">
@@ -82,8 +109,19 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
           Developer access is restricted to sandbox environments only. No identifiable patient data is accessible. All actions are logged.
         </div>
 
-        {tab === "cv_sandbox" && <CVSandbox  onLaunch={testId => void startSandbox(testId)} />}
-        {tab === "logs"       && <Logs       logs={logs} />}
+        {tab === "health"     && (
+          <SystemHealth
+            report={health} checking={checking}
+            onRefresh={() => void refreshHealth()}
+          />
+        )}
+        {tab === "cv_sandbox" && <CvSandboxLauncher onLaunch={testId => void startSandbox(testId)} />}
+        {tab === "logs"       && (
+          <Logs
+            logs={logs} error={logsErr} busy={logsBusy}
+            onRefresh={() => void refreshLogs()}
+          />
+        )}
       </div>
     </SidebarLayout>
   );

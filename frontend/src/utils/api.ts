@@ -1,14 +1,22 @@
 import type {
   AssessmentSession, AuditLog, AuthResponse, ConsentEvent,
-  CvGrant, EmergencyContact, InterventionPlan, Measurement, NewSessionPayload, NewUserPayload,
+  CvGrant, CvServiceProbe, EmergencyContact, InterventionPlan, LivenessProbe,
+  Measurement, NewBooking, NewSessionPayload, NewUserPayload,
   PendingVerificationClient, ProfileUpdate, QuestionnaireSubmission, Role,
-  ScheduleEntry, TestId, User, VerificationStatus,
+  ScheduleEntry, SystemHealth, TestId, User, VerificationStatus,
 } from "../types";
 import { clearToken, getToken, setToken } from "./tokenStore";
 import { emitAuthFailure } from "./authEvents";
 
 
-const BASE_URL: string = import.meta.env.VITE_API_URL || "http://localhost:4502";
+export const BASE_URL: string = import.meta.env.VITE_API_URL || "http://localhost:4502";
+
+// Single source for where the CV service lives (TestRunner opens the socket,
+// the developer health check probes the HTTP side). ws -> http, wss -> https.
+// Default matches the cv-service host port from docker-compose.yml (4501 → 8000
+// in container). Override via VITE_CV_WS_URL in frontend/.env.
+export const CV_WS_URL: string = import.meta.env.VITE_CV_WS_URL || "ws://localhost:4501";
+export const CV_HTTP_URL: string = CV_WS_URL.replace(/^ws/, "http");
 
 interface ApiFetchOptions {
   method?: string;
@@ -51,6 +59,23 @@ function safeJson(text: string): unknown {
   try { return JSON.parse(text); } catch { return {}; }
 }
 
+/**
+ * Unauthenticated GET, for probing a service that is not ours. apiFetch would
+ * attach the backend session token, and the CV service has no business
+ * receiving it.
+ */
+async function probeFetch<T>(url: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch {
+    throw new Error("UNREACHABLE");
+  }
+  if (!res.ok) throw new Error(`Responded ${res.status}`);
+  const text = await res.text();
+  return (text ? safeJson(text) : {}) as T;
+}
+
 export interface IUserApi {
   register(payload: NewUserPayload): Promise<User>;
   login(email: string, password: string): Promise<User>;
@@ -85,11 +110,6 @@ export interface ISessionApi {
   delete(id: string, reason: string): Promise<{ deleted: boolean; _id: string }>;
 }
 
-export interface IScheduleApi {
-  listToday(): Promise<ScheduleEntry[]>;
-  recordAttendance(id: string, present: boolean): Promise<ScheduleEntry>;
-}
-
 export interface IConsentApi {
   historyFor(clientId: string): Promise<ConsentEvent[]>;
   set(clientId: string, scope: ConsentEvent["scope"], granted: boolean): Promise<ConsentEvent>;
@@ -97,6 +117,25 @@ export interface IConsentApi {
 
 export interface IAuditApi {
   list(limit?: number): Promise<AuditLog[]>;
+}
+
+export interface IScheduleApi {
+  listToday(): Promise<ScheduleEntry[]>;
+  upcomingForClient(clientId: string): Promise<ScheduleEntry[]>;
+  book(booking: NewBooking): Promise<ScheduleEntry>;
+  recordAttendance(id: string, present: boolean): Promise<ScheduleEntry>;
+  cancel(id: string): Promise<void>;
+}
+
+export interface IHealthApi {
+  // Is the API process answering at all. Unauthenticated, so it still reports
+  // when the session is the broken part.
+  liveness(): Promise<LivenessProbe>;
+  // Detail: database round-trip, uptime, signing-secret presence.
+  system(): Promise<SystemHealth>;
+  // Probed straight from the browser, because that is the path a real
+  // assessment takes - the backend never calls the CV service.
+  cvService(): Promise<CvServiceProbe>;
 }
 
 export interface IPlanApi {
@@ -188,12 +227,6 @@ class RestSessionApi implements ISessionApi {
   }
 }
 
-class RestScheduleApi implements IScheduleApi {
-  constructor(private base: string) {}
-  listToday()                                    { return apiFetch<ScheduleEntry[]>(`${this.base}/api/schedule/today`); }
-  recordAttendance(id: string, present: boolean) { return apiFetch<ScheduleEntry>(`${this.base}/api/schedule/${id}/attendance`, { method: "PATCH", body: { present } }); }
-}
-
 class RestConsentApi implements IConsentApi {
   constructor(private base: string) {}
   historyFor(clientId: string) { return apiFetch<ConsentEvent[]>(`${this.base}/api/consent/${clientId}`); }
@@ -225,6 +258,24 @@ class RestMeasurementApi implements IMeasurementApi {
   }
 }
 
+class RestScheduleApi implements IScheduleApi {
+  constructor(private base: string) {}
+  listToday()                          { return apiFetch<ScheduleEntry[]>(`${this.base}/api/schedule/today`); }
+  upcomingForClient(clientId: string)  { return apiFetch<ScheduleEntry[]>(`${this.base}/api/schedule/client/${clientId}`); }
+  book(booking: NewBooking)            { return apiFetch<ScheduleEntry>(`${this.base}/api/schedule`, { method: "POST", body: booking }); }
+  recordAttendance(id: string, present: boolean) {
+    return apiFetch<ScheduleEntry>(`${this.base}/api/schedule/${id}/attendance`, { method: "PATCH", body: { present } });
+  }
+  cancel(id: string)                   { return apiFetch<void>(`${this.base}/api/schedule/${id}`, { method: "DELETE" }); }
+}
+
+class RestHealthApi implements IHealthApi {
+  constructor(private base: string, private cvBase: string) {}
+  liveness()  { return apiFetch<LivenessProbe>(`${this.base}/health`); }
+  system()    { return apiFetch<SystemHealth>(`${this.base}/api/health`); }
+  cvService() { return probeFetch<CvServiceProbe>(`${this.cvBase}/health`); }
+}
+
 class RestQuestionnaireApi implements IQuestionnaireApi {
   constructor(private base: string) {}
   submit(args: Parameters<IQuestionnaireApi["submit"]>[0]) {
@@ -238,9 +289,10 @@ class RestQuestionnaireApi implements IQuestionnaireApi {
 
 export const userApi:      IUserApi     = new RestUserApi(BASE_URL);
 export const sessionApi:   ISessionApi  = new RestSessionApi(BASE_URL);
-export const scheduleApi:  IScheduleApi = new RestScheduleApi(BASE_URL);
 export const consentApi:   IConsentApi  = new RestConsentApi(BASE_URL);
 export const auditApi:     IAuditApi    = new RestAuditApi(BASE_URL);
+export const scheduleApi:  IScheduleApi = new RestScheduleApi(BASE_URL);
+export const healthApi:    IHealthApi   = new RestHealthApi(BASE_URL, CV_HTTP_URL);
 export const planApi:      IPlanApi     = new RestPlanApi(BASE_URL);
 export const measurementApi:   IMeasurementApi   = new RestMeasurementApi(BASE_URL);
 export const questionnaireApi: IQuestionnaireApi = new RestQuestionnaireApi(BASE_URL);

@@ -4,17 +4,17 @@ import {
 } from "lucide-react";
 import { firstNameOf } from "../../utils/helpers";
 import {
-  planApi, sessionApi, userApi,
+  planApi, scheduleApi, sessionApi, userApi,
 } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import TestRunner from "../../cv/TestRunner";
 import AssessmentResult from "../../cv/AssessmentResult";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
-  AssessmentSession, InterventionPlanItem, TestId, User,
+  AssessmentSession, InterventionPlanItem, ScheduleEntry, TestId, User,
 } from "../../types";
 
-import { type PatientView } from "./ClinicianShared";
+import { byDateTime, type PatientView } from "./ClinicianShared";
 
 import Overview      from "./tabs/Overview";
 import PatientList   from "./tabs/PatientList";
@@ -58,12 +58,13 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
     } catch {}
     const loaded = await Promise.all(ids.map(async id => {
       try {
-        const [u, s, p] = await Promise.all([
+        const [u, s, p, sched] = await Promise.all([
           userApi.getById(id),
           sessionApi.listForClient(id),
           planApi.forClient(id),
+          scheduleApi.upcomingForClient(id),
         ]);
-        return { user: u, sessions: s, plan: p } as PatientView;
+        return { user: u, sessions: s, plan: p, schedule: sched } as PatientView;
       } catch {
         return null;
       }
@@ -118,6 +119,27 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
     await loadPatients();
   };
 
+  // `selected` holds its own PatientView reference, so a schedule change has to
+  // move both or the open detail view keeps rendering the pre-change list.
+  const patchSchedule = (clientId: string, next: (entries: ScheduleEntry[]) => ScheduleEntry[]): void => {
+    const apply = (p: PatientView): PatientView =>
+      p.user._id === clientId ? { ...p, schedule: next(p.schedule) } : p;
+    setPatients(prev => prev.map(apply));
+    setSelected(prev => prev ? apply(prev) : null);
+  };
+
+  // Splice the one row rather than calling loadPatients(): a full reload
+  // re-fetches every patient's sessions and plans to show a single booking.
+  const handleBook = async (clientId: string, testId: TestId, date: string, time: string): Promise<void> => {
+    const entry = await scheduleApi.book({ clientId, testId, date, time });
+    patchSchedule(clientId, entries => [...entries, entry].sort(byDateTime));
+  };
+
+  const handleCancelBooking = async (clientId: string, entryId: string): Promise<void> => {
+    await scheduleApi.cancel(entryId);
+    patchSchedule(clientId, entries => entries.filter(e => e._id !== entryId));
+  };
+
   const handleSavePlan = async (clientId: string, items: InterventionPlanItem[]): Promise<void> => {
     const plan = await planApi.save({ clientId, authoredBy: user._id, items });
     setPatients(prev => prev.map(p => p.user._id === clientId ? { ...p, plan } : p));
@@ -160,7 +182,15 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
     >
       {tab === "overview"    && !selected && <Overview      patients={patients} onOpen={p => { setSelected(p); setTab("patients"); }} />}
       {tab === "patients"    && !selected && <PatientList   patients={patients} search={search} onSearch={setSearch} onOpen={setSelected} />}
-      {tab === "patients"    && selected  && <PatientDetail patient={selected} onOverride={handleOverride} onDelete={handleDeleteSession} />}
+      {tab === "patients"    && selected  && (
+        <PatientDetail
+          patient={selected}
+          onOverride={handleOverride}
+          onDelete={handleDeleteSession}
+          onBook={handleBook}
+          onCancelBooking={handleCancelBooking}
+        />
+      )}
       {tab === "assessments" && (
         <Assessments
           patients={patients}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, AlertCircle, Loader } from "lucide-react";
 import { cls } from "../utils/helpers";
+import { CV_WS_URL } from "../utils/api";
 import { drawSkeleton, drawHands } from "./landmarks";
 import { CVServiceClient } from "./CVServiceClient";
 import PoseCamera, { type PoseCameraHandle } from "./PoseCamera";
@@ -13,10 +14,40 @@ function calibrationPromptFor(testId: TestId): string {
     ?? "Stand straight, sideways to the camera.";
 }
 
-// Default matches the cv-service host port from docker-compose.yml (4501 → 8000 in container).
-// Override via VITE_CV_WS_URL in frontend/.env if running the service on a different port.
-const CV_WS_URL: string = import.meta.env.VITE_CV_WS_URL || "ws://localhost:4501";
 const FRAME_JPEG_QUALITY = 0.7;
+const CAMERA_ERROR_TEXT: Record<string, string> = {
+  NotAllowedError: "Camera permission was denied. Allow camera access for this site, then tap Back and start again.",
+  NotFoundError: "No camera was found on this device. Tap Back to return.",
+  NotReadableError: "The camera is being used by another application (OBS, Teams, Zoom or similar). Close it, then tap Back and start the test again.",
+  OverconstrainedError: "This camera cannot provide the video format the assessment needs. Tap Back to return.",
+};
+
+const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
+  video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+  audio: false,
+};
+
+/**
+ * StrictMode runs the mount effect twice in dev, so a second getUserMedia can
+ * start while the first is still in flight - and the OS hands the second caller
+ * a NotReadableError because the device is still held by a stream that has not
+ * been returned to us yet to stop. The first stream is released the moment it
+ * resolves (see the cancelled guard), so one short retry clears it.
+ *
+ * Without this the runner throws before it ever calls connect(), and the test
+ * dies silently: the grant is issued, but the CV service never sees a socket.
+ */
+async function acquireCamera(): Promise<MediaStream> {
+  try {
+    return await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+  } catch (err) {
+    const name = (err as DOMException)?.name;
+    // Denied or absent is a real answer, not contention - do not ask twice.
+    if (name === "NotAllowedError" || name === "NotFoundError") throw err;
+    await new Promise(resolve => setTimeout(resolve, 400));
+    return await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+  }
+}
 
 export interface TestRunnerProps {
   testId: TestId;
@@ -36,6 +67,7 @@ export default function TestRunner({
 
   const cameraRef  = useRef<PoseCameraHandle>(null);
   const streamRef  = useRef<MediaStream | null>(null);
+  const pendingStreamRef = useRef<Promise<MediaStream> | null>(null);
   const scratchRef = useRef<HTMLCanvasElement | null>(null);
   const clientRef  = useRef<CVServiceClient | null>(null);
   const rafRef     = useRef<number | null>(null);
@@ -71,14 +103,15 @@ export default function TestRunner({
 
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
-          audio: false,
-        });
+        pendingStreamRef.current = acquireCamera();
+        const stream = await pendingStreamRef.current;
         if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         streamRef.current = stream;
         const video = cameraRef.current?.video;
-        if (video) { video.srcObject = stream; await video.play(); }
+        if (video) {
+          video.srcObject = stream;
+          await video.play().catch(() => {});
+        }
 
         const client = new CVServiceClient(CV_WS_URL, {
           onReady: () => {
@@ -114,9 +147,8 @@ export default function TestRunner({
         if (cancelled) return;
         const e = err as DOMException;
         setErrorMsg(
-          e?.name === "NotAllowedError"
-            ? "Camera permission was denied. Tap Back to return."
-            : (e?.message || "Could not start the camera or connect to the CV service."),
+          CAMERA_ERROR_TEXT[e?.name ?? ""]
+          ?? `${e?.name ? `${e.name}: ` : ""}${e?.message || "Could not start the camera or connect to the CV service."}`,
         );
         setPhase("error");
       }
@@ -129,6 +161,10 @@ export default function TestRunner({
       clientRef.current = null;
       streamRef.current?.getTracks().forEach(t => t.stop());
       streamRef.current = null;
+      void pendingStreamRef.current
+        ?.then(s => s.getTracks().forEach(t => t.stop()))
+        .catch(() => {});
+      pendingStreamRef.current = null;
       const video = cameraRef.current?.video;
       if (video) video.srcObject = null;
     };

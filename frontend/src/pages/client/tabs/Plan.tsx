@@ -9,10 +9,10 @@ interface PlanProps {
 export default function Plan({ plan }: PlanProps) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <h3 className="text-base font-semibold text-gray-900 mb-1">My intervention plan</h3>
-      <p className="text-xs text-gray-400 mb-4">Created and managed by your clinician - view only.</p>
+      <h3 className="text-base font-semibold text-gray-900 mb-1">My Intervention Plan</h3>
+      <p className="text-xs text-gray-400 mb-4">Created and Managed by your Clinician - View only.</p>
       {!plan ? (
-        <p className="text-sm text-gray-400">No active plan yet - your clinician will set this up after your first assessment.</p>
+        <p className="text-sm text-gray-400">No Active plan yet - your clinician will set this up after your first assessment.</p>
       ) : plan.items.map((it, i) => (
         <div key={i} className={cls("flex items-center gap-3 p-3 rounded-xl mb-2", it.done ? "bg-green-50" : "bg-gray-50")}>
           <CheckCircle size={18} className={it.done ? "text-green-500" : "text-gray-300"} />

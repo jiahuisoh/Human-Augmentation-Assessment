@@ -5,6 +5,8 @@ const auditController = require("../controllers/auditController");
 
 // Mounted at /api/audit.
 
-router.get("/", verifyJWT, requireRole("administrator"), auditController.listLogs);
+// Developers are admitted for the technical categories only; the service scopes
+// the query by role, so the route gate alone never decides what they can read.
+router.get("/", verifyJWT, requireRole("administrator", "developer"), auditController.listLogs);
 
 module.exports = router;

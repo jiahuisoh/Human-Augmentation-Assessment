@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const User = require("../models/User");
 const httpError = require("../utils/httpError");
 const { writeAudit } = require("./auditService");
+const { purgeClientData } = require("./clientDataService");
 
 // ── Last-administrator invariant ──────────────────────────────────────────────
 // "Suspended" is the only status that blocks auth (login and verifyJWT), so
@@ -114,19 +115,28 @@ const deleteUser = async (actor, targetId) => {
   // Existence check, last-admin check and the delete form one critical
   // section: check-then-write must be atomic, or two concurrent deletes could
   // remove both remaining administrators.
-  await withAdminLock(async () => {
+  const role = await withAdminLock(async () => {
     const target = await User.findById(targetId).select("role").lean();
     if (!target) throw httpError(404, "User not found");
     if (target.role === "administrator" && !(await hasOtherActiveAdmin(targetId))) {
       throw httpError(409, "Cannot delete the last active administrator.");
     }
     await User.findByIdAndDelete(targetId);
+    return target.role;
   });
   await User.updateMany(
     { assignedClientIds: targetId },
     { $pull: { assignedClientIds: targetId } },
   );
-  await writeAudit(actor, "ADMIN", `User deleted`, { targetId }, "WARN");
+
+  // The account leaving has to take the person's records with it. Without this
+  // the assessments, measurements and consents outlive the account, and the
+  // client-facing privacy notice - which says the clinic can remove your data -
+  // is not true. Only clients are the subject of those records; deleting a
+  // clinician must leave their patients' history intact.
+  const removed = role === "client" ? await purgeClientData(targetId) : {};
+
+  await writeAudit(actor, "ADMIN", "User deleted", { targetId, role, removed }, "WARN");
 };
 
 module.exports = { listUsers, createUser, setUserStatus, setClientAssignment, deleteUser };

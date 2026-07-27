@@ -92,6 +92,21 @@ const CHECKS = {
     const oldest = Date.UTC(now.getUTCFullYear() - 120, now.getUTCMonth(), now.getUTCDate());
     return t >= oldest && t <= now.getTime() ? s : null;
   },
+  // Calendar day, "YYYY-MM-DD". Stored and compared as a string throughout:
+  // for this format lexicographic order IS chronological order, so range
+  // queries and "is it in the past" need no date parsing at all.
+  isoDate:  (v) => {
+    const s = asTrimmedString(v);
+    if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    // Date rolls "2026-02-31" forward to March, so a value that does not
+    // round-trip was never a real day.
+    const parsed = new Date(`${s}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === s ? s : null;
+  },
+  timeOfDay: (v) => {
+    const s = asTrimmedString(v);
+    return s && /^([01]\d|2[0-3]):[0-5]\d$/.test(s) ? s : null;
+  },
   enum:     (v, r) => (r.values.includes(v) ? v : null),
   number:   (v, r) => finiteInRange(v, r.min, r.max),
   boolean:  (v) => (typeof v === "boolean" ? v : null),
@@ -125,6 +140,8 @@ const defaultMessage = (key, rule) => {
     case "string":   return `${label} is required${rule.max ? ` (max ${rule.max} characters)` : ""}`;
     case "date":     return `${label} must be a valid date`;
     case "birthDate": return `${label} must be a valid past date within the last 120 years`;
+    case "isoDate":  return `${label} must be a calendar date in YYYY-MM-DD format`;
+    case "timeOfDay": return `${label} must be a 24-hour time in HH:MM format`;
     case "enum":     return `${label} must be one of: ${rule.values.join(", ")}`;
     case "number":   return `${label} must be a number between ${rule.min} and ${rule.max}`;
     case "boolean":  return `${label} must be true or false`;

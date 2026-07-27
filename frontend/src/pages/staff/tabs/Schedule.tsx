@@ -16,8 +16,8 @@ export default function Schedule({ schedule }: ScheduleProps) {
       <div className="grid grid-cols-3 gap-3">
         {([
           [schedule.length, "Today's sessions", Calendar,    "text-teal-600",  "bg-teal-50"],
-          [pendingNric,     "Pending NRIC",      AlertCircle, "text-amber-600", "bg-amber-50"],
-          [completed,       "Completed",         CheckCircle, "text-green-600", "bg-green-50"],
+          [pendingNric,     "Pending NRIC",     AlertCircle, "text-amber-600", "bg-amber-50"],
+          [completed,       "Completed",        CheckCircle, "text-green-600", "bg-green-50"],
         ] as const).map(([v, l, Icon, col, bg]) => (
           <div key={l} className="bg-white rounded-xl border border-gray-200 p-4">
             <div className={cls("w-8 h-8 rounded-lg flex items-center justify-center mb-2", bg)}><Icon size={16} className={col} /></div>
@@ -62,6 +62,11 @@ export default function Schedule({ schedule }: ScheduleProps) {
             ))}
           </tbody>
         </table>
+        {schedule.length === 0 && (
+          <p className="px-5 py-8 text-center text-sm text-gray-400">
+            Nothing is booked for today. Clinicians schedule assessments from their patient list.
+          </p>
+        )}
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800">

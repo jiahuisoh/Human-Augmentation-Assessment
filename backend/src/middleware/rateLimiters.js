@@ -3,14 +3,14 @@ const erl = require("express-rate-limit");
 const rateLimit = erl.rateLimit || erl;
 const ipKeyGenerator = erl.ipKeyGenerator || ((ip) => ip);
 
-// Global rate limit: coarse backstop of 100 requests per 15 minutes per IP.
+// Global rate limit: coarse backstop of 400 requests per 15 minutes per IP.
 // The strict per-endpoint limiters below are the real abuse controls (login
 // 5/15min per IP+email, register 30/hour per IP). If several dashboards share
 // one clinic NAT IP and start hitting 429s, raise this cap rather than
 // loosening the auth limiters.
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 400,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },

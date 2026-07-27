@@ -26,6 +26,10 @@ const register = async (values) => {
     nricHash: await bcrypt.hash(nric, 12),
     nricLastFour: nric.slice(-4),
   });
+  // Admin-created accounts were audited but self-registration was not, so an
+  // account could appear with nothing recording where it came from. No request
+  // context exists yet, so the new user is its own actor - same shape login uses.
+  await writeAudit({ id: user._id, role: user.role }, "AUTH", `Account registered: ${email}`, { userId: user._id });
   return { user, token: signToken(user) };
 };
 
@@ -33,9 +37,14 @@ const login = async (email, password) => {
   const user = await User.findOne({ email }).select("+password +passwordChangedAt");
   if (!user) {
     await bcrypt.compare(password, DUMMY_HASH); // equalise timing with the found-user path
+    // The caller still gets one indistinguishable 401; the distinction is
+    // recorded only in the trail, where it separates a mistyped password from
+    // someone walking a list of addresses.
+    await writeAudit(null, "AUTH", `Failed login attempt: ${email}`, { reason: "unknown_email" }, "WARN");
     throw httpError(401, "Invalid email or password");
   }
   if (!(await user.comparePassword(password))) {
+    await writeAudit({ id: user._id, role: user.role }, "AUTH", `Failed login attempt: ${email}`, { userId: user._id, reason: "bad_password" }, "WARN");
     throw httpError(401, "Invalid email or password");
   }
   if (user.verificationStatus === "suspended") {

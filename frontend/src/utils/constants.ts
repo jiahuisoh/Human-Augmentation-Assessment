@@ -1,10 +1,35 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  Armchair, Hand, Footprints,
-  Dumbbell,
-  Activity, RotateCw,
-} from "lucide-react";
-import type { TestId } from "../types";
+import { Armchair, Hand, Footprints } from "lucide-react";
+import type { AuditCategory, AuditLevel, TestId } from "../types";
+
+/**
+ * Audit presentation, shared by the administrator's trail and the developer's
+ * technical log so a category never means one colour in one view and another
+ * colour in the other.
+ */
+export const AUDIT_CATEGORY_STYLE: Record<AuditCategory, string> = {
+  TOKEN:      "bg-indigo-50 text-indigo-700 border-indigo-200",
+  AUTH:       "bg-emerald-50 text-emerald-700 border-emerald-200",
+  ADMIN:      "bg-violet-50 text-violet-700 border-violet-200",
+  CONTRACT:   "bg-amber-50 text-amber-700 border-amber-200",
+  CONSENT:    "bg-blue-50 text-blue-700 border-blue-200",
+  AI:         "bg-gray-100 text-gray-600 border-gray-200",
+  CV:         "bg-violet-50 text-violet-700 border-violet-200",
+  ASSESSMENT: "bg-emerald-50 text-emerald-700 border-emerald-200",
+};
+
+export const AUDIT_LEVEL_STYLE: Record<AuditLevel, string> = {
+  INFO:  "text-gray-400",
+  WARN:  "text-amber-600",
+  ERROR: "text-red-600",
+};
+
+/**
+ * Clinic booking window, 24-hour "HH:MM", both ends inclusive.
+ * Mirrors clinicHours in backend/src/utils/constants.js - the server is the
+ * authority and rejects anything outside it; this drives the form.
+ */
+export const CLINIC_HOURS = { opens: "09:00", closes: "17:00" } as const;
 
 export interface TestDefinition {
   id: TestId;
@@ -69,19 +94,3 @@ export const TESTS: readonly TestDefinition[] = [
   },
 ];
 
-export interface ExerciseDefinition {
-  id: number;
-  name: string;
-  detail: string;
-  category: "Strength" | "Flexibility" | "Cardio";
-  duration: string;
-  Icon: LucideIcon;
-}
-
-export const EXERCISES: readonly ExerciseDefinition[] = [
-  { id: 1, name: "Chair Stand",       detail: "3 sets × 10 reps",          category: "Strength",    duration: "10 min", Icon: Armchair   },
-  { id: 2, name: "Seated Leg Raises", detail: "2 sets × 15 reps",          category: "Flexibility", duration: "5 min",  Icon: Activity   },
-  { id: 3, name: "Wall Push-Ups",     detail: "3 sets × 10 reps",          category: "Strength",    duration: "8 min",  Icon: Dumbbell   },
-  { id: 4, name: "Shoulder Rolls",    detail: "2 min each direction",       category: "Flexibility", duration: "4 min",  Icon: RotateCw   },
-  { id: 5, name: "Brisk Walk",        detail: "30 minutes at a good pace", category: "Cardio",      duration: "30 min", Icon: Footprints },
-];

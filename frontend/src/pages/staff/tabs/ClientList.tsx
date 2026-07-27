@@ -14,8 +14,8 @@ interface ClientListProps {
 export default function ClientList({ schedule, search, onSearch }: ClientListProps) {
   const filtered = schedule.filter(s => s.clientName.toLowerCase().includes(search.toLowerCase()));
 
-  const [viewing, setViewing]     = useState<User | null>(null);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [viewing, setViewing]       = useState<User | null>(null);
+  const [loadingId, setLoadingId]   = useState<string | null>(null);
   const [profileErr, setProfileErr] = useState("");
 
   // Staff may correct the emergency contact while assisting a client in
@@ -25,7 +25,6 @@ export default function ClientList({ schedule, search, onSearch }: ClientListPro
     setViewing(await userApi.saveEmergencyContact(viewing._id, contactValue));
   };
 
- 
   const saveProfileFor = async (fields: ProfileUpdate): Promise<void> => {
     if (!viewing) return;
     setViewing(await userApi.updateProfile(viewing._id, fields));
@@ -63,7 +62,7 @@ export default function ClientList({ schedule, search, onSearch }: ClientListPro
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-xs">
           <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Name", "Programme", "NRIC Status", "Schedule", ""].map((h, i) => (
+            <tr>{["Name", "Assessment", "NRIC Status", "Schedule", ""].map((h, i) => (
               <th key={h || i} className="text-left px-4 py-2.5 font-medium text-gray-500">{h}</th>
             ))}</tr>
           </thead>
@@ -71,7 +70,7 @@ export default function ClientList({ schedule, search, onSearch }: ClientListPro
             {filtered.map(s => (
               <tr key={s._id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">{s.clientName}</td>
-                <td className="px-4 py-3 text-gray-500">Active Ageing Programme</td>
+                <td className="px-4 py-3 text-gray-500">{s.testId.replace(/_/g, " ")}</td>
                 <td className="px-4 py-3">
                   <span className={cls("px-2 py-0.5 rounded-full text-xs font-semibold",
                     s.nricVerified ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600",
@@ -91,6 +90,13 @@ export default function ClientList({ schedule, search, onSearch }: ClientListPro
             ))}
           </tbody>
         </table>
+        {filtered.length === 0 && (
+          <p className="px-5 py-8 text-center text-sm text-gray-400">
+            {schedule.length === 0
+              ? "No clients are booked in today, so there is no one to look up."
+              : "No client on today's list matches that search."}
+          </p>
+        )}
       </div>
 
       {viewing && (

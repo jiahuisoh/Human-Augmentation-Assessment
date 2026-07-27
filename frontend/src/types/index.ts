@@ -154,6 +154,31 @@ export interface ConsentEvent {
 export type AuditCategory = "AUTH" | "TOKEN" | "ADMIN" | "CONTRACT" | "CONSENT" | "AI" | "CV" | "ASSESSMENT";
 export type AuditLevel = "INFO" | "WARN" | "ERROR";
 
+/** GET /health on either service - the unauthenticated liveness probe. */
+export interface LivenessProbe {
+  status: string;
+  timestamp: string;
+}
+
+export interface CvServiceProbe extends LivenessProbe {
+  service: string;
+}
+
+/** GET /api/health - developer/administrator detail. Names no client. */
+export interface SystemHealth {
+  status: "ok" | "degraded";
+  timestamp: string;
+  uptimeSeconds: number;
+  node: string;
+  database: {
+    state: string;
+    name: string | null;
+    ok: boolean;
+    pingMs: number | null;
+  };
+  cvSigningSecret: "configured" | "missing";
+}
+
 export interface AuditLog {
   _id: string;
   actorId: string;
@@ -197,16 +222,26 @@ export interface PendingVerificationClient {
   createdAt: string;
 }
 
-export type AttendanceStatus = "scheduled" | "present" | "absent" | "in_progress" | "completed" | "pending_nric";
+export type AttendanceStatus = "scheduled" | "present" | "absent" | "in_progress" | "completed";
 
 export interface ScheduleEntry {
   _id: string;
   clientId: string;
   clientName: string;
   testId: TestId;
-  time: string;
+  date: string; // clinic-local YYYY-MM-DD
+  time: string; // 24-hour HH:MM
   status: AttendanceStatus;
+  // Joined from the client's account when the entry is read, never stored - so
+  // an approval or suspension after booking is reflected immediately.
   nricVerified: boolean;
+}
+
+export interface NewBooking {
+  clientId: string;
+  testId: TestId;
+  date: string;
+  time: string;
 }
 
 

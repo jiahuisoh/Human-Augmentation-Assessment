@@ -12,5 +12,6 @@ router.use("/ai", require("./aiRoutes"));
 router.use("/plans", require("./planRoutes"));
 router.use("/schedule", require("./scheduleRoutes"));
 router.use("/questionnaires", require("./questionnaireRoutes"));
+router.use("/health", require("./healthRoutes"));
 
 module.exports = router;

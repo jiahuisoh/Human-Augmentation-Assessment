@@ -57,7 +57,6 @@ export default function SitReachGamification({
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-      {/* Star — anchored to toe landmarks */}
       <div className="absolute transition-[left,top] duration-100 ease-out" style={starStyle}>
         <div
           className={cls(
@@ -90,7 +89,6 @@ export default function SitReachGamification({
         </div>
       </div>
 
-      {/* Distance bar — only fills when form is valid */}
       <div className="absolute left-4 right-4 bottom-[10%]">
         <div className="flex justify-between text-[10px] text-gray-300 mb-1 px-1">
           <span>Start</span>
@@ -123,7 +121,6 @@ export default function SitReachGamification({
         )}
       </div>
 
-      {/* Hold steady meter */}
       {(holding || locked) && (
         <div className="absolute top-[14%] left-4 right-4">
           <p className="text-xs text-center text-amber-100 font-bold mb-1">

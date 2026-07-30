@@ -28,3 +28,7 @@ Thumbs.db
 
 .postman/
 postman/
+
+# Local chair-stand validation assets and generated reports
+cv-service/local_validation_videos/
+cv-service/validation_results/

@@ -187,6 +187,17 @@ const createSession = async (actor, { cvOutcomeToken }) => {
 const listForClient = (clientId) =>
   Session.find({ clientId }).sort({ createdAt: -1 });
 
+// Fetch a single session by ID — only accessible to the client themselves,
+// their assigned clinician, or an administrator.
+const getById = async (actor, sessionId) => {
+  const session = await Session.findById(sessionId);
+  if (!session) throw httpError(404, "Session not found");
+  if (!canAccessClient(actor, session.clientId)) {
+    throw httpError(403, "You do not have access to this client's data.");
+  }
+  return session;
+};
+
 // Clinician/admin override with mandatory reason and full audit trail.
 const overrideScore = async (actor, sessionId, { reason, newScore }) => {
   const existing = await Session.findById(sessionId)
@@ -258,4 +269,4 @@ const deleteSession = async (actor, sessionId, { reason }) => {
   return { deleted: true, _id: sessionId };
 };
 
-module.exports = { issueCvGrant, createSession, listForClient, overrideScore, deleteSession };
+module.exports = { issueCvGrant, createSession, listForClient, getById, overrideScore, deleteSession };

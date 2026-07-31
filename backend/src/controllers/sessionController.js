@@ -1,10 +1,9 @@
 const asyncHandler = require("../utils/asyncHandler");
 const { validate, validationFailed } = require("../utils/validators");
-const { TEST_IDS } = require("../utils/constants");
+const { TEST_IDS, RISK_LEVELS } = require("../utils/constants");
 const sessionService = require("../services/sessionService");
 
-// POST /api/sessions/cv-grant - authorise one CV run and hand the service the
-// client's real demographics inside a signed, short-lived token.
+// POST /api/sessions/cv-grant
 const createCvGrant = asyncHandler(async (req, res) => {
   const { ok, fields, values } = validate(req.body, {
     testId:   { type: "enum", required: true, values: TEST_IDS, label: "testId" },
@@ -21,17 +20,10 @@ const createCvGrant = asyncHandler(async (req, res) => {
   res.status(201).json(grant);
 });
 
-// POST /api/sessions - the signed CV outcome lands here after a test completes.
+// POST /api/sessions - signed CV outcome token lands here
 const createSession = asyncHandler(async (req, res) => {
-  // The token is the whole input. Every measurement, the test id and the client
-  // id are read from inside it after the signature is checked, so nothing a
-  // caller writes in the body can influence the stored record - not the score,
-  // and not the clinical verdict (which sessionService derives independently).
   const { ok, fields, values } = validate(req.body, {
-    cvOutcomeToken: {
-      type: "string", required: true, max: 4096, label: "cvOutcomeToken",
-      message: "A signed result from the assessment service is required.",
-    },
+    cvOutcomeToken: { type: "string", required: true, label: "cvOutcomeToken" },
   });
   if (!ok) return validationFailed(res, fields);
 
@@ -43,6 +35,12 @@ const createSession = asyncHandler(async (req, res) => {
 const listForClient = asyncHandler(async (req, res) => {
   const sessions = await sessionService.listForClient(req.params.clientId);
   res.json(sessions);
+});
+
+// GET /api/sessions/:id
+const getById = asyncHandler(async (req, res) => {
+  const session = await sessionService.getById(req.user, req.params.id);
+  res.json(session);
 });
 
 // PATCH /api/sessions/:id/override
@@ -57,10 +55,10 @@ const overrideScore = asyncHandler(async (req, res) => {
   res.json(session);
 });
 
-// DELETE /api/sessions/:id - permanent removal, reason required for the audit trail
+// DELETE /api/sessions/:id
 const deleteSession = asyncHandler(async (req, res) => {
   const { ok, fields, values } = validate(req.body, {
-    reason: { type: "string", required: true, max: 1000, label: "Reason", message: "reason is required to delete an assessment" },
+    reason: { type: "string", required: true, max: 1000, label: "reason", message: "reason is required for deletion" },
   });
   if (!ok) return validationFailed(res, fields);
 
@@ -68,4 +66,4 @@ const deleteSession = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
-module.exports = { createCvGrant, createSession, listForClient, overrideScore, deleteSession };
+module.exports = { createCvGrant, createSession, listForClient, getById, overrideScore, deleteSession };

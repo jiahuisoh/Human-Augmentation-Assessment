@@ -1,29 +1,29 @@
 # HANA: Functional Health Assessment and Intervention Platform
 
-Human Augmentation Neural Analytics (HANA) Functional Health Assessment & Intervention Plan is a full-stack platform for conducting and managing functional health assessments, comprising of *chair stand, back scratch, and sit-and-reach* tests, scored from live computer vision pose estimation.
+Human Augmentation Neural Analytics (HANA) Functional Health Assessment & Intervention is a full-stack platform for conducting and managing functional health assessments, comprising of *chair stand*, *back scratch*, and *sit-and-reach* tests, scored from live computer vision pose estimation.
 
 ---
 
 ## Contents
 
-- [Operating Context and Assumptions](#operating-context-and-assumptions)
-- [Platform Overview](#platform-overview)
-- [Client Verification Workflow](#client-verification-workflow)
-- [Requirements](#requirements)
-- [Setup](#setup)
-  - [1. Clone the Repository](#1-clone-the-repository)
-  - [2. MongoDB Atlas](#2-mongodb-atlas)
-  - [3. Configure Environment Variables](#3-configure-environment-variables)
-  - [4. Run Backend](#4-run-backend)
-  - [5. Run Frontend](#5-run-frontend)
-  - [6. Run Computer Vision (CV) Service](#6-run-computer-vision-cv-service)
-- [Creating User Accounts](#creating-user-accounts)
-- [Running the Tests](#running-the-tests)
-- [Project Layout](#project-layout)
-- [System Architecture](#system-architecture)
-- [Troubleshooting](#troubleshooting)
-- [Known Limitations](#known-limitations)
-- [Future Enhancements](#future-enhancements)
+[Operating Context and Assumptions](#operating-context-and-assumptions)
+[Platform Overview](#platform-overview)
+[Client Verification Workflow](#client-verification-workflow)
+[Requirements](#requirements)
+[Setup](#setup)
+  [1. Clone the Repository](#1-clone-the-repository)
+  [2. MongoDB Atlas](#2-mongodb-atlas)
+  [3. Configure Environment Variables](#3-configure-environment-variables)
+  [4. Run Backend](#4-run-backend)
+  [5. Run Frontend](#5-run-frontend)
+  [6. Run Computer Vision (CV) Service](#6-run-computer-vision-cv-service)
+[Creating User Accounts](#creating-user-accounts)
+[Running the Tests](#running-the-tests)
+[Project Layout](#project-layout)
+[System Architecture](#system-architecture)
+[Troubleshooting](#troubleshooting)
+[Known Limitations](#known-limitations)
+[Future Enhancements](#future-enhancements)
 
 ---
 
@@ -52,7 +52,7 @@ This requirement exists for the following reasons:
 
 The full NRIC or FIN of the client is never retained in readable form. At registration it is stored solely as a bcrypt hash, together with the final four characters for masked display. The in-person check is performed by comparing the number sighted on the physical card against that hash.
 
-#### NRIC and FIN Checksum Validation
+### NRIC and FIN Checksum Validation
 
 A Singapore NRIC or FIN is validated: its final letter is a check character derived from the seven digits before it. The platform verifies this at registration, so a mistyped or invented number is refused at the point of entry rather than surviving until the client presents themselves at the clinic and the in-person check fails for reasons nobody can explain.
 
@@ -105,7 +105,7 @@ Access control is role-based, and is further restricted at user level by client 
 
 Two principles from the requirements document are enforced in code rather than by convention:
 
-- **Least privilege and user-level restriction.** A clinician can reach only the clients assigned to them. Staff are returned the outcome of an identity check and never the client record itself.
+- **Least Privilege and User-Level Restriction.** A clinician can reach only the clients assigned to them. Staff are returned the outcome of an identity check and never the client record itself.
 - **Auditability.** Sensitive actions are written to an append-only audit log with an actor, a timestamp and a reason. Score overrides and record deletions require a documented justification.
 
 ---
@@ -114,7 +114,7 @@ Two principles from the requirements document are enforced in code rather than b
 
 A client account occupies one of four states. The state determines what the account may do.
 
-| State | Meaning | Client may |
+| State | Definition | Permissions for Client |
 |---|---|---|
 | `unverified` | Registered, identity not yet checked | Sign in; view Home, Account and Help only |
 | `pending` | Staff have performed the in-person check; awaiting administrator decision | As above |
@@ -164,7 +164,7 @@ Enforcement is applied on the server and is not merely a matter of interface pre
 
 ### Ports
 
-| Port | Service | Configured in |
+| Port | Service | Configured In |
 |---|---|---|
 | 4500 | Frontend dev server | `frontend/vite.config.ts` |
 | 4501 | CV service (mapped to container port 8000) | `docker-compose.yml` |
@@ -206,7 +206,7 @@ mongodb+srv://<username>:<password>@yourcluster.xxxxx.mongodb.net/hana?appName=y
 
 Retain this value for the next step.
 
-**Note:** Atlas accepts connections only from whitelisted IP addresses. If the backend loses its connection after a change of network (for example, from home to campus WiFi), add the new address under Network Access, or leave `0.0.0.0/0` enabled during development. **Note from UAT Testing**: Mobile hotspots may *block* MongoDB's connection ports at times.
+**Note**: Atlas accepts connections only from whitelisted IP addresses. If the backend loses its connection after a change of network (for example, from home to campus WiFi), add the new address under Network Access, or leave `0.0.0.0/0` enabled during development. **Note from UAT Testing**: Mobile hotspots may *block* MongoDB's connection ports at times.
 
 ### 3. Configure Environment Variables
 
@@ -348,15 +348,6 @@ To exercise the full assessment flow, the following are required at minimum: one
 
 ## Running the Tests
 
-### Backend
-
-```powershell
-cd backend
-npm test
-```
-
-Uses the test runner built into Node, so there is no additional dependency to install. The suite covers the authorisation middleware (client scoping, the staff and developer exclusions, the verification gate), the input validators (NRIC checksum, password policy, ranges), and the parsing of the breached-password range response. It requires neither a database, a running server, nor network access.
-
 ### CV Service
 
 The scoring, geometry and norm logic is covered by pytest.
@@ -397,11 +388,11 @@ This reports `153 passed`, which is the entire suite.
 
 The build step is required the first time, and again after any change to `cv-service/pyproject.toml` or the `Dockerfile`. Dependencies are installed into the image at build time. The application code itself is bind-mounted, so ordinary source edits need no rebuild.
 
-#### Where the Test Output Appears
+### Where the Test Output Appears
 
 `cv-tests` is a separate, short-lived container from `hana-cv`, and this catches people out:
 
-| Container | Runs | Log contains |
+| Container | Runs | Logging |
 |---|---|---|
 | `hana-cv` | `uvicorn app.main:app` | Service output only: model loading, startup, HTTP requests. **Never any test result.** It has neither pytest nor Node installed. |
 | `iwl-t8-cv-tests-run-<hash>` | `pytest` | The test output, including the `153 passed` summary |
@@ -420,7 +411,7 @@ The container then remains in the Containers list as `iwl-t8-cv-tests-run-<hash>
 docker compose run --rm cv-tests > test-results.txt
 ```
 
-#### Why a Separate Test Service
+### Why a Separate Test Service
 
 `cv-tests` exists as its own service rather than a command run against `cv-service`, because the suite needs two things the running service must not carry:
 
@@ -513,7 +504,9 @@ This is why the same `CV_SIGNING_SECRET` must reach both services. Keeping it in
 
 **`npm` or `node` is not recognised**
 
-Node.js is absent from the PATH. Reinstall with "Add to PATH" enabled, then close and reopen VS Code completely. Restart the computer if the problem persists.
+Node.js is absent from the PATH.
+
+**Fix**: reinstall with "Add to PATH" enabled, then close and reopen VS Code completely. Restart the computer if the problem persists.
 
 **MongoDB will not connect**
 
@@ -521,7 +514,7 @@ Node.js is absent from the PATH. Reinstall with "Add to PATH" enabled, then clos
 MongoDB connection error: querySrv ECONNREFUSED ...
 ```
 
-Check the following in order:
+**Fix**: check the following in order:
 
 - The IP address is not whitelisted. In Atlas, go to Network Access and add the address, or allow access from anywhere.
 - The network blocks MongoDB's ports. This is common on mobile hotspots; try another network.
@@ -535,7 +528,9 @@ FATAL: JWT_SECRET is not set - refusing to start.
 FATAL: CV_SIGNING_SECRET is not set - refusing to start.
 ```
 
-A required secret is missing. `JWT_SECRET` belongs in `backend/.env`; `CV_SIGNING_SECRET` belongs in the repository-root `.env`, which the backend loads in addition to its own. Confirm that the root `.env` exists beside `docker-compose.yml`, then restart the backend.
+A required secret is missing.
+
+**Fix**: `JWT_SECRET` belongs in `backend/.env`; `CV_SIGNING_SECRET` belongs in the repository-root `.env`, which the backend loads in addition to its own. Confirm that the root `.env` exists beside `docker-compose.yml`, then restart the backend.
 
 **The client account cannot begin an assessment**
 
@@ -543,13 +538,19 @@ A required secret is missing. `JWT_SECRET` belongs in `backend/.env`; `CV_SIGNIN
 Your account must be verified before you can use this feature.
 ```
 
-The account has not completed verification. This is intended behaviour, not a fault. Refer to the [verification workflow](#client-verification-workflow): the client must be checked in person by staff, and the account then approved by an administrator.
+The account has not completed verification. This is intended behaviour, not a fault.
+
+**Fix**: refer to the [verification workflow](#client-verification-workflow): the client must be checked in person by staff, and the account then approved by an administrator.
 
 **Sign-in reports that the account is suspended**
 
-Suspension blocks both sign-in and every authenticated request. Only an administrator can restore the account.
+Suspension blocks both sign-in and every authenticated request.
+
+**Fix**: ask an administrator to restore the account. No other role can.
 
 **The camera will not start, or the CV service reports errors**
+
+**Fix**: work through the following:
 
 - Docker Desktop must be running before `docker compose up cv-service` is issued.
 - Close any other application holding the webcam, such as Zoom, Teams or OBS. Only one application may access the camera at a time. A `NotReadableError` in the browser almost always indicates that another application holds the device.
@@ -558,20 +559,23 @@ Suspension blocks both sign-in and every authenticated request. Only an administ
 
 **A port is already in use**
 
-Close the process occupying the port, or allow the tool to select the next available one. Always use the URL printed in the terminal.
+**Fix**: close the process occupying the port, or allow the tool to select the next available one. Always use the URL printed in the terminal.
 
 **"Access Denied" or "403 Forbidden" while signed in**
 
-Role held by the current account does not carry permission for the action attempted. Refer to [Roles](#roles). A clinician, in particular, can reach only those clients assigned to them by an administrator.
+Role held by the current account does not carry permission for the action attempted.
+
+**Fix**: refer to [Roles](#roles). A clinician, in particular, can reach only those clients assigned to them by an administrator.
 
 **A blank page, or data that appears out of date**
 
-Perform a hard refresh with `Ctrl+Shift+R`.
+**Fix**: perform a hard refresh with `Ctrl+Shift+R`.
+
 ---
 
 ## Known Limitations
 
-**Identity is established by the in-person check, not by the NRIC or FIN itself.**
+**Identity is Established by the In-Person Check, not just by the NRIC or FIN itself.**
 
 The checksum validation applied at registration proves only that the number supplied is internally consistent. It cannot establish that the number has been issued, nor that it belongs to the person supplying it, as the validation used is an official / public algorithm, and a well-formed number can be generated trivially. It filters out poorly done and generated numbers or human errors from typing, not impersonation.
 
@@ -585,8 +589,8 @@ The consequence worth stating plainly is that a registered but unverified accoun
 
 This repository implements the first function as a core foundational base, as set under [Scope of This Implementation](#scope-of-this-implementation). The following remain to be integrated at present time.
 
-1. **Tokenised Incentives**, per second function: rewarding assessment completion, intervention attendance, adherence milestones and self-monitoring. The document is specific about the governance this requires, and it constrains the design. Tokens should be non-transferable and non-financial, and should reward engagement and effort rather than clinical outcome alone, so that frailer or more complex clients are not penalised. High-value rewards should require administrator approval, manual adjustments and revocations should carry a recorded reason, and developers should exercise token logic in a sandbox rather than against live records.
+1. **Tokenised Incentives**: rewarding assessment completion, intervention attendance, adherence milestones and self-monitoring. The document is specific about the governance this requires, and it constrains the design. Tokens should be non-transferable and non-financial, and should reward engagement and effort rather than clinical outcome alone, so that frailer or more complex clients are not penalised. High-value rewards should require administrator approval, manual adjustments and revocations should carry a recorded reason, and developers should exercise token logic in a sandbox rather than against live records.
 
-2. **Tokenised Health Records**, per third function: digital identity, consent management, data provenance and verifiable assessment records. Identifiable clinical data should not be held on-chain. What belongs there is consent events, record hashes, verification proofs, metadata pointers, access permissions and audit trails, with the clinical record itself remaining in the off-chain database. Consent must be explicit, traceable and revocable, and the chain must supplement clinical documentation rather than replace it.
+2. **Tokenised Health Records**: digital identity, consent management, data provenance and verifiable assessment records. Identifiable clinical data should not be held on-chain. What belongs there is consent events, record hashes, verification proofs, metadata pointers, access permissions and audit trails, with the clinical record itself remaining in the off-chain database. Consent must be explicit, traceable and revocable, and the chain must supplement clinical documentation rather than replace it.
 
 Both extend the existing consent log and audit trail, which already implement the governance principles those functions depend upon.

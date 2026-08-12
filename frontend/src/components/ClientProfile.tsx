@@ -22,6 +22,12 @@ const ACCENTS = {
   teal:   { focus: "focus:border-teal-500",   within: "focus-within:border-teal-500",   btn: "bg-teal-600 hover:bg-teal-700",     pencil: "hover:text-teal-600" },
 } as const;
 
+
+const FIELD_COLUMNS: Record<2 | 4, string> = {
+  2: "grid-cols-2",
+  4: "grid-cols-4",
+};
+
 const labelCls = "block text-xs font-medium text-gray-500 mb-1";
 const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none";
 
@@ -39,9 +45,10 @@ interface ClientProfile {
   onSaveProfile?: (fields: ProfileUpdate) => Promise<void>;
   onSaveEmergencyContact?: (contact: EmergencyContact) => Promise<void>;
   accent?: "violet" | "teal";
+  columns?: 2 | 4;
 }
 
-export function ClientProfile({ user, onSaveProfile, onSaveEmergencyContact, accent = "violet" }: ClientProfile) {
+export function ClientProfile({ user, onSaveProfile, onSaveEmergencyContact, accent = "violet", columns = 2 }: ClientProfile) {
   const a = ACCENTS[accent];
   const canEdit = !!(onSaveProfile || onSaveEmergencyContact);
 
@@ -234,46 +241,54 @@ export function ClientProfile({ user, onSaveProfile, onSaveEmergencyContact, acc
   }
 
   return (
-    <div className="space-y-4">
-      {canEdit && (
-        <div className="flex items-center justify-between -mb-2">
-          <span className="text-xs font-medium text-gray-500">Personal Details</span>
-          <button type="button" onClick={startEdit}
-            aria-label="Edit profile" title="Edit profile"
-            className={cls("p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors", a.pencil)}>
-            <Pencil size={14} />
-          </button>
-        </div>
-      )}
-
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
-        {([
-          ["Full Name",     user.name],
-          ["Email",         user.email, "break-all"],
-          ["Date Of Birth", user.dateOfBirth ? formatDOB(user.dateOfBirth) : "-"],
-          ["Age",           age !== null ? `${age} years` : "-"],
-          ["Gender",        user.gender ?? "-", "capitalize"],
-          ["NRIC",          user.nricLastFour ? `•••••${user.nricLastFour}` : "-", "font-mono tracking-wider"],
-          ["Height",        user.height != null ? `${user.height} cm` : "-"],
-          ["Weight",        user.weight != null ? `${user.weight} kg` : "-"],
-        ] as ReadonlyArray<readonly [string, string, string?]>).map(([label, value, extra]) => (
-          <div key={label}>
-            <dt className="text-xs font-medium text-gray-500 mb-0.5">{label}</dt>
-            <dd className={cls("text-sm font-semibold text-gray-900", extra)}>{value}</dd>
-          </div>
-        ))}
-        <div>
-          <dt className="text-xs font-medium text-gray-500 mb-1">Verification Status</dt>
-          <dd>
+    <div className="space-y-5">
+      <div>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h4 className="text-sm font-semibold text-gray-900">Personal Details</h4>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Account state, not a personal detail - it belongs beside the
+                heading rather than as one more cell in the field grid. */}
             <span className={cls(
               "inline-block px-2 py-0.5 rounded-full text-xs font-semibold border capitalize",
               STATUS_STYLES[user.verificationStatus],
             )}>
               {user.verificationStatus}
             </span>
-          </dd>
+            {canEdit && (
+              <button type="button" onClick={startEdit}
+                aria-label="Edit profile" title="Edit profile"
+                className={cls("p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors", a.pencil)}>
+                <Pencil size={14} />
+              </button>
+            )}
+          </div>
         </div>
-      </dl>
+
+
+        <dl className={cls("grid gap-x-6 gap-y-4", FIELD_COLUMNS[columns])}>
+          {([
+            ["Full Name",     user.name],
+            ["Email",         user.email, "break-words"],
+            ["Date of Birth", user.dateOfBirth ? formatDOB(user.dateOfBirth) : null],
+            ["Age",           age !== null ? `${age} years` : null],
+            ["Gender",        user.gender ?? null, "capitalize"],
+            ["NRIC",          user.nricLastFour ? `•••••${user.nricLastFour}` : null, "font-mono tracking-wider"],
+            ["Height",        user.height != null ? `${user.height} cm` : null],
+            ["Weight",        user.weight != null ? `${user.weight} kg` : null],
+          ] as ReadonlyArray<readonly [string, string | null, string?]>).map(([label, value, extra]) => (
+            <div key={label} className="min-w-0">
+              <dt className="text-xs font-medium text-gray-500 mb-0.5">{label}</dt>
+              {/* Missing values stay muted so the eye skips them and lands on
+                  the ones that are actually filled in. */}
+              <dd className={value
+                ? cls("text-sm font-semibold text-gray-900", extra)
+                : "text-sm text-gray-400"}>
+                {value ?? "-"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
 
       <div className="pt-4 border-t border-gray-100">
         <EmergencyContactSection contact={user.emergencyContact} accent={accent} />

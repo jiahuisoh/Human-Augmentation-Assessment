@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 
+
 export const inputCls =
   "w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-lg text-gray-900 " +
-  "focus:border-violet-600 focus:outline-none min-h-[52px] bg-white";
+  "focus:border-violet-600 focus:outline-none focus:ring-2 focus:ring-violet-200 " +
+  "min-h-[52px] bg-white";
 
 interface FormFieldProps {
   label: string;

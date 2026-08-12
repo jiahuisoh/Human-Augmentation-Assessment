@@ -1,20 +1,13 @@
 import { Users, AlertTriangle, Activity, CheckCircle2, ClipboardList, ChevronRight } from "lucide-react";
-import { cls, initialsOf } from "../../../utils/helpers";
+import { cls } from "../../../utils/helpers";
 import { TESTS } from "../../../utils/constants";
 import RiskBadge from "../../../components/RiskBadge";
 import { adherenceOf, riskFromSessions, type PatientView } from "../ClinicianShared";
-import type { RiskLevel } from "../../../types";
 
 interface OverviewProps {
   patients: PatientView[];
   onOpen: (p: PatientView) => void;
 }
-
-const RISK_TINT: Record<RiskLevel, { bg: string; text: string }> = {
-  low:      { bg: "bg-emerald-50", text: "text-emerald-700" },
-  moderate: { bg: "bg-amber-50",   text: "text-amber-700"   },
-  high:     { bg: "bg-red-50",     text: "text-red-700"     },
-};
 
 function testName(id: string): string {
   return TESTS.find(t => t.id === id)?.name ?? id.replace(/_/g, " ");
@@ -42,9 +35,9 @@ export default function Overview({ patients, onOpen }: OverviewProps) {
     .slice(0, 5);
 
   const stats = [
-    { v: String(patients.length), l: "Assigned patients", sub: "Under your care", Icon: Users, col: "text-violet-600", bg: "bg-violet-50" },
-    { v: String(high), l: "High risk", sub: high > 0 ? "Need review" : "None flagged", Icon: AlertTriangle, col: "text-red-600", bg: "bg-red-50" },
-    { v: String(sessionsThisWeek), l: "Sessions this week", sub: "Last 7 days", Icon: Activity, col: "text-emerald-600", bg: "bg-emerald-50" },
+    { v: String(patients.length), l: "Assigned Patients", sub: "Under your Care", Icon: Users, col: "text-violet-600", bg: "bg-violet-50" },
+    { v: String(high), l: "High Risk", sub: high > 0 ? "Require Review" : "None Flagged", Icon: AlertTriangle, col: "text-red-600", bg: "bg-red-50" },
+    { v: String(sessionsThisWeek), l: "Sessions Scheduled", sub: "Last 7 days", Icon: Activity, col: "text-emerald-600", bg: "bg-emerald-50" },
   ];
 
   return (
@@ -67,8 +60,8 @@ export default function Overview({ patients, onOpen }: OverviewProps) {
       <div className="bg-white rounded-2xl border border-gray-200/70 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Patients needing attention</h3>
-            <p className="text-xs text-gray-400 mt-0.5">High risk or below-target adherence</p>
+            <h3 className="text-sm font-semibold text-gray-900">Patients Requiring Attention</h3>
+            <p className="text-xs text-gray-400 mt-0.5">High Risk or Below-Target Adherence</p>
           </div>
           {needsAttention.length > 0 && (
             <span className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
@@ -94,13 +87,9 @@ export default function Overview({ patients, onOpen }: OverviewProps) {
         ) : (
           needsAttention.map(p => {
             const level = riskFromSessions(p.sessions);
-            const tint = RISK_TINT[level];
             return (
               <div key={p.user._id}
                 className="flex items-center gap-4 px-5 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/70 transition-colors">
-                <div className={cls("w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0", tint.bg, tint.text)}>
-                  {initialsOf(p.user.name)}
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-gray-900 truncate">{p.user.name}</div>
                   <div className="text-xs text-gray-400">{attentionReason(p)}</div>

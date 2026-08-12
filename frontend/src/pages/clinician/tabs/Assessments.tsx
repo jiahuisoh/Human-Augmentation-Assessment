@@ -27,7 +27,7 @@ function LiveLaunch({ patients, onLaunchCV }: LiveLaunchProps) {
   return (
     <div>
       <h3 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
-        <Camera size={15} className="text-violet-600" /> Conduct a live assessment
+        <Camera size={15} className="text-violet-600" /> Conduct Live Assessment
       </h3>
       <p className="text-xs text-gray-400 mb-3">
         For in-clinic sessions. Frames stream to the HANA CV service for analysis; results are recorded with a timestamp.

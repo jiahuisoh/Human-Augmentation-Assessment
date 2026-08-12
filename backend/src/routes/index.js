@@ -8,7 +8,6 @@ router.use("/staff", require("./staffRoutes"));
 router.use("/sessions", require("./sessionRoutes"));
 router.use("/consent", require("./consentRoutes"));
 router.use("/audit", require("./auditRoutes"));
-router.use("/ai", require("./aiRoutes"));
 router.use("/plans", require("./planRoutes"));
 router.use("/schedule", require("./scheduleRoutes"));
 router.use("/questionnaires", require("./questionnaireRoutes"));

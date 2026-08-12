@@ -5,13 +5,12 @@ interface ConfigSection {
 
 const SECTIONS: ReadonlyArray<ConfigSection> = [
   {
-    title: "Cross-function principles",
+    title: "Cross-Function Principles",
     items: [
-      ["Least privilege",            "Enforced"],
-      ["Role-based access control",  "5 roles active"],
-      ["Human-in-the-loop AI",       "Clinician approval required"],
-      ["Auditability",                "Sensitive actions logged"],
-      ["Data minimisation",           "Staff see profiles, never clinical data"],
+      ["Role-Based Access Control",  "5 Roles Active"],
+      ["Human-in-the-Loop AI",       "Clinician Approval Required"],
+      ["Auditability",                "Sensitive Actions Logged"],
+      ["Data Minimisation",           "Staff unable to access Clinical Data"],
     ],
   },
 ];

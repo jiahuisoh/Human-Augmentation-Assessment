@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { LogOut, type LucideIcon } from "lucide-react";
-import { cls, initialsOf } from "../utils/helpers";
+import { cls } from "../utils/helpers";
 import type { Role, User } from "../types";
 
 export interface NavItem {
@@ -67,22 +67,20 @@ export default function SidebarLayout({
           })}
         </nav>
 
-        <div className="px-3 py-4 border-t border-gray-200">
-          <div className="flex items-center gap-2.5 px-3 py-2 mb-1">
-            <div className={cls("w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold", ACCENT_BG[accent], ACCENT_TXT[accent])}>
-              {initialsOf(user.name)}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-medium text-gray-900 truncate">{user.name}</div>
-              <div className="text-xs text-gray-400 capitalize">{user.role}</div>
-            </div>
+        {/* The role is already stated twice above (sidebar subtitle, header
+            pill), so the account line carries the email instead - it is the one
+            fact that says which account this actually is. */}
+        <div className="px-3 py-4 border-t border-gray-200 space-y-2.5">
+          <div className="px-3">
+            <div className="text-sm font-medium text-gray-900 truncate">{user.name}</div>
+            <div className="text-xs text-gray-400 truncate" title={user.email}>{user.email}</div>
           </div>
           <button
             type="button"
             onClick={onSignOut}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
           >
-            <LogOut size={13} /> Sign out
+            <LogOut size={13} /> Sign Out
           </button>
         </div>
       </aside>

@@ -91,7 +91,7 @@ export default function ScheduleCard({ entries, onBook, onCancel }: ScheduleCard
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <h4 className="text-sm font-semibold text-gray-900 mb-1">Upcoming assessments</h4>
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">Upcoming Assessments</h4>
       <p className="text-xs text-gray-400 mb-4">
         Booked sessions appear on the front desk's schedule for that day, where staff run the
         NRIC check and record attendance.

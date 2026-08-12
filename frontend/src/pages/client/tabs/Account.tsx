@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Save, Pencil, X } from "lucide-react";
 import { cls, calculateAge, formatDOB, isValidNric } from "../../../utils/helpers";
-import { measurementApi, userApi } from "../../../utils/api";
+import { measurementApi, userApi, ApiError } from "../../../utils/api";
 import { EmergencyContactSection } from "../../../components/EmergencyContact";
 import { PasswordInput, PasswordFeedback } from "../../../components/PasswordFields";
 import { meetsPasswordReqs } from "../../../utils/passwordStrength";
@@ -141,6 +141,10 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
       setPwForm({ current: "", next: "", confirm: "" });
       showToast("Password changed. Other devices have been signed out.");
     } catch (err) {
+      if (err instanceof ApiError && err.code === "PASSWORD_BREACHED") {
+        setPwErrors({ next: err.message });
+        return;
+      }
       showToast(err instanceof Error ? err.message : "Failed to change password", false);
     } finally {
       setChangingPw(false);
@@ -168,7 +172,7 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
         </div>
         <Row label="Name"          value={user.name} />
         <Row label="Email"         value={user.email} />
-        <Row label="Date of birth" value={user.dateOfBirth ? `${formatDOB(user.dateOfBirth)} · age ${age ?? "-"}` : "-"} />
+        <Row label="Date of Birth" value={user.dateOfBirth ? `${formatDOB(user.dateOfBirth)} · age ${age ?? "-"}` : "-"} />
         <div className="flex items-center justify-between py-2 border-b border-gray-50">
           <span className="text-sm text-gray-500">NRIC</span>
           <span className="text-sm text-gray-900 font-medium font-mono tracking-widest">
@@ -245,7 +249,7 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
       <BMICard bmi={bmi} />
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-3">Height &amp; weight</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-3">Height &amp; Weight</h3>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label htmlFor="acct-h" className="block text-xs font-medium text-gray-500 mb-1">Height (cm)</label>
@@ -272,7 +276,7 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-3">BMI history</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-3">BMI History</h3>
         {/* The classification bands are drawn and named inside the chart, so a
             separate colour legend underneath would only restate them. */}
         <BMIChart data={measurements} />
@@ -287,7 +291,7 @@ export default function Account({ user, onUserUpdate }: AccountProps) {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="text-base font-semibold text-gray-900 mb-1">Change Password</h3>
         <p className="text-xs text-gray-400 mb-3">
-          After the change, all other signed-in devices are logged out.
+          After the change, all other signed-in devices will be logged out.
         </p>
         <div className="space-y-3 mb-3">
           <PwField id="pw-current" label="Current Password" value={pwForm.current} error={pwErrors.current}

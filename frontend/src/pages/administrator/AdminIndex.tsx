@@ -95,7 +95,7 @@ export default function Administrator({ user, onSignOut }: AdministratorProps) {
             Welcome, {firstNameOf(user.name)}
           </div>
           <div className="text-xs text-gray-400">
-            {users.length} user account{users.length !== 1 ? "s" : ""}
+            {users.length} User Account{users.length !== 1 ? "s" : ""}
           </div>
         </div>
       }

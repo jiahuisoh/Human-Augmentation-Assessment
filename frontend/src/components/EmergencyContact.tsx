@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pencil } from "lucide-react";
-import { cls, normalizeSgPhone } from "../utils/helpers";
+import { cls, formatSgPhone, normalizeSgPhone } from "../utils/helpers";
 import type { EmergencyContact } from "../types";
 
 export const RELATIONSHIPS = ["Spouse / Partner", "Son", "Daughter", "Sibling", "Friend", "Carer", "Other"];
@@ -51,7 +51,7 @@ export function EmergencyContactSection({ contact, onSave, accent = "violet", no
       return;
     }
     const next: EmergencyContact = { name: draft.name.trim(), phone, relationship: draft.relationship };
-    if (!window.confirm(`Save this emergency contact?\n\n${next.name} (${next.relationship})\n${next.phone}`)) return;
+    if (!window.confirm(`Save this emergency contact?\n\n${next.name} (${next.relationship})\n${formatSgPhone(next.phone)}`)) return;
     setSaving(true);
     setErr("");
     try {
@@ -66,7 +66,7 @@ export function EmergencyContactSection({ contact, onSave, accent = "violet", no
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-gray-900">Emergency Contact</h4>
         {onSave && !editing && (
           <button type="button" onClick={startEdit}
@@ -79,10 +79,10 @@ export function EmergencyContactSection({ contact, onSave, accent = "violet", no
       {note && <p className="text-xs text-gray-400 mb-2">{note}</p>}
 
       {!editing ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-2 mt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-4">
           {([
             ["Name",         contact?.name],
-            ["Phone",        contact?.phone],
+            ["Phone",        formatSgPhone(contact?.phone)],
             ["Relationship", contact?.relationship],
           ] as const).map(([label, value]) => (
             <div key={label}>
@@ -94,7 +94,7 @@ export function EmergencyContactSection({ contact, onSave, accent = "violet", no
           ))}
         </div>
       ) : (
-        <div className="space-y-2 mt-1">
+        <div className="space-y-2">
           <div>
             <label htmlFor="ecs-name" className={labelCls}>Name</label>
             <input id="ecs-name" value={draft.name}

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import {
-  Heart, ClipboardList, Shield, Activity,
+  Heart, HeartPulse, ClipboardList, Shield, Activity,
   LogOut, User as UserIcon, HelpCircle,
   ListChecks, Camera, Lock,
+  ShieldCheck, ShieldAlert, ShieldX, Clock,
   type LucideIcon,
 } from "lucide-react";
-import { cls, firstNameOf, initialsOf } from "../../utils/helpers";
+import { cls } from "../../utils/helpers";
 import {
   consentApi, planApi, sessionApi,
 } from "../../utils/api";
@@ -15,9 +16,9 @@ import AssessmentResult from "../../cv/AssessmentResult";
 import type { TestOutcomeWire } from "../../cv/wireTypes";
 import type {
   AssessmentSession, ConsentEvent, ConsentScope, InterventionPlan,
-  TestId, User,
+  TestId, User, VerificationStatus,
 } from "../../types";
-import { greeting, latestConsentByScope } from "./ClientShared";
+import { latestConsentByScope } from "./ClientShared";
 
 import Home            from "./tabs/Home";
 import Assessments     from "./tabs/Assessments";
@@ -54,6 +55,16 @@ interface ClientProps {
 // consent log understated what the client had actually been asked.
 const CONSENT_ON_SAVE: ReadonlyArray<ConsentScope> = ["assessment_data", "clinician_share"];
 
+// Status line under the account name in the app bar. The full explanation of
+// each state lives in VerificationBanner; this is only the standing summary,
+// so a client can always see where their account stands without scrolling.
+const VERIFICATION: Record<VerificationStatus, { label: string; tone: string; Icon: LucideIcon }> = {
+  verified:   { label: "Identity Verified",      tone: "text-emerald-600", Icon: ShieldCheck },
+  pending:    { label: "Verification in Review", tone: "text-blue-600",    Icon: Clock       },
+  unverified: { label: "Unverified",       tone: "text-amber-600",   Icon: ShieldAlert },
+  suspended:  { label: "Account Suspended",      tone: "text-red-600",     Icon: ShieldX     },
+};
+
 // Until identity verification completes (staff NRIC check + admin approval),
 // clients can only see Home, Account and Help. Mirrors the backend gate
 // (requireVerifiedClient) - this is UX, the server enforces it regardless.
@@ -62,6 +73,7 @@ const OPEN_TABS: ReadonlySet<TabId> = new Set(["home", "account", "help"]);
 export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
   const [tab, setTab]               = useState<TabId>("home");
   const isVerified = user.verificationStatus === "verified";
+  const verification = VERIFICATION[user.verificationStatus];
   const isLocked = (id: TabId): boolean => !isVerified && !OPEN_TABS.has(id);
   const goTab = (id: TabId): void => { if (!isLocked(id)) setTab(id); };
   const [sessions, setSessions]     = useState<AssessmentSession[]>([]);
@@ -149,20 +161,28 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-gradient-to-r from-violet-600 to-indigo-600 px-6 pt-10 pb-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-violet-200 text-sm">{greeting()}</p>
-            <h1 className="text-2xl font-bold text-white">Hi, {firstNameOf(user.name)}!</h1>
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-3xl w-full mx-auto px-4 py-3 flex items-center gap-3">
+          <span aria-hidden="true" className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
+            <HeartPulse size={18} className="text-white" />
+          </span>
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="text-sm font-semibold text-gray-900">HANA</div>
+            <div className="text-xs text-gray-400">Functional Health Assessment and Intervention</div>
           </div>
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-white text-sm">
-            {initialsOf(user.name)}
+
+          <div className="min-w-0 text-right leading-tight">
+            <div className="text-sm font-medium text-gray-900 truncate">{user.name}</div>
+            <div className={cls("text-xs inline-flex items-center gap-1", verification.tone)}>
+              <verification.Icon size={12} className="flex-shrink-0" />
+              {verification.label}
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="bg-white border-b border-gray-200 px-4">
-        <div className="flex gap-1">
+      <div className="bg-white border-b border-gray-200">
+        <div className="flex flex-wrap gap-1 max-w-3xl w-full mx-auto px-4">
           {TABS.map(({ id, label, Icon }) => {
             const locked = isLocked(id);
             return (
@@ -170,14 +190,14 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
                 disabled={locked}
                 title={locked ? "Available after your identity is verified" : undefined}
                 className={cls(
-                  "flex flex-1 min-w-0 items-center justify-center gap-1.5 px-2 py-3.5 text-sm font-medium border-b-2 transition-colors",
+                  "flex grow shrink-0 items-center justify-center gap-1.5 px-2 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
                   tab === id
                     ? "border-violet-600 text-violet-600"
                     : "border-transparent text-gray-500 hover:text-gray-700",
                   locked && "opacity-40 cursor-not-allowed hover:text-gray-500",
                 )}>
                 {locked ? <Lock size={14} className="flex-shrink-0" /> : <Icon size={14} className="flex-shrink-0" />}
-                {" "}<span className="truncate">{label}</span>
+                <span>{label}</span>
               </button>
             );
           })}
@@ -199,7 +219,7 @@ export default function Client({ user, onSignOut, onUserUpdate }: ClientProps) {
 
       <button type="button" onClick={onSignOut}
         className="mx-4 mb-6 flex items-center justify-center gap-2 border border-gray-200 rounded-2xl py-3.5 text-gray-500 text-sm font-medium hover:text-red-600 hover:border-red-200 transition-colors">
-        <LogOut size={16} /> Sign out
+        <LogOut size={16} /> Sign Out
       </button>
     </div>
   );

@@ -2,6 +2,9 @@
 // requirements, a zxcvbn strength meter, and a Have I Been Pwned
 // breached-password check.
 
+export const BREACHED_PASSWORD_MESSAGE =
+  "This password has appeared in a known data breach. Please choose a different password to use.";
+
 export interface PasswordReqs { length: boolean; letter: boolean; digit: boolean }
 
 // Mirrors backend utils/validators.js strongPassword: 8+ chars, a letter and

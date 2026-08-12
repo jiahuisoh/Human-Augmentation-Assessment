@@ -1,4 +1,3 @@
-const AIRecommendation = require("../models/AIRecommendation");
 const Consent = require("../models/Consent");
 const InterventionPlan = require("../models/InterventionPlan");
 const Measurement = require("../models/Measurement");
@@ -21,7 +20,6 @@ const Session = require("../models/Session");
  * it is the single place that decides what "delete my data" means.
  */
 const CLIENT_OWNED_MODELS = [
-  AIRecommendation,
   Consent,
   InterventionPlan,
   Measurement,

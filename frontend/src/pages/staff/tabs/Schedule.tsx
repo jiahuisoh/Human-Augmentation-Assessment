@@ -15,7 +15,7 @@ export default function Schedule({ schedule }: ScheduleProps) {
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
         {([
-          [schedule.length, "Today's sessions", Calendar,    "text-teal-600",  "bg-teal-50"],
+          [schedule.length, "Today's Sessions", Calendar,    "text-teal-600",  "bg-teal-50"],
           [pendingNric,     "Pending NRIC",     AlertCircle, "text-amber-600", "bg-amber-50"],
           [completed,       "Completed",        CheckCircle, "text-green-600", "bg-green-50"],
         ] as const).map(([v, l, Icon, col, bg]) => (
@@ -29,14 +29,14 @@ export default function Schedule({ schedule }: ScheduleProps) {
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900">Today's client schedule</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Today's Client Schedule</h3>
           <span className="text-xs text-gray-400">
             {new Date().toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" })}
           </span>
         </div>
         <table className="w-full text-xs">
           <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>{["Time", "Client", "Assessment", "NRIC", "Status"].map(h => (
+            <tr>{["Time", "Name", "Assessment", "NRIC", "Status"].map(h => (
               <th key={h} className="text-left px-4 py-2.5 font-medium text-gray-500">{h}</th>
             ))}</tr>
           </thead>
@@ -64,7 +64,7 @@ export default function Schedule({ schedule }: ScheduleProps) {
         </table>
         {schedule.length === 0 && (
           <p className="px-5 py-8 text-center text-sm text-gray-400">
-            Nothing is booked for today. Clinicians schedule assessments from their patient list.
+            No patients are booked for today. Clinicians schedule assessments from their patient list.
           </p>
         )}
       </div>

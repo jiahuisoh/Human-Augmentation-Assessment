@@ -27,7 +27,7 @@ export default function VerificationBanner({ status }: VerificationBannerProps) 
       <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-5 flex items-start gap-4">
         <Clock size={28} className="text-blue-600 flex-shrink-0 mt-0.5" />
         <div>
-          <h3 className="text-lg font-bold text-blue-900">Verification In Progress</h3>
+          <h3 className="text-lg font-bold text-blue-900">Verification in Progress</h3>
           <p className="text-base text-blue-800 mt-1 leading-relaxed">
             Your NRIC has been checked at the clinic. An administrator is reviewing your account.
             Your features will unlock as soon as it is approved.

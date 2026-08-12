@@ -79,7 +79,7 @@ export default function Assessments({ users }: AssessmentsProps) {
             onChange={e => setClientId(e.target.value)}
             className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-indigo-500 focus:outline-none"
           >
-            <option value="">Select a client…</option>
+            <option value="">Select A Client…</option>
             {clients.map(c => (
               <option key={c._id} value={c._id}>{c.name} · {c.email}</option>
             ))}
@@ -100,7 +100,7 @@ export default function Assessments({ users }: AssessmentsProps) {
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h4 className="text-sm font-semibold text-gray-900 mb-3">
-          Assessment sessions{sessions.length > 0 ? ` (${sessions.length})` : ""}
+          Assessment Sessions{sessions.length > 0 ? ` (${sessions.length})` : ""}
         </h4>
 
         {loadErr && <p className="text-xs font-medium text-red-600">{loadErr}</p>}

@@ -13,7 +13,7 @@ export default function Audit({ logs }: AuditProps) {
         <div className="w-2 h-2 rounded-full bg-red-400" />
         <div className="w-2 h-2 rounded-full bg-amber-400" />
         <div className="w-2 h-2 rounded-full bg-emerald-400" />
-        <span className="text-gray-500 text-xs font-mono ml-2">hana-platform · audit-trail · full-access</span>
+        <span className="text-gray-500 text-xs font-mono ml-2">HANA-Platform · Audit-Trail · Full-Access</span>
       </div>
       <div className="p-4 h-96 overflow-y-auto font-mono text-xs space-y-1">
         {logs.map(l => {

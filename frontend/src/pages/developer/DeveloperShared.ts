@@ -34,35 +34,36 @@ export async function runHealthChecks(): Promise<HealthReport> {
   const checks: HealthCheck[] = [];
 
   checks.push(live.status === "fulfilled"
-    ? { label: "API server", ok: true, detail: `Responding at ${BASE_URL}` }
-    : { label: "API server", ok: false, detail: reasonOf(live.reason, `No response from ${BASE_URL}`) });
+    ? { label: "Backend", ok: true, detail: `Responding at ${BASE_URL}` }
+    : { label: "Backend", ok: false, detail: reasonOf(live.reason, `No response from ${BASE_URL}`) });
 
   if (system.status === "fulfilled") {
     const { database, cvSigningSecret } = system.value;
+    const state = database.state.charAt(0).toUpperCase() + database.state.slice(1);
     checks.push({
       label: "Database",
       ok: database.ok,
       detail: database.ok
-        ? `${database.state}${database.name ? ` · ${database.name}` : ""} · ping ${database.pingMs} ms`
-        : `${database.state} — no round-trip`,
+        ? `${state}${database.name ? ` · ${database.name}` : ""} · ping ${database.pingMs} ms`
+        : `${state} — no round-trip`,
     });
     checks.push({
-      label: "CV signing secret",
+      label: "CV Signing Secret",
       ok: cvSigningSecret === "configured",
       // Both services must hold the SAME value; we can only see our own side.
       detail: cvSigningSecret === "configured"
-        ? "Configured on the backend"
-        : "Missing — the backend cannot sign assessment grants",
+        ? "Configured in Backend"
+        : "Missing - Backend will not sign assessment grants",
     });
   } else {
     const detail = reasonOf(system.reason, `No response from ${BASE_URL}`);
     checks.push({ label: "Database", ok: false, detail });
-    checks.push({ label: "CV signing secret", ok: false, detail });
+    checks.push({ label: "CV Signing Secret", ok: false, detail });
   }
 
   checks.push(cv.status === "fulfilled"
-    ? { label: "CV service", ok: true, detail: `${cv.value.service} responding at ${CV_HTTP_URL}` }
-    : { label: "CV service", ok: false, detail: reasonOf(cv.reason, `No response from ${CV_HTTP_URL}`) });
+    ? { label: "CV Service", ok: true, detail: `${cv.value.service} responding at ${CV_HTTP_URL}` }
+    : { label: "CV Service", ok: false, detail: reasonOf(cv.reason, `No response from ${CV_HTTP_URL}`) });
 
   return {
     checkedAt: new Date().toISOString(),

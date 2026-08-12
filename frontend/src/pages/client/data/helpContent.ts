@@ -52,7 +52,7 @@ export interface ContactChannel {
 }
 
 export const CONTACT_CHANNELS: ReadonlyArray<ContactChannel> = [
-  { Icon: Phone,  label: "Call the centre",  value: "6123-4567",                  sub: "Mon–Fri, 9am–5pm",            href: "tel:+6561234567" },
-  { Icon: Mail,   label: "Email support",     value: "support@hana.sg",            sub: "Reply within 1 working day",  href: "mailto:support@hana.sg" },
+  { Icon: Phone,  label: "Call the centre",  value: "6123-4567",                  sub: "Mon-Fri, 9am-5pm",            href: "tel:+6561234567" },
+  { Icon: Mail,   label: "Email support",     value: "support@hana.sg",            sub: "Get a response within 1-2 working days",  href: "mailto:support@hana.sg" },
   { Icon: MapPin, label: "In person",         value: "Visit your assigned clinic", sub: "Any HANA Staff member can help", href: null },
 ];

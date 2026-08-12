@@ -26,9 +26,9 @@ export default function Assessments({ sessions, onOpen }: AssessmentsProps) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-1">Past results</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-1">Assessment Result History</h3>
         <p className="text-xs text-gray-400 mb-4">
-          Tap any result to see the full breakdown again, exactly as it appeared when you finished the test.
+          Tap any assessment result to see the full breakdown again, exactly as it appeared when you finished the test.
         </p>
         {sessions.length === 0 ? (
           <p className="text-sm text-gray-400">

@@ -19,8 +19,8 @@ const SCOPE_LABEL: Record<ConsentScope, string> = {
 // this notice has to change with it.
 const COLLECTED: ReadonlyArray<readonly [string, string]> = [
   ["Identity and Contact", "Your name, email, date of birth and gender. Your NRIC is kept only as a one-way hash plus its last four digits - full NRIC is never stored."],
-  ["Health information",   "Your height and weight, your assessment results, and your questionnaire answers."],
-  ["Activity",             "Sign-ins and changes made to your record, kept as an audit trail."],
+  ["Health Information",   "Your height and weight, your assessment results, and your questionnaire answers."],
+  ["Activity",             "Log-ins and changes made to your record, kept as an audit trail."],
 ];
 
 const WHO_CAN_SEE: ReadonlyArray<readonly [string, string]> = [

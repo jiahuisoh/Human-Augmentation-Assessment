@@ -6,6 +6,15 @@ html, body, #root {
   height: 100%;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
+
+html.auth-page {
+  scrollbar-gutter: stable both-edges;
+}
+
 body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;

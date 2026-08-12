@@ -3,6 +3,7 @@ services:
     build:
       context: ./cv-service
       dockerfile: Dockerfile
+      target: runtime
     container_name: hana-cv
     ports:
       - "4501:8000"
@@ -14,6 +15,21 @@ services:
       - CV_SIGNING_SECRET=${CV_SIGNING_SECRET:?set CV_SIGNING_SECRET in the .env beside docker-compose.yml}
     volumes:
       - ./cv-service:/app
+    networks:
+      - hana-net
+
+  cv-tests:
+    build:
+      context: ./cv-service
+      dockerfile: Dockerfile
+      target: test
+    profiles: ["test"]
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CV_SIGNING_SECRET=${CV_SIGNING_SECRET:?set CV_SIGNING_SECRET in the .env beside docker-compose.yml}
+    volumes:
+      - ./cv-service:/app
+      - ./backend:/backend:ro
     networks:
       - hana-net
 

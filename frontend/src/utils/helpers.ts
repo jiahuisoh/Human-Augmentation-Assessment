@@ -37,6 +37,27 @@ export function formatLogStamp(iso?: string | null): string {
 }
 
 /**
+ * Time-of-day greeting
+ */
+export function greeting(date: Date = new Date()): string {
+  const hour = date.getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
+/**
+ * "Tuesday, 12 August 2026" - the date line under the client's greeting.
+ * Spelled out in full because the audience is older adults, for whom a numeric
+ * "12/08/26" is both smaller to read and ambiguous against the US ordering.
+ */
+export function formatLongDate(date: Date = new Date()): string {
+  return date.toLocaleDateString("en-SG", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+}
+
+/**
  * Today as "YYYY-MM-DD" in the browser's own timezone - the same calendar day
  * the backend stores for a booking. "en-CA" is the locale whose short date
  * format is already ISO.
@@ -64,11 +85,6 @@ export function nowHhMm(): string {
   });
 }
 
-export function initialsOf(name?: string): string {
-  if (!name) return "U";
-  return name.split(/\s+/).map(p => p[0] ?? "").join("").slice(0, 2).toUpperCase();
-}
-
 export function firstNameOf(name?: string): string {
   if (!name) return "there";
   return name.split(/\s+/)[0] ?? name;
@@ -84,6 +100,17 @@ export function normalizeSgPhone(phone: string): string | null {
   const p = phone.replace(/\s+/g, "");
   const m = /^(?:\+65)?([689]\d{7})$/.exec(p);
   return m ? `+65${m[1]}` : null;
+}
+
+/**
+ * Display form of a stored Singapore number: "+65 9875 6782". Storage is the
+ * compact "+65XXXXXXXX" that normalizeSgPhone produces; anything not matching
+ * that shape is handed back untouched rather than mangled into a wrong number.
+ */
+export function formatSgPhone(phone?: string | null): string {
+  if (!phone) return "";
+  const m = /^(?:\+65)?(\d{4})(\d{4})$/.exec(phone.replace(/\s+/g, ""));
+  return m ? `+65 ${m[1]} ${m[2]}` : phone;
 }
 
 /**

@@ -64,7 +64,7 @@ export default function SelfTest({ onStart }: SelfTestProps) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold text-gray-900">Choose an assessment</h2>
+        <h2 className="text-base font-semibold text-gray-900">Choose an Assessment</h2>
         <p className="text-sm text-gray-400 mt-0.5">
           Run a guided functional test on your own and share the result with your clinician.
         </p>

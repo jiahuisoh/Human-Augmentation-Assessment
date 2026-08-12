@@ -2,23 +2,25 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { Eye, EyeOff, Circle, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { cls } from "../utils/helpers";
 import { inputCls } from "./FormField";
-import { passwordReqs, strengthLevel, checkHIBP, type StrengthLevel } from "../utils/passwordStrength";
+import { passwordReqs, strengthLevel, checkHIBP, BREACHED_PASSWORD_MESSAGE, type StrengthLevel } from "../utils/passwordStrength";
 
 interface PasswordInputProps {
   id: string;
   value: string;
   onChange: (v: string) => void;
   error?: string;
-  /** Overrides the default signup-sized input styling (e.g. compact cards). */
   className?: string;
+  autoComplete?: string;
+  autoFocus?: boolean;
 }
 
-export function PasswordInput({ id, value, onChange, error, className }: PasswordInputProps) {
+export function PasswordInput({ id, value, onChange, error, className, autoComplete, autoFocus }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="relative">
       <input
         id={id} type={visible ? "text" : "password"} value={value}
+        autoComplete={autoComplete} autoFocus={autoFocus}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
         className={cls(className ?? inputCls, "pr-14", error && "border-red-400")}
       />
@@ -59,11 +61,9 @@ export function PasswordFeedback({ value, userInputs }: { value: string; userInp
   return (
     <div className="mb-4">
       {breached && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5 mb-3">
-          <AlertTriangle size={16} className="text-amber-600 flex-shrink-0" />
-          <p className="text-sm text-amber-800">
-            Password appeared in a data breach. Consider choosing a different password.
-          </p>
+        <div role="alert" className="flex items-center gap-2 bg-red-50 border border-red-300 rounded-xl px-3 py-2.5 mb-3">
+          <AlertTriangle size={16} className="text-red-600 flex-shrink-0" />
+          <p className="text-sm text-red-800">{BREACHED_PASSWORD_MESSAGE}</p>
         </div>
       )}
       <p className="text-sm font-semibold text-gray-900 mb-1.5">Password Requirements</p>

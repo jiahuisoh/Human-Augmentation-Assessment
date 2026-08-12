@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Users, Calendar, CheckCircle, ShieldCheck } from "lucide-react";
-import { firstNameOf } from "../../utils/helpers";
+import { firstNameOf, greeting } from "../../utils/helpers";
 import { scheduleApi, userApi } from "../../utils/api";
 import SidebarLayout, { type NavItem } from "../../components/SidebarLayout";
 import type { PendingVerificationClient, ScheduleEntry, User } from "../../types";
@@ -43,8 +43,7 @@ export default function Staff({ user, onSignOut }: StaffProps) {
     setPending(p);
   }
 
-  const hour = new Date().getHours();
-  const greetWord = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greetWord = greeting();
 
   const completed = schedule.filter(s => s.status === "completed" || s.status === "present").length;
   // Clients still needing a staff NRIC check - sourced from registered clients,

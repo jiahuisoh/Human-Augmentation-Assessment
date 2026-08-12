@@ -99,14 +99,14 @@ export default function Developer({ user, onSignOut }: DeveloperProps) {
       headerLeft={
         <div>
           <div className="text-base font-semibold text-gray-900">Developer Console</div>
-          <div className="text-xs text-gray-400">Sandbox environment - no live patient data</div>
+          <div className="text-xs text-gray-400">Sandbox Environment - No Live Patient Data</div>
         </div>
       }
     >
       <div className="space-y-5">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-3 text-xs text-amber-700">
           <AlertTriangle size={14} className="flex-shrink-0" />
-          Developer access is restricted to sandbox environments only. No identifiable patient data is accessible. All actions are logged.
+          Developer Access is restricted to Sandbox Environments. No Identifiable Patient Data is Accessible. All actions are logged.
         </div>
 
         {tab === "health"     && (

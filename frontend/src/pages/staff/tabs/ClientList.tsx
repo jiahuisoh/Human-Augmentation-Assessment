@@ -78,7 +78,7 @@ export default function ClientList({ schedule, search, onSearch }: ClientListPro
                     {s.nricVerified ? "Verified" : "Not verified"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-400">{s.time} today</td>
+                <td className="px-4 py-3 text-gray-400">{s.time} Today</td>
                 <td className="px-4 py-3 text-right">
                   <button type="button" disabled={loadingId === s.clientId}
                     onClick={() => void openProfile(s.clientId)}

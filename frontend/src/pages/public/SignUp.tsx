@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
-import { Heart } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import AuthLayout, { authPrimaryBtn, authNoticeCls, authLinkCls } from "../../components/AuthLayout";
 import { FormField, inputCls } from "../../components/FormField";
 import { PasswordInput, PasswordFeedback } from "../../components/PasswordFields";
 import { cls, calculateAge, formatDOB, isValidNric } from "../../utils/helpers";
 import { meetsPasswordReqs } from "../../utils/passwordStrength";
-import { userApi } from "../../utils/api";
+import { userApi, ApiError } from "../../utils/api";
 import type { NewUserPayload, Sex, User } from "../../types";
 
 interface SignUpProps {
@@ -64,7 +64,8 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
     return e;
   };
 
-  const handleSubmit = async (): Promise<void> => {
+  const handleSubmit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length) return;
@@ -80,6 +81,10 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
       });
       onSignedUp(user);
     } catch (err) {
+      if (err instanceof ApiError && err.code === "PASSWORD_BREACHED") {
+        setErrors({ password: err.message });
+        return;
+      }
       setSubmitError(err instanceof Error ? err.message : "Registration failed. Please try again.");
     } finally {
       setSubmitting(false);
@@ -87,19 +92,22 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-200">
-          <Heart size={30} className="text-white fill-white" />
-        </div>
-        <h1 className="text-3xl font-bold text-gray-900 leading-tight">Welcome to HANA</h1>
-        <p className="text-lg text-gray-500 mt-2">Create your profile to begin your health journey.</p>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-md p-6 mb-6 max-w-2xl mx-auto">
+    <AuthLayout
+      title="Create Your Profile"
+      subtitle="A few details to begin your health journey."
+      footer={
+        <p className="text-base text-gray-500">
+          Already Have an Account?{" "}
+          <button type="button" onClick={onBackToLogin} className={authLinkCls}>
+            Log In
+          </button>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit} noValidate>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <FormField label="Full Name" id="name" error={errors.name}>
-            <input id="name" type="text" value={form.name}
+            <input id="name" type="text" value={form.name} autoComplete="name"
               onChange={e => set("name", e.target.value)}
               className={cls(inputCls, errors.name && "border-red-400")} />
           </FormField>
@@ -127,13 +135,13 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
           </FormField>
 
           <FormField label="Email Address" id="email" error={errors.email}>
-            <input id="email" type="email" value={form.email}
+            <input id="email" type="email" value={form.email} autoComplete="email"
               onChange={e => set("email", e.target.value)}
               className={cls(inputCls, errors.email && "border-red-400")} />
           </FormField>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <FormField label="Height (cm)" id="height" error={errors.height}>
             <input id="height" type="number" value={form.height} min={100} max={200}
               onChange={e => set("height", e.target.value)}
@@ -166,12 +174,14 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
           <FormField label="Password" id="password" error={errors.password}>
             <PasswordInput id="password" value={form.password}
               onChange={v => set("password", v)}
+              autoComplete="new-password"
               error={errors.password} />
           </FormField>
 
           <FormField label="Confirm Password" id="confirmPassword" error={errors.confirmPassword}>
             <PasswordInput id="confirmPassword" value={form.confirmPassword}
               onChange={v => set("confirmPassword", v)}
+              autoComplete="new-password"
               error={errors.confirmPassword} />
           </FormField>
         </div>
@@ -179,24 +189,15 @@ export default function SignUp({ onSignedUp, onBackToLogin }: SignUpProps) {
         <PasswordFeedback value={form.password} userInputs={pwContext} />
 
         {submitError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-base mb-4">
+          <div role="alert" className={cls(authNoticeCls, "bg-red-50 border-red-200 text-red-700")}>
             {submitError}
           </div>
         )}
 
-        <button type="button" onClick={handleSubmit} disabled={submitting}
-          className="w-full bg-violet-600 hover:bg-violet-700 active:scale-95 disabled:opacity-60 text-white text-xl font-bold py-4 rounded-2xl min-h-[60px] transition-all shadow-lg shadow-violet-200">
-          {submitting ? "Creating your profile…" : "Create Profile & Continue"}
+        <button type="submit" disabled={submitting} className={authPrimaryBtn}>
+          {submitting ? "Creating Your Profile…" : "Create Profile"}
         </button>
-      </div>
-
-      <p className="text-center text-lg text-gray-500">
-        Already have an account?{" "}
-        <button type="button" onClick={onBackToLogin}
-          className="text-violet-600 font-semibold cursor-pointer hover:text-violet-800 underline underline-offset-2">
-          Log In
-        </button>
-      </p>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }

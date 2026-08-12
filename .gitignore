@@ -12,8 +12,6 @@ dist-ssr
 frontend/vite.config.js
 frontend/vite.config.d.ts
 
-.claude/
-
 __pycache__/
 *.pyc
 *.pyo

@@ -292,7 +292,7 @@ export default function Users_({ users, actor, onChange }: UsersProps) {
           <div className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">Assign clinician</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Assign Clinician</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Client: <span className="text-gray-900 font-medium">{assigningClient.name}</span>
                 </p>

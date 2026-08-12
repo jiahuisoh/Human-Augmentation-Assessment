@@ -72,7 +72,7 @@ export default function Logs({ logs, error, busy = false, onRefresh }: LogsProps
           <div className="w-2 h-2 rounded-full bg-red-400" />
           <div className="w-2 h-2 rounded-full bg-amber-400" />
           <div className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-gray-500 text-xs font-mono ml-2">hana-platform · technical-logs · developer-view</span>
+          <span className="text-gray-500 text-xs font-mono ml-2">HANA-Platform · Technical Logs · Developer View</span>
           <span className="ml-auto text-xs text-gray-400 tabular-nums">
             {visible.length === scoped.length
               ? `${scoped.length} event${scoped.length === 1 ? "" : "s"}`
@@ -162,11 +162,10 @@ export default function Logs({ logs, error, busy = false, onRefresh }: LogsProps
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-3 text-xs text-gray-500">
-        Operational events only - CV pipeline, sign-in behaviour and assessment activity.
-        Account emails and every client, user and target id are replaced with
+        Operational Events: CV Pipeline, Log-In Behaviour and Assessment Activity.
+        Account Emails and Every Client, User and respective Target IDs are replaced with
         <span className="font-mono"> [redacted] </span>
         before the event leaves the server, so activity can be followed without identifying anyone.
-        Account administration, consent and profile history stay with the administrator.
       </div>
     </div>
   );

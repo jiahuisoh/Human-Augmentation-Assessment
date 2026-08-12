@@ -71,8 +71,7 @@ export default function PatientDetail({
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h4 className="text-sm font-semibold text-gray-900 mb-3">Client profile</h4>
-        <ClientProfile user={patient.user} />
+        <ClientProfile user={patient.user} columns={4} />
       </div>
 
       <ScheduleCard
@@ -84,7 +83,7 @@ export default function PatientDetail({
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="grid grid-cols-2 gap-4 mb-4">
           {([
-            ["Adherence",     `${adherenceOf(patient.plan)}%`],
+            ["Intervention Adherence",     `${adherenceOf(patient.plan)}%`],
             ["Risk level",    riskFromSessions(patient.sessions)],
           ] as const).map(([l, v]) => (
             <div key={l} className="text-center bg-gray-50 rounded-lg p-3">

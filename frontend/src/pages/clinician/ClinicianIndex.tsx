@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Users, ClipboardList, Activity, BarChart2, ArrowLeft,
 } from "lucide-react";
-import { firstNameOf } from "../../utils/helpers";
+import { firstNameOf, greeting } from "../../utils/helpers";
 import {
   planApi, scheduleApi, sessionApi, userApi,
 } from "../../utils/api";
@@ -28,7 +28,7 @@ const TABS: ReadonlyArray<NavItem & { id: TabId }> = [
   { id: "overview",    label: "Overview",    Icon: BarChart2     },
   { id: "patients",    label: "My Patients", Icon: Users         },
   { id: "assessments", label: "Assessments", Icon: ClipboardList },
-  { id: "plans",       label: "Care Plans",  Icon: Activity      },
+  { id: "plans",       label: "Intervention Plans",  Icon: Activity      },
 ];
 
 interface ClinicianProps {
@@ -44,8 +44,7 @@ export default function Clinician({ user, onSignOut }: ClinicianProps) {
   const [activeCv, setActiveCv]       = useState<{ clientId: string; testId: TestId; token: string } | null>(null);
   const [result,   setResult]         = useState<AssessmentSession | null>(null);
 
-  const hour = new Date().getHours();
-  const greetWord = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const greetWord = greeting();
 
   useEffect(() => {
     void loadPatients();

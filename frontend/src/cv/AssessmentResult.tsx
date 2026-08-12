@@ -155,7 +155,7 @@ function TrafficLightCard({ light }: { light: "red" | "amber" | "green" }) {
   const l = LIGHT[light];
   return (
     <section className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Functional Fitness MOT rating</div>
+      <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Functional Fitness MOT Rating</div>
       <div className="flex items-center gap-3">
         <span className={cls("w-5 h-5 rounded-full flex-shrink-0", l.dot)} />
         <span className="text-sm text-gray-700 capitalize font-medium">{light}</span>
@@ -177,8 +177,8 @@ function SppbCard({ session }: { session: AssessmentSession }) {
         <Timer size={14} /> Sit-to-stand timing
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Time for 5 stands" value={typeof seconds === "number" ? `${seconds.toFixed(1)} s` : "Not reached"} />
-        <Stat label="SPPB points" value={typeof points === "number" ? `${points} / 4` : "—"} />
+        <Stat label="Time for 5 Stands" value={typeof seconds === "number" ? `${seconds.toFixed(1)} s` : "Not Reached"} />
+        <Stat label="SPPB Points" value={typeof points === "number" ? `${points} / 4` : "-"} />
       </div>
       {slow && (
         <div className="mt-3 flex gap-2 items-start bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -219,10 +219,10 @@ function QualityCard({ session }: { session: AssessmentSession }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         {quality !== null && (
-          <Stat label="Tracking quality" value={`${quality}%`} tone={review ? "amber" : undefined} />
+          <Stat label="Tracking Quality" value={`${quality}%`} tone={review ? "amber" : undefined} />
         )}
         {session.ageAtTest !== undefined && (
-          <Stat label="Compared using" value={`Age ${session.ageAtTest}${session.sexAtTest ? ` · ${session.sexAtTest}` : ""}`} />
+          <Stat label="Compared Using" value={`Age ${session.ageAtTest}${session.sexAtTest ? ` · ${session.sexAtTest}` : ""}`} />
         )}
       </div>
       {notes.map((n, i) => (

@@ -16,19 +16,19 @@ export default function SystemHealth({ report, checking, onRefresh }: SystemHeal
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-            <Activity size={15} className="text-violet-600" /> System health
+            <Activity size={15} className="text-violet-600" /> System Health
           </h3>
           <button type="button" onClick={onRefresh} disabled={checking}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 disabled:opacity-50 text-violet-700 text-xs font-semibold transition-colors">
             <RefreshCw size={12} className={cls(checking && "animate-spin")} />
-            {checking ? "Checking…" : "Re-run checks"}
+            {checking ? "Checking…" : "Re-Run Checks"}
           </button>
         </div>
 
         <p className="text-xs text-gray-400 mb-4">
           {report
-            ? `Last checked ${formatLogStamp(report.checkedAt)}${failing > 0 ? ` · ${failing} failing` : " · all clear"}`
-            : "Running the first check…"}
+            ? `Last Checked ${formatLogStamp(report.checkedAt)}${failing > 0 ? ` · ${failing} Failing` : " · All Clear"}`
+            : "Running Initial Check…"}
         </p>
 
         <div className="divide-y divide-gray-100">

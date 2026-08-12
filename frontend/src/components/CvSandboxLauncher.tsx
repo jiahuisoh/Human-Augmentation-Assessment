@@ -16,11 +16,11 @@ export default function CvSandboxLauncher({ onLaunch }: CvSandboxLauncherProps) 
     <div className="space-y-4">
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-          <Camera size={15} className="text-violet-600" /> CV pipeline sandbox
+          <Camera size={15} className="text-violet-600" /> CV Pipeline Sandbox
         </h3>
         <p className="text-xs text-gray-500 mb-4">
           Runs the live camera, WebSocket and pose pipeline against synthetic demographics.
-          The <code className="text-violet-600">sandbox</code> flag travels inside the grant the
+          <code className="text-violet-600"> Sandbox</code> flag travels inside the grant the
           backend signs, so the result is marked synthetic at the source and the backend refuses
           to save it against any client.
         </p>
@@ -30,14 +30,14 @@ export default function CvSandboxLauncher({ onLaunch }: CvSandboxLauncherProps) 
               className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-4 text-left transition-colors">
               <Camera size={14} className="text-violet-600 mb-2" />
               <div className="text-xs font-semibold text-gray-900">{t.name}</div>
-              <div className="text-xs text-gray-500 mt-1">Launch sandbox session</div>
+              <div className="text-xs text-gray-500 mt-1">Launch Sandbox Session</div>
             </button>
           ))}
         </div>
       </div>
       <div className="bg-white border border-gray-200 rounded-xl p-3 text-xs text-gray-500">
-        Sandbox runs are written to the technical audit categories. No frames are persisted and no
-        assessment record is created.
+        Sandbox Runs are written to Technical Audit Categories. No Frames are Persisted and No
+        Assessment Record is Created.
       </div>
     </div>
   );

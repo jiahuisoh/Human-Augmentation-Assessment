@@ -3,7 +3,15 @@ const User = require("../models/User");
 const Measurement = require("../models/Measurement");
 const { signToken } = require("../utils/jwt");
 const httpError = require("../utils/httpError");
+const { isPasswordBreached } = require("../utils/hibp");
 const { writeAudit } = require("./auditService");
+
+
+// Kept word for word in step with frontend/src/utils/passwordStrength.ts, so
+// the live banner and the refusal returned here read identically.
+const BREACHED_PASSWORD_MESSAGE =
+  "This password has appeared in a known data breach. Please choose a different password to use.";
+const BREACHED_PASSWORD_CODE = "PASSWORD_BREACHED";
 
 // Compared against when the email doesn't exist, so both failure paths cost
 // one bcrypt verification and response timing can't confirm an account.
@@ -18,6 +26,10 @@ const register = async (values) => {
   const exists = await User.findOne({ email });
   if (exists) {
     throw httpError(409, "This email cannot be used for registration. Please use a different address, or log in if you already have an account.");
+  }
+
+  if (await isPasswordBreached(password)) {
+    throw httpError(400, BREACHED_PASSWORD_MESSAGE, BREACHED_PASSWORD_CODE);
   }
 
   const user = await User.create({
@@ -73,6 +85,10 @@ const changePassword = async (actor, currentPassword, newPassword) => {
   }
   if (newPassword === currentPassword) {
     throw httpError(400, "New password must be different from your current password");
+  }
+  if (await isPasswordBreached(newPassword)) {
+    await writeAudit(actor, "AUTH", "Password change rejected: new password found in a breach corpus", { userId: actor.id }, "WARN");
+    throw httpError(400, BREACHED_PASSWORD_MESSAGE, BREACHED_PASSWORD_CODE);
   }
 
   user.password = newPassword;

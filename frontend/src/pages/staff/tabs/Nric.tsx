@@ -18,7 +18,7 @@ export default function Nric({ clients, onVerify }: NricProps) {
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h3 className="text-sm font-semibold text-gray-900 mb-1">
-          Awaiting NRIC check
+          Awaiting NRIC Check
           {toCheck.length > 0 && <span className="ml-2 text-xs font-normal text-gray-400">· {toCheck.length}</span>}
         </h3>
         <p className="text-xs text-gray-400 mb-4">
@@ -33,15 +33,15 @@ export default function Nric({ clients, onVerify }: NricProps) {
       {awaitingAdmin.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-sm font-semibold text-gray-900 mb-1">
-            With administrator <span className="ml-1 text-xs font-normal text-gray-400">· {awaitingAdmin.length}</span>
+            Sent to Administrator <span className="ml-1 text-xs font-normal text-gray-400">· {awaitingAdmin.length}</span>
           </h3>
-          <p className="text-xs text-gray-400 mb-4">Checked by staff, awaiting the administrator's decision.</p>
+          <p className="text-xs text-gray-400 mb-4">Checked by staff, awaiting the administrator's final verification.</p>
           {awaitingAdmin.map(c => (
             <div key={c._id} className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0">
               <span className="text-sm font-medium text-gray-900">{c.name}</span>
               {c.recommended ? (
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-green-700">
-                  <CheckCircle2 size={13} /> NRIC matched, pending approval
+                  <CheckCircle2 size={13} /> NRIC Matched, Pending Approval
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-red-700">
@@ -95,7 +95,7 @@ function NricRow({ client, onVerify }: NricRowProps) {
           <div className="text-sm font-medium text-gray-900 truncate">{client.name}</div>
           <div className="text-xs text-gray-400 flex items-center gap-1">
             {isRecheck
-              ? <><AlertTriangle size={11} className="text-amber-500" /> Sent back by administrator, re-check required</>
+              ? <><AlertTriangle size={11} className="text-amber-500" /> Sent Back by Administrator, Re-Verification Required</>
               : <><Clock size={11} /> Registered {new Date(client.createdAt).toLocaleDateString("en-SG", { day: "numeric", month: "short" })}</>}
           </div>
         </div>

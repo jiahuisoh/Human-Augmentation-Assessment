@@ -8,7 +8,7 @@ interface AttendanceProps {
 export default function Attendance({ schedule, onMark }: AttendanceProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <h3 className="text-sm font-semibold text-gray-900 mb-1">Record session attendance</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">Record Session Attendance</h3>
       <p className="text-xs text-gray-400 mb-4">
         Attendance only. Clinical notes and assessment results are managed by the assigned clinician.
       </p>

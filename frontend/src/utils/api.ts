@@ -18,6 +18,16 @@ export const BASE_URL: string = import.meta.env.VITE_API_URL || "http://localhos
 export const CV_WS_URL: string = import.meta.env.VITE_CV_WS_URL || "ws://localhost:4501";
 export const CV_HTTP_URL: string = CV_WS_URL.replace(/^ws/, "http");
 
+
+export class ApiError extends Error {
+  readonly code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+  }
+}
+
 interface ApiFetchOptions {
   method?: string;
   body?: unknown;
@@ -47,10 +57,9 @@ async function apiFetch<T>(url: string, options: ApiFetchOptions = {}): Promise<
     const sessionDead = res.status === 401 || (res.status === 403 && d.code === "ACCOUNT_SUSPENDED");
     if (sessionDead && token) {
       clearToken();
-      emitAuthFailure(res.status === 403 ? d.error : "Your session has expired. Please sign in again.");
+      emitAuthFailure(res.status === 403 ? d.error : "Your session has expired. Please log in again.");
     }
-    const errMsg = d.error || `Request failed (${res.status})`;
-    throw new Error(errMsg);
+    throw new ApiError(d.error || `Request failed (${res.status})`, d.code);
   }
   return data as T;
 }

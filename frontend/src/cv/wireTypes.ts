@@ -1,4 +1,4 @@
-import type { Sex, TestId, RiskLevel } from "../types";
+import type { TestId, RiskLevel } from "../types";
 
 export type Phase     = "loading" | "calibrating" | "countdown" | "test" | "done" | "error";
 export type Detection = "ok" | "partial" | "missing";
@@ -78,7 +78,6 @@ export type ServerMessage = ReadyMessage | UpdateMessage | CompleteMessage | Err
 
 export interface InitAction {
   action: "init";
-  /** Backend-signed grant carrying the subject's real age, sex and height. */
   token:  string;
 }
 

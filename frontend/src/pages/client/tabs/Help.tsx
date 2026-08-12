@@ -1,7 +1,6 @@
-import { AlertCircle, Phone, Shield } from "lucide-react";
-import { cls } from "../../../utils/helpers";
+import { AlertCircle, Shield } from "lucide-react";
 import FAQAccordion from "../components/FAQAccordion";
-import { EMERGENCY_NUMBERS, FAQ_SECTIONS, CONTACT_CHANNELS } from "../data/helpContent";
+import { FAQ_SECTIONS, CONTACT_CHANNELS } from "../data/helpContent";
 
 export default function Help() {
   return (
@@ -11,33 +10,13 @@ export default function Help() {
         <div className="flex items-start gap-3">
           <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-sm font-bold text-red-700">Your health comes first</h3>
+            <h3 className="text-sm font-bold text-red-700">Your Health Comes First</h3>
             <p className="text-xs text-red-700 mt-1 leading-relaxed">
               If you feel dizzy, short of breath, or experience pain, stop the test immediately and tap
               <strong> Stop Early</strong>. Your safety matters more than the score.
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Emergency numbers */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {EMERGENCY_NUMBERS.map(c => (
-          <div key={c.number} className={cls("rounded-2xl p-4 text-white flex flex-col gap-2", c.bg, c.ring)}>
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <c.Icon size={20} className="text-white" />
-            </div>
-            <div>
-              <div className="text-xl font-black tracking-wide">{c.number}</div>
-              <div className="text-sm font-bold">{c.label}</div>
-              <div className="text-xs opacity-80">{c.sub}</div>
-            </div>
-            <a href={`tel:${c.number.replace(/[^0-9+]/g, "")}`}
-              className="mt-1 inline-flex items-center justify-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
-              <Phone size={12} /> Call now
-            </a>
-          </div>
-        ))}
       </div>
 
       {/* FAQ sections */}
@@ -55,7 +34,7 @@ export default function Help() {
 
       {/* Contact channels */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-3">Still need help?</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-3">Contact Us</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {CONTACT_CHANNELS.map(c => (
             <div key={c.label} className="border border-gray-200 rounded-xl p-3 flex flex-col gap-2">
@@ -81,7 +60,7 @@ export default function Help() {
       <div className="bg-gray-100 rounded-2xl p-4 flex items-start gap-3">
         <Shield size={16} className="text-gray-500 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-gray-600 leading-relaxed">
-          <strong>Data protection:</strong> HANA is designed around Singapore's
+          <strong>Data Protection:</strong> HANA is designed around Singapore's
           <strong> Personal Data Protection Act (PDPA)</strong>.
           Your health data is never sold or shared with third parties. Access is restricted by role,
           and sensitive actions on your records are logged.

@@ -12,7 +12,6 @@ dependencies = [
   "mediapipe>=0.10.30",
   "opencv-python-headless>=4.10.0",
   "numpy>=1.26.0",
-  "pillow>=10.4.0",
 ]
 
 [project.optional-dependencies]

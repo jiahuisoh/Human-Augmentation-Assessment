@@ -6,24 +6,24 @@ Human Augmentation Neural Analytics (HANA) Functional Health Assessment & Interv
 
 ## Contents
 
-[Operating Context and Assumptions](#operating-context-and-assumptions)
-[Platform Overview](#platform-overview)
-[Client Verification Workflow](#client-verification-workflow)
-[Requirements](#requirements)
-[Setup](#setup)
-  [1. Clone the Repository](#1-clone-the-repository)
-  [2. MongoDB Atlas](#2-mongodb-atlas)
-  [3. Configure Environment Variables](#3-configure-environment-variables)
-  [4. Run Backend](#4-run-backend)
-  [5. Run Frontend](#5-run-frontend)
-  [6. Run Computer Vision (CV) Service](#6-run-computer-vision-cv-service)
-[Creating User Accounts](#creating-user-accounts)
-[Running the Tests](#running-the-tests)
-[Project Layout](#project-layout)
-[System Architecture](#system-architecture)
-[Troubleshooting](#troubleshooting)
-[Known Limitations](#known-limitations)
-[Future Enhancements](#future-enhancements)
+- [Operating Context and Assumptions](#operating-context-and-assumptions)
+- [Platform Overview](#platform-overview)
+- [Client Verification Workflow](#client-verification-workflow)
+- [Requirements](#requirements)
+- [Setup](#setup)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. MongoDB Atlas](#2-mongodb-atlas)
+  - [3. Configure Environment Variables](#3-configure-environment-variables)
+  - [4. Run Backend](#4-run-backend)
+  - [5. Run Frontend](#5-run-frontend)
+  - [6. Run Computer Vision (CV) Service](#6-run-computer-vision-cv-service)
+- [Creating User Accounts](#creating-user-accounts)
+- [Running the Tests](#running-the-tests)
+- [Project Layout](#project-layout)
+- [System Architecture](#system-architecture)
+- [Troubleshooting](#troubleshooting)
+- [Known Limitations](#known-limitations)
+- [Future Enhancements](#future-enhancements)
 
 ---
 
@@ -31,7 +31,7 @@ Human Augmentation Neural Analytics (HANA) Functional Health Assessment & Interv
 
 ### Deployment Setting
 
-The platform is designed on the assumption that it is deployed within a physical care setting, specifically a physiotherapy clinic conducting functional health assessments, or an Active Ageing Centre (AAC) to enforce **security** of clinical data and in compliance with **Human-in-the-Loop** AI supervision.
+The platform is designed on the assumption that it is deployed within a physical care setting, specifically a physiotherapy clinic conducting functional health assessments, or an Active Ageing Centre (AAC) to enforce ***security*** of clinical data and in compliance with ***Human-in-the-Loop*** AI supervision.
 
 Every client account is hence assumed to correspond to an individual who attends the premises in person. Assessment results are clinical records: they are attributed to a named individual, released to the clinician responsible for that individual's care, and used to inform intervention planning. The workflow implemented throughout the application follows from this assumption.
 
@@ -85,11 +85,24 @@ The accompanying requirements document (`HANA CRM.docx`) specifies three functio
 
 The platform comprises three services, which are run together:
 
-| Service | Technology | Responsibility |
+| Service | Responsibility |
+|---|---|
+| `frontend/` | User-facing application for all five roles |
+| `backend/` | REST API, authentication, authorisation, persistence, audit |
+| `cv-service/` | Real-time pose and hand landmark detection, test scoring |
+
+### Tech Stack
+
+| Layer | Technology | Intent |
 |---|---|---|
-| `frontend/` | React, TypeScript, Vite | User-facing application for all five roles |
-| `backend/` | Node.js, Express, MongoDB | REST API, authentication, authorisation, persistence, audit |
-| `cv-service/` | Python, FastAPI, MediaPipe | Real-time pose and hand landmark detection, test scoring |
+| Frontend | React 18, TypeScript 5.5, Vite 5, Tailwind CSS 3.4 | One codebase serving five role dashboards. Build type-checks before it bundles (`tsc -b && vite build`), so if the API changes and the frontend is not updated to match, the build stops with an error instead of the mismatch reaching the screen. |
+| Backend | Node.js 18+, Express 4, Mongoose 8 | Authorisation, persistence and audit are decided. The clinical verdict is re-derived here from the stored profile against the Rikli and Jones norm tables, never accepted from the browser. |
+| Computer Vision | Python 3.11, FastAPI, Uvicorn, Pydantic, MediaPipe, OpenCV, NumPy | Landmark detection and per-test scoring run outside the browser, so a score cannot be produced or altered there. Frames travel over a WebSocket, which carries the continuing exchange that request and response cannot. |
+| Database | MongoDB Atlas (free M0 cluster), accessed through the Mongoose ODM | One store for users, assessment sessions, intervention plans, consent events, schedule entries, measurements, questionnaires and the audit trail. Hosted, so no local database installation is required. |
+| Security | JWT, bcrypt, HMAC-SHA256 grant and outcome tokens, Helmet, CORS, `express-rate-limit` | Token carries role, while verification and suspension are read from the database on every request, so a status change takes effect at once rather than when the token expires. Passwords and the full NRIC are kept only as bcrypt hashes, and the signed CV tokens prevent a subject or a score being edited in developer tools. No CSRF token is carried or required: session is sent as an `Authorization` header rather than a cookie, so a browser never attaches it to a cross-site request. |
+| Container | Docker multi-stage build (`runtime` and `test` targets), Docker Compose | CV service's native dependencies are pinned into an image, so it behaves the same on any machine. |
+
+Versions are the minimums declared in `frontend/package.json`, `backend/package.json` and `cv-service/pyproject.toml`.
 
 ### Roles
 
@@ -569,7 +582,7 @@ Role held by the current account does not carry permission for the action attemp
 
 **A blank page, or data that appears out of date**
 
-**Fix**: perform a hard refresh with `Ctrl+Shift+R`.
+**Fix**: perform a *Hard Refresh* with `Ctrl+Shift+R`.
 
 ---
 

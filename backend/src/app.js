@@ -23,7 +23,6 @@ app.use(securityHeaders);
 app.use(sensitiveDataHeaders);
 app.use(cors({
   origin: process.env.CLIENT_URL || "http://localhost:4500",
-  credentials: true,
 }));
 app.use(globalLimiter);
 app.use(requireJsonContent);

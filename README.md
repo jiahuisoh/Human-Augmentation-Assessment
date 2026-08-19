@@ -98,7 +98,7 @@ The platform comprises three services, which are run together:
 | Frontend | React 18, TypeScript 5.5, Vite 5, Tailwind CSS 3.4 | One codebase serving five role dashboards. Build type-checks before it bundles (`tsc -b && vite build`), so if the API changes and the frontend is not updated to match, the build stops with an error instead of the mismatch reaching the screen. |
 | Backend | Node.js 18+, Express 4, Mongoose 8 | Authorisation, persistence and audit are decided. The clinical verdict is re-derived here from the stored profile against the Rikli and Jones norm tables, never accepted from the browser. |
 | Computer Vision | Python 3.11, FastAPI, Uvicorn, Pydantic, MediaPipe, OpenCV, NumPy | Landmark detection and per-test scoring run outside the browser, so a score cannot be produced or altered there. Frames travel over a WebSocket, which carries the continuing exchange that request and response cannot. |
-| Database | MongoDB Atlas, accessed through the Mongoose ODM | One store for users, assessment sessions, intervention plans, consent events, schedule entries, measurements, questionnaires and the audit trail. Hosted, so no local database installation is required. |
+| Database | MongoDB Atlas, accessed through the Mongoose ODM | Cloud database service for users, assessment sessions, intervention plans, consent events, schedule entries, measurements, questionnaires and the audit trail.|
 | Security | JWT, bcrypt, HMAC-SHA256 grant and outcome tokens, Helmet, CORS, `express-rate-limit` | Token carries role, while verification and suspension are read from the database on every request, so a status change takes effect at once rather than when the token expires. Passwords and the full NRIC are kept only as bcrypt hashes, and the signed CV tokens prevent a subject or a score being edited in developer tools. No CSRF token is carried or required: session is sent as an `Authorization` header rather than a cookie, so a browser never attaches it to a cross-site request. |
 | Container | Docker multi-stage build (`runtime` and `test` targets), Docker Compose | CV service's native dependencies are pinned into an image, so it behaves the same on any machine. |
 
@@ -161,7 +161,7 @@ Enforcement is applied on the server and is not merely a matter of interface pre
 | Node.js 18 or later | Runs Frontend and Backend | [nodejs.org](https://nodejs.org), LTS build |
 | npm | Installs dependencies | Bundled with Node.js |
 | Git | Clones the repository | [git-scm.com](https://git-scm.com/downloads) |
-| MongoDB Atlas account (free tier) | Cloud database for Backend | [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas/register) |
+| MongoDB Atlas | Cloud database for Backend | [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas/register) |
 | Docker Desktop | Runs the CV service | [docker.com](https://www.docker.com/products/docker-desktop/), required for camera assessments only |
 
 **Installing Node.js**
@@ -200,11 +200,11 @@ The repository contains three service folders: `frontend/`, `backend/`, and `cv-
 
 ### 2. MongoDB Atlas
 
-The backend requires a database in which to store users, assessments, plans, consent events and audit records. MongoDB Atlas provides a free, cloud-hosted instance requiring no local installation.
+The backend requires a database in which to store users, assessments, plans, consent events and audit records. MongoDB Atlas provides dedicated tiers, and a cloud-hosted instance requiring no local installation.
 
 | Step | Action |
 |---|---|
-| 1 | Create a Free Account at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas/register) |
+| 1 | Create an Account at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas/register) |
 | 2 | Create a Project, then a free M0 cluster within it |
 | 3 | Under **Security > Database Access**, add a database user with a username and password, granting read and write access to any database |
 | 4 | Under **Security > Network Access**, add the IP address `0.0.0.0/0` (access from anywhere). This is suitable for development only |
